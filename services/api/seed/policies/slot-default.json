@@ -1,0 +1,11 @@
+{
+  "owner": "slot-default",
+  "rules": [
+    { "id": "share-rationale", "label": "Share decisions & rationale → team", "intents": ["ask_rationale"], "mode": "allow" },
+    { "id": "share-status", "label": "Share project status → team", "intents": ["ask_status"], "mode": "allow" },
+    { "id": "commit-dates", "label": "Commit dates or sign-offs", "intents": ["request_commitment"], "mode": "ask" },
+    { "id": "send-on-behalf", "label": "Send messages on my behalf", "intents": ["request_send_on_behalf"], "mode": "ask" },
+    { "id": "write-for-others", "label": "Edit files when someone else asks", "intents": ["request_write"], "mode": "ask" },
+    { "id": "personal", "label": "Share personal notes", "intents": ["request_personal"], "mode": "deny" }
+  ]
+}

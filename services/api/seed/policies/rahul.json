@@ -1,0 +1,10 @@
+{
+  "owner": "rahul",
+  "rules": [
+    { "id": "share-rationale", "label": "Share decisions & rationale on login revamp → product team", "intents": ["ask_rationale"], "mode": "allow" },
+    { "id": "share-status", "label": "Share project status → product team", "intents": ["ask_status"], "mode": "allow" },
+    { "id": "commit-dates", "label": "Commit dates or launch decisions", "intents": ["request_commitment"], "mode": "ask" },
+    { "id": "send-on-behalf", "label": "Send messages on Rahul's behalf", "intents": ["request_send_on_behalf"], "mode": "ask" },
+    { "id": "personal", "label": "Share personal notes or leave details", "intents": ["request_personal"], "mode": "deny" }
+  ]
+}

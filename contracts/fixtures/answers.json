@@ -1,0 +1,36 @@
+{
+  "why_one_tap": {
+    "alter": "rahul",
+    "asker": "m_judge",
+    "question": "Why did we move to Google one-tap sign-in?",
+    "outcome": "allow",
+    "answer": "The old Google Sign-In button is being retired, so Rahul switched us to one-tap on October 8. It's also faster for users.",
+    "citations": [
+      { "sourceId": "arch-sync-2026-10-08", "title": "Arch sync · Oct 8", "locator": "12:04" },
+      { "sourceId": "login-design-doc", "title": "Login design doc", "locator": "§2" }
+    ],
+    "traceId": "trc_01",
+    "receiptId": "rcp_01"
+  },
+  "launch_date": {
+    "alter": "rahul",
+    "asker": "m_judge",
+    "question": "Can you confirm the launch date?",
+    "outcome": "ask",
+    "answer": "That one's Rahul's call. I've asked him; he's on leave, so it's queued for when he's back.",
+    "citations": [],
+    "escalationId": "esc_01",
+    "traceId": "trc_02",
+    "receiptId": "rcp_02"
+  },
+  "personal": {
+    "alter": "rahul",
+    "asker": "m_judge",
+    "question": "Why is Rahul on leave?",
+    "outcome": "deny",
+    "answer": "I can't share that. It's outside what Rahul allows me to share.",
+    "citations": [],
+    "traceId": "trc_03",
+    "receiptId": "rcp_03"
+  }
+}

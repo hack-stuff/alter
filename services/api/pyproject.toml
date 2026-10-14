@@ -1,0 +1,31 @@
+[project]
+name = "alter-api"
+version = "0.1.0"
+description = "Alter brain & actions: ADK agents, A2A, policy gate, Google app actions (Track A)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "google-adk[a2a]>=1.0",
+  "google-genai>=1.0",
+  "google-cloud-firestore>=2.16",
+  "google-cloud-secret-manager>=2.20",
+  "google-cloud-discoveryengine>=0.13",
+  "firebase-admin>=6.5",
+  "google-api-python-client>=2.140",
+  "google-auth-oauthlib>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

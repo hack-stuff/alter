@@ -1,0 +1,118 @@
+{
+  "escalation": {
+    "id": "esc_02",
+    "owner": "m_judge",
+    "fromAlter": "priya",
+    "askedBy": "priya",
+    "question": "Can QA commit to sign-off by Oct 30?",
+    "context": "Priya's Alter is planning the launch. Test plan v1 has 2 open bugs.",
+    "state": "pending"
+  },
+  "a2aTrace": {
+    "id": "trc_01",
+    "from": "m_judge",
+    "to": "rahul",
+    "request": "Is the sign-in setup approved for production?",
+    "policyChecks": [
+      {
+        "rule": "share-status",
+        "label": "Project status → product team",
+        "outcome": "allow"
+      }
+    ],
+    "sources": [
+      {
+        "sourceId": "login-design-doc",
+        "title": "Login design doc",
+        "locator": "§4"
+      },
+      {
+        "sourceId": "ticket-AUTH-112",
+        "title": "AUTH-112",
+        "locator": "status"
+      }
+    ],
+    "answer": "Approved Oct 10. Live in production.",
+    "outcome": "allow",
+    "steps": [
+      "Your Alter → Rahul's Alter",
+      "request: \"Is the sign-in setup approved for production?\"",
+      "Rahul's sharing rules: project status → team ✓",
+      "sources: Login design doc §4 · ticket AUTH-112",
+      "answer: \"Approved Oct 10. Live in production.\"",
+      "Answer returned with sources",
+      "No human needed"
+    ]
+  },
+  "activity": [
+    {
+      "id": "act_1",
+      "ts": "2026-10-14T14:12:00Z",
+      "actor": "rahul",
+      "kind": "answered",
+      "summary": "Rahul's Alter answered you: why one-tap sign-in",
+      "receiptId": "rcp_01",
+      "visibleTo": [
+        "m_judge"
+      ]
+    },
+    {
+      "id": "act_2",
+      "ts": "2026-10-14T14:13:00Z",
+      "actor": "priya",
+      "kind": "escalated",
+      "summary": "Priya's Alter asked you: can QA commit to sign-off by Oct 30?",
+      "receiptId": "rcp_02",
+      "visibleTo": [
+        "m_judge"
+      ]
+    },
+    {
+      "id": "act_3",
+      "ts": "2026-10-14T14:31:00Z",
+      "actor": "m_judge",
+      "kind": "answered",
+      "summary": "Your Alter answered Priya's Alter: QA status",
+      "receiptId": "rcp_04",
+      "visibleTo": [
+        "m_judge"
+      ]
+    },
+    {
+      "id": "act_4",
+      "ts": "2026-10-14T14:40:00Z",
+      "actor": "m_judge",
+      "kind": "doc_updated",
+      "summary": "Updated Login revamp — status",
+      "receiptId": "rcp_05",
+      "visibleTo": [
+        "m_judge"
+      ]
+    }
+  ],
+  "receipt": {
+    "id": "rcp_01",
+    "actor": {
+      "alter": "rahul"
+    },
+    "action": "answer_question",
+    "sourcesUsed": [
+      {
+        "id": "arch-sync-2026-10-08",
+        "locator": "12:04"
+      },
+      {
+        "id": "login-design-doc",
+        "locator": "§2"
+      }
+    ],
+    "policy": {
+      "rule": "share-rationale",
+      "outcome": "allow"
+    },
+    "result": {
+      "ok": true
+    },
+    "ts": "2026-10-14T14:12:00Z"
+  }
+}

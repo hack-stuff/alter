@@ -1,0 +1,56 @@
+{
+  "chat_reply": {
+    "conversationId": "conv_01",
+    "reply": {
+      "from": "alter",
+      "text": "I drafted a QA update for the status doc using the test plan and Rahul's prod approval. Take a look before I apply it.",
+      "citations": [
+        { "sourceId": "test-plan", "title": "Test plan v1", "locator": "§3" },
+        { "sourceId": "ticket-AUTH-112", "title": "AUTH-112", "locator": "status" }
+      ],
+      "approvalIds": ["apr_doc"],
+      "traceIds": ["trc_04"],
+      "ts": "2026-10-14T14:30:00Z"
+    }
+  },
+  "approvals": [
+    {
+      "id": "apr_doc",
+      "owner": "m_judge",
+      "kind": "doc_edit",
+      "title": "Status doc · QA section",
+      "revision": 1,
+      "preview": {
+        "before": [{ "section": "QA", "lines": ["TBD"] }],
+        "after": [{ "section": "QA", "lines": [
+          "Test plan v1: Android 12+, iOS 16+.",
+          "Sign-in approved for production (Oct 10).",
+          "2 open bugs; sign-off pending."
+        ] }],
+        "diffs": [
+          { "op": "change", "section": "QA", "line": "Test plan v1: Android 12+, iOS 16+." },
+          { "op": "add", "section": "QA", "line": "Sign-in approved for production (Oct 10)." },
+          { "op": "add", "section": "QA", "line": "2 open bugs; sign-off pending." }
+        ]
+      },
+      "citations": [{ "sourceId": "test-plan", "title": "Test plan v1", "locator": "§3" }],
+      "target": { "url": "#" },
+      "state": "proposed",
+      "reason": "You asked me to add a QA update to the status doc."
+    },
+    {
+      "id": "apr_event",
+      "owner": "m_judge",
+      "kind": "calendar_event",
+      "title": "QA sync with Meera",
+      "revision": 1,
+      "preview": {
+        "after": [{ "section": "Event", "lines": ["Thu 16 Oct · 15:00–15:30", "Attendees: You, Meera"] }],
+        "diffs": []
+      },
+      "citations": [],
+      "state": "proposed",
+      "reason": "First free 30 minutes for both of you on Thursday."
+    }
+  ]
+}
