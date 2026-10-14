@@ -16,6 +16,7 @@ export interface Member {
   kind: 'seeded' | 'human'
   slot?: string
   role: string
+  email?: string
   status: MemberStatus
 }
 
@@ -104,3 +105,44 @@ export interface ActivityItem {
   receiptId: string
   visibleTo: string[]
 }
+
+export interface Memory {
+  id: string
+  owner: string
+  content: string
+  source: 'starter' | 'taught' | 'correction'
+  state: 'proposed' | 'approved' | 'revoked'
+}
+export interface Rule { id: string; label: string; intents: string[]; mode: Outcome }
+export interface Receipt {
+  id: string
+  actor: { human?: string; alter: string }
+  action: string
+  sourcesUsed: { id: string; locator: string }[]
+  policy: { rule: string; outcome: Outcome }
+  approval?: { by: string; at: string }
+  result: { ok: boolean; externalUrl?: string }
+  ts: string
+}
+export interface InboxMessage { id: string; from: string; subject: string; body: string; gmailMessageUrl?: string; ts: string }
+export interface ProgressEvent { id: string; kind: 'thinking' | 'tool' | 'a2a' | 'approval'; label: string; ts: string }
+export interface Workspace {
+  name: string
+  inviteCode: string
+  director?: boolean
+  google: { folderUrl?: string; docs: Record<string, string>; sheetUrl?: string; calendarUrl?: string }
+}
+export interface WorkspaceData {
+  workspace?: Workspace
+  members: Member[]
+  approvals: Approval[]
+  escalations: Escalation[]
+  activity: ActivityItem[]
+  receipts: Receipt[]
+  memories: Memory[]
+  rules: Rule[]
+  inbox: InboxMessage[]
+  traces: A2ATrace[]
+  events: ProgressEvent[]
+}
+export const emptyWorkspace: WorkspaceData = { members: [], approvals: [], escalations: [], activity: [], receipts: [], memories: [], rules: [], inbox: [], traces: [], events: [] }

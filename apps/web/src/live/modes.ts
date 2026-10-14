@@ -40,6 +40,3 @@ export const MODES: Record<LiveMode, ModeConfig> = {
     tools: [tool('ask_alter', "Ask this teammate's Alter for a cited, policy-checked answer.", { memberId: str, question: str })],
   },
 }
-
-// TODO(Day 1): pin the native-audio Live model ID verified to work with ephemeral tokens.
-export const LIVE_MODEL = import.meta.env.VITE_LIVE_MODEL ?? 'TODO-live-model-id'

@@ -9,3 +9,6 @@ dist/
 !.env.example
 *.local
 secrets/
+
+# Video rehearsal captures
+video/generated/

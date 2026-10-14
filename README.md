@@ -40,3 +40,28 @@ VITE_MOCK=1 npm run dev
 # …or against the local backend
 VITE_API_BASE=http://localhost:8080/v1 npm run dev
 ```
+
+## Track B development
+
+Track B implements all seven app screens, mock workspace streams, Firebase anonymous
+auth/read subscriptions, four Gemini Live voice modes, a separate authenticated token
+service, and an installable PWA. Voice can revise or draft replies; approval always
+uses an on-screen button. Kiosk/director entry points and a captioned sample-data
+recording kit are included.
+
+Use `VITE_MOCK=1 npm run dev` from `apps/web` for the full rehearsal. Sample changes
+last for the page session and reset on reload. The mock app never writes to Google.
+For the current Track A HTTP stub use `VITE_MOCK=0 VITE_DEV_AUTH=1`; for real Firebase
+and voice use the configuration in [Track B deployment](docs/track-b-deployment.md).
+The real Google integrations and director authorization depend on Track A.
+
+From `apps/web`, validate with `npm run build`, `npm run lint`, `npm run test:e2e`,
+and `npm run test:pwa`. Install Playwright Chromium first or set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` in this cloud environment.
+The token service has its own Python environment and pytest suite under
+`services/live-token`. For the recording kit and real Meet/OBS setup, see
+[video/README.md](video/README.md).
+
+Live Gemini/Firebase validation and public deployment await the project's
+configuration and API key. Local tests use provider doubles and sample data;
+they do not establish real Google actions or a completed live Meet recording.

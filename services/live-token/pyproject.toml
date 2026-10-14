@@ -1,0 +1,18 @@
+[project]
+name = "alter-live-token"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "google-genai>=1.0", "firebase-admin>=6.5", "google-cloud-firestore>=2.16", "google-cloud-secret-manager>=2.20"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
