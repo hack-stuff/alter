@@ -20,10 +20,19 @@ def retrieve(
     personal=False,
     serving_config="",
     search_client=None,
+    requester=None,
 ):
     sources = []
     workspace = store.get(f"workspaces/{wid}") or {}
     for source in store.list(f"workspaces/{wid}/sources"):
+        if source.get("status", "active") != "active":
+            continue
+        if (
+            source.get("importedBy")
+            and source.get("audience") == "owner"
+            and requester not in (None, mid)
+        ):
+            continue
         if source.get("audience") != "team" and source.get("owner") != mid:
             continue
         if source.get("scope") == "personal" and not personal:
@@ -39,10 +48,22 @@ def retrieve(
             source["url"] = workspace["google"]["docs"][key]
         sources.append(source)
     for memory in store.list(f"workspaces/{wid}/memories"):
+        current_evidence = all(
+            (source := store.get(f"workspaces/{wid}/sources/{sid}"))
+            and source.get("status", "active") == "active"
+            and source.get("version", 1) == version
+            for sid, version in memory.get("sourceVersions", {}).items()
+        )
         if (
-            memory.get("owner") == mid
+            current_evidence
+            and memory.get("owner") == mid
             and memory.get("state") == "approved"
             and (personal or memory.get("scope") != "personal")
+            and (
+                memory.get("audience", "team") == "team"
+                or requester == mid
+                or (requester is None and personal)
+            )
         ):
             sources.append(
                 {
@@ -106,18 +127,33 @@ def retrieve(
                 source = by_id.get(item.document.id)
                 if source and source not in ordered:
                     ordered.append(source)
-            return (ordered + [s for s in results if s not in ordered])[:limit]
+            merged = [dict(s, retrievalBackend="vertex_search") for s in ordered]
+            merged.extend(
+                dict(s, retrievalBackend="lexical") for s in results if s not in ordered
+            )
+            import logging, json
+
+            logging.getLogger("alter.retrieval").info(
+                json.dumps(
+                    {
+                        "event": "retrieval_completed",
+                        "backend": "vertex_search" if ordered else "lexical",
+                        "searchMatches": len(ordered),
+                    }
+                )
+            )
+            return merged[:limit]
         except Exception:
             # The documented BM25 fallback remains scoped to exactly the same authorized records.
             pass
-    return results
+    return [dict(s, retrievalBackend="lexical") for s in results]
 
 
 def citations(sources):
     return [
         {
             key: source[key]
-            for key in ("sourceId", "title", "locator", "url")
+            for key in ("sourceId", "title", "locator", "url", "retrievalBackend")
             if source.get(key)
         }
         for source in sources

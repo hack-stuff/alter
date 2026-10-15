@@ -65,15 +65,31 @@ class Application:
         wid, aid = ctx.workspace_id, card["id"]
         result = None
         failure = None
+        attempted = False
         try:
+            current_member = self.proposals.engine.auth.member(ctx.caller)
+            if (current_member.workspace_id, current_member.member_id) != (
+                ctx.workspace_id,
+                ctx.member_id,
+            ):
+                raise error(
+                    403,
+                    "MEMBERSHIP_CHANGED",
+                    "The approver's membership changed before execution.",
+                )
+            if card.get("continuationGrant"):
+                self.proposals.engine.meetings.check_grant(
+                    ctx, card["continuationGrant"]
+                )
             self.proposals.validate(ctx, card["action"])
             member = self.store.get(f"workspaces/{wid}/members/{ctx.member_id}") | {
                 "id": ctx.member_id
             }
+            attempted = True
             result = self.apps.apply(wid, card, member, ctx.caller)
         except Exception as exc:
             try:
-                result = self.apps.reconcile(wid, card)
+                result = self.apps.reconcile(wid, card) if attempted else None
             except Exception:
                 result = None
             failure = "The write could not be confirmed. It will not be retried automatically."
@@ -135,6 +151,30 @@ class Application:
                     },
                 }
             tx.set(root + "/approvals/" + aid, updated)
+            if result is not None and card["kind"] == "doc_edit":
+                workspace = {
+                    **workspace,
+                    "knowledgeEpoch": workspace.get("knowledgeEpoch", 0) + 1,
+                }
+                document_key = card["action"].get("document")
+                if document_key in workspace["googleIds"]:
+                    for source in tx.list(root + "/sources"):
+                        if source.get("documentKey") == document_key:
+                            tx.delete(root + "/sources/" + source["id"])
+                    for index, section in enumerate(card["action"]["sections"]):
+                        tx.set(
+                            root + f"/sources/{document_key}_current_{index}",
+                            {
+                                "logicalId": document_key,
+                                "title": card["title"],
+                                "locator": section["section"],
+                                "text": "\n".join(section["lines"]),
+                                "scope": "work",
+                                "audience": "team",
+                                "documentKey": document_key,
+                                "version": iso(),
+                            },
+                        )
             tx.set(root, {k: v for k, v in workspace.items() if k != "activeWrite"})
             record(
                 tx,

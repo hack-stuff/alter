@@ -8,6 +8,7 @@ export interface Citation {
   title: string
   locator: string
   url?: string
+  retrievalBackend?: 'lexical' | 'vertex_search'
 }
 
 export interface Member {
@@ -18,6 +19,8 @@ export interface Member {
   role: string
   email?: string
   status: MemberStatus
+  awaySince?: string
+  digestSince?: string
 }
 
 export interface JoinResult {
@@ -83,6 +86,8 @@ export interface Escalation {
   effectDescription?: string
   state: 'pending' | 'answered' | 'expired'
   response?: string
+  effectState?: 'none' | 'applied' | 'failed'
+  notifiedMembers?: string[]
 }
 
 export interface A2ATrace {
@@ -113,6 +118,11 @@ export interface Memory {
   content: string
   source: 'starter' | 'taught' | 'correction'
   state: 'proposed' | 'approved' | 'revoked'
+  audience?: 'owner' | 'team'
+  appliesTo?: string
+  version?: number
+  decidedAt?: string
+  sourceIds?: string[]
 }
 export interface Rule { id: string; label: string; intents: string[]; mode: Outcome }
 export interface Receipt {
@@ -137,6 +147,8 @@ export interface Workspace {
   google: { folderUrl?: string; docs: Record<string, string>; sheetUrl?: string; calendarUrl?: string }
 }
 export interface WorkspaceData {
+  meetings?: import('./meetings').Meeting[]
+  notifications?: import('./meetings').Notice[]
   workspace?: Workspace
   members: Member[]
   approvals: Approval[]

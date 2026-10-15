@@ -40,6 +40,55 @@
       "collectionGroup": "approvals",
       "fieldPath": "preview",
       "indexes": []
+    },
+    {
+      "collectionGroup": "liveTickets",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "liveRelaySessions",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "relayBudgets",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "meetings",
+      "fieldPath": "events",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "meetings",
+      "fieldPath": "decisions",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "meetings",
+      "fieldPath": "tasks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "meetings",
+      "fieldPath": "grant",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "segments",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "meetingRooms",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }

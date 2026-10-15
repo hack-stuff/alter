@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api/client'
 import type { JoinResult } from '../api/types'
+import { Icon } from '../components/Icon'
 
 export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: (r: JoinResult, name: string) => void }) {
   const [name, setName] = useState('')
@@ -21,7 +22,7 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
 
   return (
     <form className="screen join" onSubmit={submit}>
-      <h1>Alter</h1>
+      <div className="welcome-mark"><Icon name="sparkle" size={24} />ALTER · YOUR AI REPRESENTATIVE</div><h1>A little more<br />room to get things done.</h1>
       <p>Your own AI representative at work. It answers for you, asks teammates' Alters, and acts in Google Docs, Sheets, Calendar and Gmail when you approve.</p>
       <label>
         Your name

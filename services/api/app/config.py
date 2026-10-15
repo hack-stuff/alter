@@ -39,6 +39,10 @@ class Settings:
     admin_email: str = ""
     allow_forwarded_ip: bool = False
     trace_delay: float = 0.3
+    task_queue: str = ""
+    task_service_account: str = ""
+    live_model: str = ""
+    live_location: str = ""
 
     @property
     def model_location(self):
@@ -83,6 +87,10 @@ class Settings:
             admin_email=os.getenv("ADMIN_EMAIL", ""),
             allow_forwarded_ip=os.getenv("TRUST_FORWARDED_IP", "0") == "1",
             trace_delay=float(os.getenv("TRACE_DELAY_SECONDS", ".3")),
+            task_queue=os.getenv("WORKFLOW_QUEUE", ""),
+            task_service_account=os.getenv("WORKFLOW_SERVICE_ACCOUNT", ""),
+            live_model=os.getenv("LIVE_MODEL", ""),
+            live_location=os.getenv("LIVE_LOCATION", ""),
         )
 
     def missing(self):

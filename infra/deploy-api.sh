@@ -13,7 +13,7 @@ if grep -q REPLACE_ "$API_ENV_FILE"; then echo 'Replace all environment placehol
 api_account="alter-api@${GCP_PROJECT}.iam.gserviceaccount.com"
 scheduler_account="alter-scheduler@${GCP_PROJECT}.iam.gserviceaccount.com"
 image="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/alter/alter-api:$(git rev-parse --short HEAD)"
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com aiplatform.googleapis.com secretmanager.googleapis.com cloudscheduler.googleapis.com identitytoolkit.googleapis.com drive.googleapis.com docs.googleapis.com sheets.googleapis.com calendar-json.googleapis.com gmail.googleapis.com --project="$GCP_PROJECT"
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com aiplatform.googleapis.com secretmanager.googleapis.com cloudscheduler.googleapis.com identitytoolkit.googleapis.com drive.googleapis.com docs.googleapis.com sheets.googleapis.com calendar-json.googleapis.com gmail.googleapis.com cloudtasks.googleapis.com fcm.googleapis.com fcmregistrations.googleapis.com discoveryengine.googleapis.com --project="$GCP_PROJECT"
 if ! gcloud artifacts repositories describe alter --location="$GCP_REGION" --project="$GCP_PROJECT" >/dev/null 2>&1; then
   gcloud artifacts repositories create alter --repository-format=docker --location="$GCP_REGION" --project="$GCP_PROJECT"
 fi
@@ -22,14 +22,32 @@ for account in alter-api alter-scheduler; do
     gcloud iam service-accounts create "$account" --project="$GCP_PROJECT"
   fi
 done
-for role in roles/datastore.user roles/aiplatform.user roles/firebaseauth.viewer; do
+for role in roles/datastore.user roles/aiplatform.user roles/firebaseauth.viewer roles/cloudtasks.enqueuer roles/discoveryengine.viewer roles/firebasecloudmessaging.admin; do
   gcloud projects add-iam-policy-binding "$GCP_PROJECT" --member="serviceAccount:${api_account}" --role="$role" --condition=None >/dev/null
 done
 for secret_id in "$A2A_SECRET_ID" "$OAUTH_SECRET_ID" "$DIRECTOR_SECRET_ID"; do
   gcloud secrets add-iam-policy-binding "$secret_id" --project="$GCP_PROJECT" --member="serviceAccount:${api_account}" --role=roles/secretmanager.secretAccessor >/dev/null
 done
+# The API dispatches a durable outbox to an OIDC-authenticated worker endpoint.
+if ! gcloud tasks queues describe alter-workflows --location="$GCP_REGION" --project="$GCP_PROJECT" >/dev/null 2>&1; then
+  gcloud tasks queues create alter-workflows --location="$GCP_REGION" --project="$GCP_PROJECT" --max-concurrent-dispatches=3 --max-dispatches-per-second=2 --max-attempts=5
+fi
+gcloud iam service-accounts add-iam-policy-binding "$api_account" --project="$GCP_PROJECT" --member="serviceAccount:${api_account}" --role=roles/iam.serviceAccountUser >/dev/null
+# Merge runtime defaults into a temporary copy; preserve the user's ignored YAML.
+merged_env_file="$(mktemp)"
+trap 'rm -f "$merged_env_file"' EXIT
+config_python="${CONFIG_PYTHON:-services/api/.venv/bin/python}"
+"$config_python" - "$API_ENV_FILE" "$merged_env_file" "$api_account" <<'PYCONFIG'
+import sys, yaml
+from pathlib import Path
+source, target, worker_account = sys.argv[1:]
+config = yaml.safe_load(Path(source).read_text())
+config.setdefault("WORKFLOW_QUEUE", "alter-workflows")
+config.setdefault("WORKFLOW_SERVICE_ACCOUNT", worker_account)
+Path(target).write_text(yaml.safe_dump(config, sort_keys=False))
+PYCONFIG
 gcloud builds submit --project="$GCP_PROJECT" --config=infra/cloudbuild.yaml --substitutions="_IMAGE=${image}" .
-gcloud run deploy alter-api --project="$GCP_PROJECT" --region="$GCP_REGION" --image="$image" --service-account="$api_account" --env-vars-file="$API_ENV_FILE" --allow-unauthenticated --min-instances=1 --max-instances=3 --cpu=1 --memory=1Gi --no-cpu-throttling --timeout=180 --concurrency=20
+gcloud run deploy alter-api --project="$GCP_PROJECT" --region="$GCP_REGION" --image="$image" --service-account="$api_account" --env-vars-file="$merged_env_file" --allow-unauthenticated --min-instances=1 --max-instances=3 --cpu=1 --memory=1Gi --no-cpu-throttling --timeout=900 --concurrency=20
 # The public HTTP endpoint verifies Firebase, A2A HMAC, or scheduler OIDC itself.
 actual_url="$(gcloud run services describe alter-api --project="$GCP_PROJECT" --region="$GCP_REGION" --format='value(status.url)')"
 # Cloud Run may display the deterministic URL while status.url contains the

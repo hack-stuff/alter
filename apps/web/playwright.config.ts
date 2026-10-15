@@ -18,9 +18,10 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'], defaultBrowserType: 'chromium' } },
   ],
   webServer: [
-    { command: 'npm run dev -- --host 127.0.0.1 --port 5174 --strictPort', url: 'http://127.0.0.1:5174', env: { VITE_MOCK: '1' }, reuseExistingServer: false },
+    { command: 'npm run dev -- --host 127.0.0.1 --port 5174 --strictPort', url: 'http://127.0.0.1:5174', env: { VITE_MOCK: '1', VITE_LIVE_TOKEN_BASE: 'http://127.0.0.1:5174/v1/live/token' }, reuseExistingServer: false },
     { command: 'npm run dev -- --host 127.0.0.1 --port 5175 --strictPort', url: 'http://127.0.0.1:5175', env: {
       VITE_MOCK: '0', VITE_DEV_AUTH: '0', VITE_API_BASE: 'http://127.0.0.1:5175/v1',
+      VITE_LIVE_TOKEN_BASE: 'http://127.0.0.1:5175/v1/live/token',
       VITE_FIREBASE_CONFIG: JSON.stringify({ projectId: 'demo-alter', apiKey: 'public-test-key', appId: 'test-app', authDomain: 'demo-alter.firebaseapp.com' }),
     }, reuseExistingServer: false },
   ],

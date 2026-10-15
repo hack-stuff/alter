@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, MOCK } from '../api/client'
+import { api, MOCK, httpCall } from '../api/client'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
 import { VoiceControl } from '../components/VoiceControl'
@@ -12,13 +12,14 @@ const SUGGESTED = ['Why did we switch to one-tap sign-in?', "What's blocking lau
 
 export function Home({ name, workspaceId, approvals, events, onUpdate, active = true }: { name: string; workspaceId: string; approvals: Approval[]; events: ProgressEvent[]; onUpdate: (a: Approval) => void; active?: boolean }) {
   const [messages, setMessages] = useState<Message[]>([])
-  const [conversationId, setConversationId] = useState<string>()
+  const [conversationId, setConversationId] = useState<string | undefined>(() => MOCK ? undefined : sessionStorage.getItem('alter.conversation.' + workspaceId) ?? undefined)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [mobileTab, setMobileTab] = useState<'chat' | 'work'>('chat')
   const [liveEvents, setLiveEvents] = useState<ProgressEvent[]>([])
   const [streamedMessages, setStreamedMessages] = useState<{ id: string; items: Message[] }>()
+  useEffect(() => { if (conversationId && !MOCK) sessionStorage.setItem('alter.conversation.' + workspaceId, conversationId) }, [workspaceId, conversationId])
   useEffect(() => {
     if (MOCK || !conversationId) return
     let stopped = false
@@ -39,7 +40,9 @@ export function Home({ name, workspaceId, approvals, events, onUpdate, active = 
     setBusy(true)
     setError('')
     try {
-      const r = await api.chat(text.trim(), conversationId)
+      let cid = conversationId
+      if (!MOCK && !cid) { cid = (await httpCall<{ conversationId: string }>('POST', '/conversations')).conversationId; setConversationId(cid) }
+      const r = await api.chat(text.trim(), cid)
       receive(r, text.trim())
       setDraft('')
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your message. Please try again.'); setDraft(text) }

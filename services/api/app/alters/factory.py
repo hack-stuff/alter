@@ -63,6 +63,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             6,
             member.get("_allowPersonal", not serving),
             engine.settings.search_serving_config,
+            requester=ctx.member_id,
         )
         observed.extend(records)
         return {"passages": records}

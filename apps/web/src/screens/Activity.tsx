@@ -13,7 +13,8 @@ function ReceiptDrawer({ receipt, close, members }: { receipt?: Receipt; close: 
     {receipt ? <><p>{name} Alter <AlterBadge /></p><dl><dt>Action</dt><dd>{receipt.action.replaceAll('_', ' ')}</dd><dt>Sharing rule</dt><dd>{receipt.policy.rule} · {receipt.policy.outcome}</dd><dt>Approval</dt><dd>{receipt.approval ? `Approved by ${members.find((m) => m.id === receipt.approval?.by)?.name ?? 'the owner'}` : 'No approval recorded for this action'}</dd><dt>Result</dt><dd>{receipt.result.ok ? 'Completed' : 'Not applied'}</dd></dl><h3>Sources used</h3>{receipt.sourcesUsed.length ? <ul>{receipt.sourcesUsed.map((s) => <li key={`${s.id}-${s.locator}`}>{s.id} · {s.locator}</li>)}</ul> : <p>No sources recorded.</p>}{url && <a href={url} target="_blank" rel="noreferrer">Open result ↗</a>}</> : <p className="empty">The receipt is not available yet.</p>}
   </dialog>
 }
-export function Activity({ items, receipts, members, escalations, traces }: { items: ActivityItem[]; receipts: Receipt[]; members: Member[]; escalations: Escalation[]; traces: A2ATrace[] }) {
+export function Activity({ items: allItems, receipts, members, escalations, traces, since }: { items: ActivityItem[]; receipts: Receipt[]; members: Member[]; escalations: Escalation[]; traces: A2ATrace[]; since?: string }) {
+  const items = since ? allItems.filter((item) => item.ts >= since) : allItems
   const [selected, setSelected] = useState<string>()
   const answered = items.filter((i) => i.kind === 'answered').length
   const updated = items.filter((i) => ['doc_updated', 'doc_edit', 'doc_create'].includes(i.kind)).length

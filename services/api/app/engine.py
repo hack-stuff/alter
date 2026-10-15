@@ -44,6 +44,7 @@ class Engine:
             self.apps = GoogleApps(self.store, settings, self.secrets)
         self.workspaces = Workspaces(self.store, settings, self.apps)
         self.proposals = Proposals(self.store, self.apps)
+        self.proposals.engine = self
         self.application = Application(self.store, self.apps, self.proposals)
         if brain:
             self.brain = brain
@@ -59,6 +60,13 @@ class Engine:
 
         self.transport = A2ATransport(self)
         self.jobs = set()
+        from app.meetings import Meetings
+        from app.workflows import Workflows
+        from app.notifications import Notifications
+
+        self.meetings = Meetings(self)
+        self.workflows = Workflows(self)
+        self.notifications = Notifications(self)
         self.injected = (
             store is not None
             or apps is not None
@@ -120,6 +128,13 @@ class Engine:
             path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
             value = tx.get(path)
             result = {**value, **update}
+            if update.get("status") == "away":
+                result["awaySince"] = iso()
+            elif update.get("status") == "available":
+                result["digestSince"] = value.get(
+                    "awaySince", value.get("lastSeenAt", value.get("joinedAt", iso()))
+                )
+                result["lastSeenAt"] = iso()
             if email is not None:
                 result["emailVerified"] = bool(
                     ctx.caller.email_verified
@@ -130,7 +145,35 @@ class Engine:
 
         return self.store.atomic(save)
 
-    def teach(self, ctx, content):
+    def guidance_sources(self, ctx, source_ids, audience):
+        versions = {}
+        for sid in source_ids:
+            source = self.store.get(f"workspaces/{ctx.workspace_id}/sources/{sid}")
+            if (
+                not source
+                or source.get("status", "active") != "active"
+                or (
+                    source.get("owner") != ctx.member_id
+                    and source.get("audience") != "team"
+                )
+            ):
+                raise error(
+                    403, "SOURCE_DENIED", "Choose an accessible current source."
+                )
+            if audience == "team" and source.get("audience") != "team":
+                raise error(
+                    403,
+                    "SOURCE_DENIED",
+                    "Private source guidance cannot be shared with the team.",
+                )
+            versions[sid] = source.get("version", 1)
+        return versions
+
+    def teach(
+        self, ctx, content, audience="team", applies_to="Login revamp", source_ids=()
+    ):
+        source_versions = self.guidance_sources(ctx, source_ids, audience)
+        self.charge(ctx.workspace_id)
         fact = self.brain.planner(ctx).atomic_memory(content)
         if not fact["content"].strip() or len(fact["content"]) > 10000:
             raise error(422, "INVALID_MEMORY", "Enter one concise fact.")
@@ -141,6 +184,17 @@ class Engine:
             "scope": fact["scope"],
             "state": "proposed",
             "source": "taught",
+            "audience": "owner" if fact["scope"] == "personal" else audience,
+            "appliesTo": applies_to,
+            "version": 1,
+            "createdAt": iso(),
+            "evidence": {
+                "type": "explicit_owner_guidance",
+                "by": ctx.member_id,
+                "text": content,
+            },
+            "sourceIds": list(source_ids),
+            "sourceVersions": source_versions,
         }
         self.store.set(f"workspaces/{ctx.workspace_id}/memories/{mid}", memory)
         return {**memory, "id": mid}
@@ -154,7 +208,33 @@ class Engine:
             if value["owner"] != ctx.member_id:
                 raise error(403, "FORBIDDEN", "Only the owner can decide this memory.")
             state = "approved" if decision == "approve" else "revoked"
-            tx.set(path, {**value, "state": state})
+            if decision == "approve":
+                for sid, version in value.get("sourceVersions", {}).items():
+                    source = tx.get(f"workspaces/{ctx.workspace_id}/sources/{sid}")
+                    if (
+                        not source
+                        or source.get("status", "active") != "active"
+                        or source.get("version", 1) != version
+                    ):
+                        raise error(
+                            409,
+                            "SOURCE_CHANGED",
+                            "A supporting source changed. Edit and review this guidance again.",
+                        )
+            tx.set(
+                path,
+                {
+                    **value,
+                    "state": state,
+                    "decidedBy": ctx.member_id,
+                    "decidedAt": iso(),
+                },
+            )
+            member_path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+            member = tx.get(member_path)
+            tx.set(
+                member_path, {**member, "memoryEpoch": member.get("memoryEpoch", 0) + 1}
+            )
             return {"id": mid, "state": state}
 
         return self.store.atomic(save)
@@ -174,8 +254,16 @@ class Engine:
 
         return self.store.atomic(save)
 
-    def escalate(self, wid, owner, asker, question, context, commitment=False):
-        eid = new_id("esc_")
+    def escalate(
+        self, wid, owner, asker, question, context, commitment=False, event_key=None
+    ):
+        from hashlib import sha256
+
+        eid = (
+            "esc_" + sha256(f"{event_key}:{owner}".encode()).hexdigest()[:32]
+            if event_key
+            else new_id("esc_")
+        )
         if commitment:
             context += " A clear date confirmation authorizes updating the status document with that commitment."
         item = {
@@ -191,8 +279,13 @@ class Engine:
             item["effectDescription"] = (
                 "A clear date confirmation will update the status document and notify the requester."
             )
+        if event_key:
+            item["meetingId"] = event_key
 
         def save(tx):
+            existing = tx.get(f"workspaces/{wid}/escalations/{eid}")
+            if existing:
+                return {"id": eid, **existing}
             tx.set(f"workspaces/{wid}/escalations/{eid}", item)
             record(
                 tx,
@@ -204,9 +297,18 @@ class Engine:
                 rule="owner-decision",
                 outcome="ask",
             )
+            return {"id": eid, **item}
 
-        self.store.atomic(save)
-        return {"id": eid, **item}
+        result = self.store.atomic(save)
+        self.notifications.publish(
+            wid,
+            owner,
+            eid,
+            "Priority · your decision is needed",
+            question,
+            "?decision=" + eid,
+        )
+        return result
 
     async def ask_core(self, ctx, target, question, trace_id):
         root = f"workspaces/{ctx.workspace_id}"
@@ -477,12 +579,22 @@ class Engine:
                     ctx.workspace_id, workspace["googleIds"]["statusDoc"]
                 )
                 member = self.store.get(root + "/members/" + ctx.member_id)
-                content = current["sections"] + [
-                    {
-                        "section": "Confirmed commitments",
-                        "lines": [f"{member['name']} confirmed {decision['date']}."],
-                    }
-                ]
+                content = [dict(section) for section in current["sections"]]
+                launch = next(
+                    (
+                        section
+                        for section in content
+                        if section["section"].casefold() == "launch"
+                    ),
+                    None,
+                )
+                line = (
+                    f"Launch date: {decision['date']} · confirmed by {member['name']}."
+                )
+                if launch:
+                    launch["lines"] = [line]
+                else:
+                    content.append({"section": "Launch", "lines": [line]})
                 if item.get("effectApprovalId"):
                     card = self.proposals.owned(ctx, item["effectApprovalId"])
                 else:
@@ -493,6 +605,7 @@ class Engine:
                             "document": "statusDoc",
                             "title": "Confirmed owner commitment",
                             "sections": content,
+                            "baseRevision": current["revision"],
                         },
                         "The owner explicitly confirmed this date in their reply.",
                     )
@@ -521,6 +634,17 @@ class Engine:
                     applied = [card["id"]]
                 decision = item.get("effectDecision", decision)
             actual = decision or {"type": "free_text", "text": text}
+            meeting = (
+                self.store.get(root + "/meetings/" + item["meetingId"])
+                if item.get("meetingId")
+                else None
+            )
+            recipients = list(
+                dict.fromkeys(
+                    [item["askedBy"], *(meeting or {}).get("participants", [])]
+                )
+            )
+            effect_state = "applied" if applied else "failed" if decision else "none"
 
             def finish(tx):
                 current = tx.get(root + "/escalations/" + eid)
@@ -533,6 +657,10 @@ class Engine:
                             "state": "answered",
                             "response": text,
                             "decision": actual,
+                            "effectState": effect_state,
+                            "notifiedMembers": recipients
+                            if effect_state != "failed"
+                            else [],
                         }.items()
                         if k != "processing"
                     },
@@ -543,13 +671,66 @@ class Engine:
                     ctx.member_id,
                     "answered",
                     "The owner replied: " + text[:120],
-                    [ctx.member_id, item["askedBy"]],
+                    list(dict.fromkeys([ctx.member_id, *recipients])),
                     rule="explicit-owner-decision",
                     approved_by=ctx.member_id,
                 )
+                if decision:
+                    tx.set(
+                        root + "/decisions/launch_" + eid,
+                        {
+                            "owner": ctx.member_id,
+                            "type": "launch",
+                            "date": decision["date"],
+                            "status": "confirmed",
+                            "effectState": effect_state,
+                            "escalationId": eid,
+                            "source": {"type": "owner_confirmation", "text": text},
+                            "confirmedAt": iso(),
+                        },
+                    )
+                if effect_state != "failed":
+                    for recipient in recipients:
+                        if recipient != ctx.member_id:
+                            tx.set(
+                                root + f"/inbox/{recipient}/messages/{eid}",
+                                {
+                                    "from": ctx.member_id,
+                                    "subject": "Launch date confirmed"
+                                    if decision
+                                    else "Owner reply",
+                                    "body": text,
+                                    "ts": iso(),
+                                    "escalationId": eid,
+                                },
+                            )
+                if meeting and effect_state == "applied":
+                    tx.set(
+                        root + "/meetings/" + item["meetingId"],
+                        {
+                            **meeting,
+                            "launchDecision": actual,
+                            "launchState": "confirmed",
+                        },
+                    )
 
             self.store.atomic(finish)
-            return {"decision": actual, "applied": applied}
+            if effect_state != "failed":
+                for recipient in recipients:
+                    if recipient != ctx.member_id:
+                        self.notifications.publish(
+                            ctx.workspace_id,
+                            recipient,
+                            eid + ":answered",
+                            "Rahul confirmed the launch date"
+                            if decision
+                            else "A teammate replied",
+                            text,
+                            "?meeting=" + item["meetingId"]
+                            if meeting and recipient == meeting["owner"]
+                            else "?view=files",
+                        )
+            return {"decision": actual, "applied": applied, "effectState": effect_state}
         except Exception:
 
             def release(tx):
@@ -655,6 +836,8 @@ class Engine:
                 if ctx.member_id in (t["from"], t["to"])
             ],
             "events": [],
+            "meetings": owned("meetings"),
+            "notifications": owned("notifications"),
         }
 
     async def welcome(self, wid, mid, generation, delay=True):
@@ -729,6 +912,21 @@ class Engine:
         for collection in ("rateLimits", "a2aNonces"):
             for row in self.store.list(collection):
                 if row.get("expiresAt", "9999") < iso():
+                    self.store.atomic(
+                        lambda tx, key=collection + "/" + row["id"]: tx.delete(key)
+                    )
+        for collection in (
+            "liveTickets",
+            "meetingRooms",
+            "workflowJobs",
+            "pushDevices",
+        ):
+            for row in self.store.list(collection):
+                expired = row.get("expiresAt", "9999") <= iso()
+                orphaned = row.get("workspaceId") and not self.store.get(
+                    "workspaces/" + row["workspaceId"]
+                )
+                if expired or orphaned:
                     self.store.atomic(
                         lambda tx, key=collection + "/" + row["id"]: tx.delete(key)
                     )

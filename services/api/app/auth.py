@@ -22,6 +22,8 @@ class MemberContext:
     member_id: str
     caller: Caller
     conversation_id: str | None = None
+    room_meeting_id: str | None = None
+    room_key: str | None = None
 
 
 class Authentication:

@@ -61,6 +61,8 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
     } else if (request.url().endsWith('/workspaces')) {
       joined = true
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(workspace.created) })
+    } else if (request.url().endsWith('/conversations')) {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ conversationId: 'conv_01' }) })
     } else if (request.url().endsWith('/chat')) {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(approvals.chat_reply) })
     } else await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
@@ -74,7 +76,8 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   await expect(page.getByRole('article', { name: 'Status doc · QA section' })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Chat', exact: true }).click()
   await expect(page.getByRole('log').getByText('Streamed reply from the conversation collection.')).toBeVisible()
-  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /^approvals/ }).click()
+  if (isMobile) await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /^More/ }).click()
+  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /^approvals/ }).filter({ visible: true }).click()
   await expect(page.getByText('Another member private proposal')).toHaveCount(0)
   const observed = await page.evaluate(() => (window as any).firestoreHarness.observed)
   expect(observed.find((ref: any) => ref.path.endsWith('/approvals')).filters).toEqual([{ field: 'owner', op: '==', value: 'm_judge' }])

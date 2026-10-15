@@ -22,7 +22,7 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   expect(fileUrl).toContain('/local/files/')
   const resource=await page.request.get(fileUrl!)
   expect(await resource.text()).toContain('iOS regression check')
-  async function nav(name:string){await page.getByRole('navigation',{name:'Workspace'}).getByRole('button',{name,exact:false}).click()}
+  async function nav(name:string){ const menu=page.getByRole('navigation',{name:'Workspace'}); let button=menu.getByRole('button',{name,exact:false}).filter({visible:true}); if(!await button.count()){await menu.getByRole('button',{name:/^More/}).click();button=menu.getByRole('button',{name,exact:false}).filter({visible:true})};await button.click()}
   await nav('team')
   await page.getByRole('button',{name:"Ask Rahul's Alter"}).click()
   await page.getByLabel("Question for Rahul's Alter").fill('Why one-tap?')
@@ -58,6 +58,7 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   await expect(page.getByRole('heading',{name:"Alex's Alter"})).toBeVisible()
   await nav('approvals')
   await expect(page.getByRole('article',{name:'Login revamp · QA update'}).getByRole('status')).toHaveText('Applied')
+  await nav('settings')
   await page.getByRole('button',{name:'Reset workspace'}).click()
   await page.getByRole('button',{name:'Confirm reset'}).click()
   await expect(page.getByRole('button',{name:'Add a QA update to the status doc'})).toBeVisible()

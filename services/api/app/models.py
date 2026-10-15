@@ -17,6 +17,7 @@ class Citation(BaseModel):
     title: str
     locator: str
     url: str | None = None
+    retrievalBackend: str | None = None
 
 
 class Answer(BaseModel):
@@ -65,6 +66,24 @@ class EscalationReply(Input):
 
 class TeachMemory(Input):
     content: Text
+    audience: Literal["owner", "team"] = "team"
+    appliesTo: Annotated[str, Field(max_length=200)] = "Login revamp"
+    sourceIds: Annotated[list[Identifier], Field(max_length=10)] = []
+
+
+class MemoryEdit(TeachMemory):
+    expectedVersion: int = Field(ge=1)
+
+
+class SourceImport(Input):
+    title: Annotated[str, Field(min_length=1, max_length=160)]
+    text: Annotated[str, Field(min_length=1, max_length=40000)]
+    audience: Literal["owner", "team"] = "owner"
+
+
+class SourceUpdate(Input):
+    text: Annotated[str, Field(min_length=1, max_length=40000)]
+    expectedVersion: int = Field(ge=1)
 
 
 class MemoryDecision(Input):

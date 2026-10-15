@@ -2,7 +2,7 @@
 // its knowledge and decisions come only from Track A via these tools.
 import { Type, type FunctionDeclaration } from '@google/genai'
 
-export type LiveMode = 'chat' | 'revise' | 'reply' | 'huddle'
+export type LiveMode = 'chat' | 'revise' | 'reply' | 'huddle' | 'review'
 
 interface ModeConfig {
   systemInstruction: string
@@ -38,5 +38,9 @@ export const MODES: Record<LiveMode, ModeConfig> = {
       "You are another teammate's Alter (AI), standing in for them. Stay silent unless a question concerns their work. " +
       `Before answering, always call ask_alter and speak its answer. ${VOICE_RULES}`,
     tools: [tool('ask_alter', "Ask this teammate's Alter for a cited, policy-checked answer.", { memberId: str, question: str })],
+  },
+  review: {
+    systemInstruction: `Help review the meeting's prepared work. Use revise_meeting for edits. ${VOICE_RULES}`,
+    tools: [tool('revise_meeting', 'Revise the open meeting bundle.', { meetingId: str, instruction: str })],
   },
 }

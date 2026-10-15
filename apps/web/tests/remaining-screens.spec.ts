@@ -6,7 +6,12 @@ async function join(page: Page, path = '/') {
   await page.getByRole('button', { name: 'Get my Alter' }).click()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
-async function navigate(page: Page, name: string) { await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: new RegExp(`^${name}`, 'i') }).click() }
+async function navigate(page: Page, name: string) {
+  const nav = page.getByRole('navigation', { name: 'Workspace' })
+  let button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true })
+  if (!await button.count()) { await nav.getByRole('button', { name: /^More/ }).click(); button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true }) }
+  await button.click()
+}
 
 test('an escalation requires review before sending and then appears answered', async ({ page }) => {
   await join(page)

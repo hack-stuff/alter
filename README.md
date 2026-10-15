@@ -6,6 +6,8 @@ the limits you set, and acts in Google Docs, Drive, Sheets, Calendar and Gmail w
 Team Cold Silicon · Google AI Builder Cup 2026 · Theme 5 (Future of Work).
 All people, projects and data in this repo are fictional.
 
+See [Storyboard implementation and deployment](docs/storyboard-implementation.md) for the redesigned app, meeting workflows, voice relay, push and recording setup.
+
 ## Plan
 
 | Doc | What |

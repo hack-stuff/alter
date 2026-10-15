@@ -53,7 +53,7 @@ def date_decision(text):
         remainder = text[: match.start()] + text[match.end() :]
         bare = remainder.strip(" .,!:").lower() in ("", "on", "by")
         affirmative = re.search(
-            r"\b(yes|confirm(?:ed)?|commit(?:ted)?|approve(?:d)?|agree(?:d)?|will deliver|will be ready|ready by|we will|i will|we can|i can|works)\b",
+            r"\b(yes|confirm(?:ed)?|commit(?:ted)?|approve(?:d)?|agree(?:d)?|will deliver|will be ready|ready by|we will|i will|we can|i can|works|tell them that['’]s the date)\b",
             text,
             re.I,
         )

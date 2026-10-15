@@ -8,7 +8,10 @@ async function join(page: Page) {
 }
 
 async function navigate(page: Page, name: string) {
-  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name, exact: false }).click()
+  const nav = page.getByRole('navigation', { name: 'Workspace' })
+  let button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true })
+  if (!await button.count()) { await nav.getByRole('button', { name: /^More/ }).click(); button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true }) }
+  await button.click()
 }
 
 test('chat opens a proposal; repeated revisions survive navigation and approval', async ({ page, isMobile }) => {
@@ -55,7 +58,7 @@ test('direct questions show allowed, escalated and private outcomes with sample 
     await question.fill(text)
     await page.getByRole('button', { name: 'Send question' }).click()
     await expect(page.getByText(outcome, { exact: true })).toBeVisible()
-    await page.getByText('How Rahul’s Alter', { exact: false }).click()
+    await expect(page.getByText('How Rahul’s Alter', { exact: false })).toBeVisible()
     await expect(page.getByText(rule, { exact: false })).toBeVisible()
   }
 })
@@ -68,9 +71,12 @@ test('calendar proposal can be rejected; reset clears chat and restores proposal
   await expect(card.getByText('Attendees: You, Meera')).toBeVisible()
   await card.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect(card.getByRole('status')).toHaveText('rejected')
+  await navigate(page, 'settings')
   await page.getByRole('button', { name: 'Reset workspace' }).click()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await navigate(page, 'approvals')
   await expect(card.getByRole('status')).toHaveText('rejected')
+  await navigate(page, 'settings')
   await page.getByRole('button', { name: 'Reset workspace' }).click()
   await page.getByRole('button', { name: 'Confirm reset' }).click()
   await expect(page.getByRole('button', { name: 'Book 30 min with Meera on Thursday' })).toBeVisible()

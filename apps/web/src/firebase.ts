@@ -44,6 +44,8 @@ export function watchWorkspace(join: JoinResult, next: (data: WorkspaceData) => 
       { key: 'rules', path: `rules/${join.memberId}/items` },
       { key: 'inbox', path: `inbox/${join.memberId}/messages` },
       { key: 'traces', path: 'a2aTraces' },
+      { key: 'meetings', path: 'meetings', filter: ['owner', '==', join.memberId] },
+      { key: 'notifications', path: 'notifications', filter: ['owner', '==', join.memberId] },
     ]
     for (const { key, path, filter } of collections) {
       const ref = collection(db, `${base}/${path}`)
