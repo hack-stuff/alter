@@ -31,6 +31,25 @@ GCP_PROJECT=alter-48b59 GCP_REGION=us-central1 VERTEX_LOCATION=global \
 
 Only synthetic design content is sent; the Google adapters in this test remain local. Running it is not a substitute for checking the deployed runtime service account and a real Google document write.
 
+For voice, set `LIVE_MODEL=gemini-live-2.5-flash-native-audio` and `LIVE_LOCATION=us-central1` in the API's ignored `.env.local`. Keep `VERTEX_LOCATION=global` for the text models. Restart the API after changing its environment. Test the Mac's identity and native audio independently of the browser:
+
+```bash
+services/api/.venv/bin/python services/api/scripts/test_live_audio.py \
+  --project alter-48b59 --model gemini-live-2.5-flash-native-audio \
+  --location us-central1 --with-tools
+```
+
+This opt-in provider call uses a synthetic greeting and a fixed tool result; it sends no workspace data. The tools option checks the function-call round trip as well as audio and transcription configuration.
+
+If Python reports `google.auth.exceptions.RefreshError` with `invalid_grant`, refresh **application default credentials on the Mac**, then restart the API:
+
+```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project alter-48b59
+```
+
+CLI login alone does not refresh the credentials used by Python. A passing Cloud Shell check also does not validate the Mac's credentials. Retest voice after restarting; the browser keeps no provider credential. Live failures now show an error reference and emit a matching `live_session_failed` JSON record in the API terminal, including the failure stage, category, model and location. These records exclude raw provider messages, credentials and transcripts. Failed provider connections release their session lease without consuming the workspace's voice minutes.
+
 ## Deploy
 
 Use the updated `storyboard-workflows-redesign` branch. Existing browser sessions keep their current role; use a fresh browser profile/incognito session to try the new Priya entry without replacing existing work.
