@@ -628,3 +628,42 @@ def test_real_adk_runner_invokes_typed_document_tool(team, monkeypatch):
     assert card["state"] == "proposed" and card["action"]["sections"][0]["lines"] == [
         "Draft only."
     ]
+
+
+@pytest.mark.parametrize(
+    "vertex_location,expected", [("", "us-central1"), ("global", "global")]
+)
+def test_both_vertex_clients_use_model_location(
+    team, monkeypatch, vertex_location, expected
+):
+    from dataclasses import replace
+    from google import genai
+    from app.alters.factory import build_alter
+
+    c, e, h, r = team
+    e.settings = replace(
+        e.settings, region="us-central1", vertex_location=vertex_location
+    )
+    calls = []
+
+    def client(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(genai, "Client", client)
+    e.__dict__.pop("model_client", None)
+    assert e.model_client is not None
+    context = e.auth.member(Caller("alice"))
+    agent, *_ = build_alter(e, context, e.me(context) | {"id": context.member_id})
+    assert agent.model.api_client is not None
+    assert len(calls) == 2 and all(call["location"] == expected for call in calls)
+    assert e.settings.region == "us-central1"
+
+
+def test_vertex_location_from_environment(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.setenv("GCP_REGION", "us-central1")
+    monkeypatch.setenv("VERTEX_LOCATION", "global")
+    settings = Settings.from_env()
+    assert settings.model_location == "global" and settings.region == "us-central1"

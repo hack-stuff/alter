@@ -34,6 +34,7 @@ def report_agent_failure(exc, settings):
         "exceptionType": type(exc).__name__,
         "category": category,
         "region": settings.region,
+        "vertexLocation": settings.model_location,
         "model": settings.model_fast,
         "frames": [
             {

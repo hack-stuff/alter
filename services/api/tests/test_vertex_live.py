@@ -39,6 +39,11 @@ def vertex_settings(request, tmp_path_factory):
             + " or point ALTER_LIVE_CONFIG at the deployment YAML.",
             pytrace=False,
         )
+    selected["VERTEX_LOCATION"] = (
+        os.environ.get("VERTEX_LOCATION")
+        or values.get("VERTEX_LOCATION")
+        or selected["GCP_REGION"]
+    )
     import google.auth
     from google.auth.exceptions import DefaultCredentialsError
 
@@ -50,7 +55,10 @@ def vertex_settings(request, tmp_path_factory):
             + selected["GCP_PROJECT"],
             pytrace=False,
         )
-    print("\nREAL VERTEX: " + ", ".join(f"{name}={selected[name]}" for name in names))
+    print(
+        "\nREAL VERTEX: "
+        + ", ".join(f"{name}={selected[name]}" for name in (*names, "VERTEX_LOCATION"))
+    )
     print(
         "Only synthetic test prompts are sent. Workspace storage and Google app adapters are local."
     )
@@ -62,6 +70,7 @@ def vertex_settings(request, tmp_path_factory):
         google_backend="local",
         project=selected["GCP_PROJECT"],
         region=selected["GCP_REGION"],
+        vertex_location=selected["VERTEX_LOCATION"],
         model_fast=selected["MODEL_FAST"],
         model_pro=selected["MODEL_PRO"],
         trace_delay=0,

@@ -277,7 +277,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
         model=ProjectGemini(
             model=engine.settings.model_fast,
             project=engine.settings.project,
-            location=engine.settings.region,
+            location=engine.settings.model_location,
         ),
         instruction=f"{base}\n{role}\n{mode}\nIdentity: {member['name']}, status: {member['status']}. Workspace member ID: {member['id']}. Return exact source sentences as claims with sourceId and locator. Never place ungrounded factual text outside claims.",
         tools=tools,

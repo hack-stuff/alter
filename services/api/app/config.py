@@ -20,6 +20,7 @@ class Settings:
     google_backend: str = "google"
     project: str = ""
     region: str = "us-central1"
+    vertex_location: str = ""
     model_fast: str = ""
     model_pro: str = ""
     public_origin: str = "http://127.0.0.1:5173"
@@ -39,6 +40,10 @@ class Settings:
     allow_forwarded_ip: bool = False
     trace_delay: float = 0.3
 
+    @property
+    def model_location(self):
+        return self.vertex_location or self.region
+
     @classmethod
     def from_env(cls):
         import json
@@ -52,6 +57,7 @@ class Settings:
             google_backend=os.getenv("GOOGLE_BACKEND", "local" if dev else "google"),
             project=os.getenv("GCP_PROJECT", ""),
             region=os.getenv("GCP_REGION", "us-central1"),
+            vertex_location=os.getenv("VERTEX_LOCATION", ""),
             model_fast=os.getenv("MODEL_FAST", ""),
             model_pro=os.getenv("MODEL_PRO", ""),
             public_origin=os.getenv("PUBLIC_ORIGIN", "http://127.0.0.1:5173"),

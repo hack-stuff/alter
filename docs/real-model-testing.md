@@ -31,6 +31,8 @@ Cloud Shell already has the ignored `infra/api.env.yaml`. The runner reads only 
 bash services/api/scripts/test_real_models.sh
 ```
 
+`VERTEX_LOCATION` selects the model endpoint independently of `GCP_REGION` (the deployment region). If omitted, it inherits `GCP_REGION` for existing deployments. The selected Flash Lite and Flash IDs both passed the user's real Vertex access test at `global`; the Flash Lite regional access test returned 404 at `us-central1`.
+
 The script runs tests with real model calls explicitly enabled and stops at the first failure. Expect a small amount of billable Vertex usage. It does not require a new Cloud Run revision or frontend build. Provider failures report the failing stage and provider error directly using synthetic test inputs; share that output, never credential files.
 
 On a Mac without the deployment YAML, select the exact deployment values explicitly:
@@ -38,12 +40,13 @@ On a Mac without the deployment YAML, select the exact deployment values explici
 ```bash
 export GCP_PROJECT=alter-48b59
 export GCP_REGION=us-central1
+export VERTEX_LOCATION=global
 export MODEL_FAST=gemini-3.5-flash-lite
 export MODEL_PRO=gemini-3.8-flash
 bash services/api/scripts/test_real_models.sh
 ```
 
-These IDs are the user's selected configuration, not a claim of verified regional availability. A 404 means the configured model/endpoint needs investigation. A 403 requires checking Vertex access for the active identity. A 429 can indicate quota or capacity. The A2A acceptance uses the actual SDK's signed JSON-RPC exchange through a local ASGI transport; the model calls are real HTTPS requests to Vertex.
+Basic access to both IDs was verified at `global`; the remaining ADK/tool/drafting acceptance stages still need to pass. A 404 means the configured model/endpoint needs investigation. A 403 requires checking Vertex access for the active identity. A 429 can indicate quota or capacity. The A2A acceptance uses the actual SDK's signed JSON-RPC exchange through a local ASGI transport; the model calls are real HTTPS requests to Vertex.
 
 For a model-only subset or one failing stage:
 
@@ -61,6 +64,7 @@ After the suite passes, keep the same ADC/model environment and run:
 ```bash
 export GCP_PROJECT=alter-48b59
 export GCP_REGION=us-central1
+export VERTEX_LOCATION=global
 export MODEL_FAST=gemini-3.5-flash-lite
 export MODEL_PRO=gemini-3.8-flash
 DEV_MODE=1 STORE_BACKEND=sqlite GOOGLE_BACKEND=local AI_BACKEND=vertex \

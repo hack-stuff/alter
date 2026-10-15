@@ -83,7 +83,7 @@ class Engine:
         return genai.Client(
             vertexai=True,
             project=self.settings.project,
-            location=self.settings.region,
+            location=self.settings.model_location,
             http_options={"timeout": 30000},
         )
 
