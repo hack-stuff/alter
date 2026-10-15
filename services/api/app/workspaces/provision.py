@@ -124,6 +124,24 @@ class Workspaces:
 
             self.store.atomic(failed)
 
+    def retry_failed_provision(self, context: MemberContext):
+        """Resume the same workspace after its external setup becomes available."""
+
+        def retry(tx):
+            path = f"workspaces/{context.workspace_id}"
+            workspace = tx.get(path)
+            if not workspace or workspace.get("creatorUid") != context.uid:
+                raise error(403, "FORBIDDEN", "Only the workspace creator can retry setup.")
+            if workspace["state"] != "provisioning_failed":
+                raise error(409, "SETUP_NOT_FAILED", "Google setup is not waiting for a retry.")
+            take(tx, f"provision-retry:{context.workspace_id}", 3)
+            updated = {**workspace, "state": "provisioning", "generation": new_id()}
+            updated.pop("setupError", None)
+            tx.set(path, updated)
+            return context.workspace_id, context.member_id
+
+        return self.store.atomic(retry)
+
     def reset(self, context: MemberContext, ip="unknown"):
         old = self.store.get(f"workspaces/{context.workspace_id}")
         # Retire the old workspace atomically. It is deleted only after resources are reconciled by cleanup.

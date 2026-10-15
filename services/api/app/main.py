@@ -214,6 +214,12 @@ def create_app(settings=None, engine=None):
         engine.schedule(provision(result["workspaceId"], result["memberId"]))
         return result
 
+    @app.post("/v1/workspaces/retry-provision")
+    async def retry_provision(ctx=Depends(member)):
+        wid, mid = await run_in_threadpool(engine.workspaces.retry_failed_provision, ctx)
+        engine.schedule(provision(wid, mid))
+        return {"workspaceId": wid, "state": "provisioning"}
+
     @app.post("/v1/chat")
     async def chat(req: ChatRequest, ctx=Depends(member)):
         return await engine.chat(ctx, req.message, req.conversationId)

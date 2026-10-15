@@ -460,3 +460,6 @@
 .alter-voice-dock .voice-control button { color: #edf2ff; background: #24345b; border-color: #6579ae; }
 .alter-voice-dock .voice-control button:hover:not(:disabled) { background: #354a76; }
 .alter-voice-dock .voice-control > .hint { text-align: center; }
+.alter-voice-dock .transcript { background: #192747; border: 1px solid #506394; color: #edf2ff; }
+.alter-voice-dock .voice-control .transcript-text { background: transparent; border: 0; color: inherit; }
+.alter-voice-dock .voice-control .transcript-text:hover:not(:disabled) { background: transparent; }
