@@ -1,22 +1,104 @@
-"""Runtime configuration. Pin model IDs here on Day 1 (track-a §2)."""
+"""Explicit local/live configuration; no guessed model IDs or production auth bypass."""
 
+from dataclasses import dataclass, field
 import os
+import sys
 from pathlib import Path
 
-SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
-FIXTURES_DIR = Path(__file__).resolve().parents[3] / "contracts" / "fixtures"
+_source_seed = Path(__file__).resolve().parent.parent / "seed"
+SEED_DIR = (
+    _source_seed if _source_seed.exists() else Path(sys.prefix) / "share/alter/seed"
+)
 
-GCP_PROJECT = os.getenv("GCP_PROJECT", "")
-GCP_REGION = os.getenv("GCP_REGION", "us-central1")
 
-# TODO(Day 1): replace with exact model IDs verified in Vertex AI for GCP_REGION.
-MODEL_FAST = os.getenv("MODEL_FAST", "gemini-flash-latest")
-MODEL_PRO = os.getenv("MODEL_PRO", "gemini-pro-latest")
+@dataclass(frozen=True)
+class Settings:
+    dev_mode: bool = False
+    store_backend: str = "firestore"
+    database_path: str = "/tmp/alter.sqlite3"
+    ai_backend: str = "vertex"
+    google_backend: str = "google"
+    project: str = ""
+    region: str = "us-central1"
+    model_fast: str = ""
+    model_pro: str = ""
+    public_origin: str = "http://127.0.0.1:5173"
+    service_url: str = "http://127.0.0.1:8080"
+    cors_origins: tuple[str, ...] = ()
+    a2a_secret: str = ""
+    a2a_secret_name: str = ""
+    director_key: str = ""
+    director_secret_name: str = ""
+    google_oauth_secret: str = ""
+    template_ids: dict[str, str] = field(default_factory=dict)
+    search_serving_config: str = ""
+    welcome_delay: float = 20
+    scheduler_audience: str = ""
+    scheduler_email: str = ""
+    admin_email: str = ""
+    allow_forwarded_ip: bool = False
+    trace_delay: float = 0.3
 
-# When true, routes return contract fixtures and auth accepts an X-Sandbox-Id header.
-DEV_MODE = os.getenv("DEV_MODE", "1") == "1"
+    @classmethod
+    def from_env(cls):
+        import json
 
-# Fixed recipients for team email (contract §6). Never taken from the model or client.
-TEAM_EMAIL_RECIPIENTS = [
-    e for e in os.getenv("TEAM_EMAIL_RECIPIENTS", "").split(",") if e
-]
+        dev = os.getenv("DEV_MODE", "0") == "1"
+        return cls(
+            dev_mode=dev,
+            store_backend=os.getenv("STORE_BACKEND", "sqlite" if dev else "firestore"),
+            database_path=os.getenv("DATABASE_PATH", "/tmp/alter.sqlite3"),
+            ai_backend=os.getenv("AI_BACKEND", "local" if dev else "vertex"),
+            google_backend=os.getenv("GOOGLE_BACKEND", "local" if dev else "google"),
+            project=os.getenv("GCP_PROJECT", ""),
+            region=os.getenv("GCP_REGION", "us-central1"),
+            model_fast=os.getenv("MODEL_FAST", ""),
+            model_pro=os.getenv("MODEL_PRO", ""),
+            public_origin=os.getenv("PUBLIC_ORIGIN", "http://127.0.0.1:5173"),
+            service_url=os.getenv("SERVICE_URL", "http://127.0.0.1:8080"),
+            cors_origins=tuple(
+                x.strip()
+                for x in os.getenv(
+                    "CORS_ORIGINS",
+                    "http://127.0.0.1:5173,http://localhost:5173" if dev else "",
+                ).split(",")
+                if x.strip()
+            ),
+            a2a_secret=os.getenv("A2A_HMAC_SECRET", "") if dev else "",
+            a2a_secret_name=os.getenv("A2A_HMAC_SECRET_NAME", ""),
+            director_key=os.getenv("DIRECTOR_KEY", "") if dev else "",
+            director_secret_name=os.getenv("DIRECTOR_KEY_SECRET_NAME", ""),
+            google_oauth_secret=os.getenv("GOOGLE_OAUTH_SECRET_NAME", ""),
+            template_ids=json.loads(os.getenv("GOOGLE_TEMPLATE_IDS", "{}")),
+            search_serving_config=os.getenv("SEARCH_SERVING_CONFIG", ""),
+            welcome_delay=float(os.getenv("WELCOME_DELAY_SECONDS", "20")),
+            scheduler_audience=os.getenv("SCHEDULER_AUDIENCE", ""),
+            scheduler_email=os.getenv("SCHEDULER_SERVICE_ACCOUNT", ""),
+            admin_email=os.getenv("ADMIN_EMAIL", ""),
+            allow_forwarded_ip=os.getenv("TRUST_FORWARDED_IP", "0") == "1",
+            trace_delay=float(os.getenv("TRACE_DELAY_SECONDS", ".3")),
+        )
+
+    def missing(self):
+        if self.dev_mode:
+            return []
+        required = {
+            "GCP_PROJECT": self.project,
+            "MODEL_FAST": self.model_fast,
+            "MODEL_PRO": self.model_pro,
+            "A2A_HMAC_SECRET_NAME": self.a2a_secret_name,
+            "GOOGLE_OAUTH_SECRET_NAME": self.google_oauth_secret,
+            "CORS_ORIGINS": self.cors_origins,
+        }
+        missing = [key for key, value in required.items() if not value]
+        if (
+            self.store_backend != "firestore"
+            or self.google_backend != "google"
+            or self.ai_backend != "vertex"
+        ):
+            missing.append("live backends (Firestore, Vertex, Google)")
+        if not self.service_url.startswith(
+            "https://"
+        ) or not self.public_origin.startswith("https://"):
+            missing.append("HTTPS SERVICE_URL and PUBLIC_ORIGIN")
+        return missing

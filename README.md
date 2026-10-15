@@ -26,19 +26,14 @@ apps/web/           Track B: React + Vite PWA
 
 ## Run locally
 
-```bash
-# Backend (stub routes serve contract fixtures while DEV_MODE=1)
-cd services/api
-python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
-.venv/bin/pytest
-.venv/bin/uvicorn app.main:app --reload --port 8080
+Follow [Track A setup and deployment](docs/track-a-deployment.md) for the persistent local backend and integrated app, provider setup, evaluations and production deployment. Local development needs no API key; it explicitly simulates AI and Google resources. The live backend uses Firebase, Firestore, Vertex and the demo account's OAuth credentials.
 
-# Web app against mocks (no backend needed)
+For the frontend-only rehearsal:
+
+```bash
 cd apps/web
-npm install
+npm ci
 VITE_MOCK=1 npm run dev
-# …or against the local backend
-VITE_API_BASE=http://localhost:8080/v1 npm run dev
 ```
 
 ## Track B development
@@ -51,9 +46,7 @@ recording kit are included.
 
 Use `VITE_MOCK=1 npm run dev` from `apps/web` for the full rehearsal. Sample changes
 last for the page session and reset on reload. The mock app never writes to Google.
-For the current Track A HTTP stub use `VITE_MOCK=0 VITE_DEV_AUTH=1`; for real Firebase
-and voice use the configuration in [Track B deployment](docs/track-b-deployment.md).
-The real Google integrations and director authorization depend on Track A.
+Use `VITE_MOCK=0 VITE_DEV_AUTH=1` for the persistent local backend; use the configuration in [Track B deployment](docs/track-b-deployment.md) for real Firebase and voice. Track A implements Google adapters, ownership checks, signed A2A and director authorization.
 
 From `apps/web`, validate with `npm run build`, `npm run lint`, `npm run test:e2e`,
 and `npm run test:pwa`. Install Playwright Chromium first or set

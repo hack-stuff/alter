@@ -1,0 +1,12 @@
+{
+  "id": "team-wiki",
+  "title": "Team wiki",
+  "sections": [
+    {
+      "section": "Team",
+      "lines": [
+        "Priya leads product. Rahul owns the login revamp. Meera owns design. Arjun maintains the backend."
+      ]
+    }
+  ]
+}

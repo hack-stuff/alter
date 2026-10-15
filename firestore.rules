@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function binding() { return get(/databases/$(database)/documents/userBindings/$(request.auth.uid)).data; }
+    function member(wid) {
+      return request.auth != null && binding().workspaceId == wid
+        && get(/databases/$(database)/documents/workspaces/$(wid)/members/$(binding().memberId)).data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/workspaces/$(wid)).data.expiresAt > request.time
+        && get(/databases/$(database)/documents/workspaces/$(wid)).data.state != 'deleting';
+    }
+    function owner(wid, mid) { return member(wid) && binding().memberId == mid; }
+    match /workspaces/{wid} {
+      allow read: if member(wid);
+      match /members/{mid} { allow read: if member(wid); }
+      match /approvals/{aid} { allow read: if owner(wid, resource.data.owner); }
+      match /escalations/{eid} { allow read: if owner(wid, resource.data.owner); }
+      match /memories/{mid} { allow read: if owner(wid, resource.data.owner); }
+      match /activity/{id} { allow read: if member(wid) && binding().memberId in resource.data.visibleTo; }
+      match /receipts/{id} { allow read: if member(wid) && binding().memberId in resource.data.visibleTo; }
+      match /a2aTraces/{id} { allow read: if member(wid) && (resource.data.from == binding().memberId || resource.data.to == binding().memberId); }
+      match /rules/{mid}/items/{id} { allow read: if owner(wid, mid); }
+      match /inbox/{mid}/messages/{id} { allow read: if owner(wid, mid); }
+      match /conversations/{cid} {
+        allow read: if owner(wid, resource.data.owner);
+        match /{collection}/{id} {
+          allow read: if collection in ['messages', 'events'] && owner(wid, get(/databases/$(database)/documents/workspaces/$(wid)/conversations/$(cid)).data.owner);
+        }
+      }
+    }
+    // All writes and private service collections are server-only (Admin SDK).
+    match /{document=**} { allow read, write: if false; }
+  }
+}

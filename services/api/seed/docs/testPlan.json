@@ -1,0 +1,12 @@
+{
+  "id": "test-plan",
+  "title": "Test plan v1",
+  "sections": [
+    {
+      "section": "\u00a73",
+      "lines": [
+        "Test plan v1 covers Android 12+ and iOS 16+. Two bugs remain open; QA sign-off is pending."
+      ]
+    }
+  ]
+}

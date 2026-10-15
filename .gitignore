@@ -12,3 +12,10 @@ secrets/
 
 # Video rehearsal captures
 video/generated/
+
+# Local backend state and emulator output
+*.sqlite*
+*-debug.log
+infra/.firebase/
+infra/api.env.yaml
+services/api/build/

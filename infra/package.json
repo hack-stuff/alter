@@ -1,0 +1,7 @@
+{
+  "name":"alter-infrastructure-tests",
+  "private":true,
+  "type":"module",
+  "scripts":{"test:rules":"cd .. && infra/node_modules/.bin/firebase emulators:exec --only firestore --project demo-alter --config firebase.emulators.json 'node --test infra/tests/firestore.test.mjs'"},
+  "devDependencies":{"@firebase/rules-unit-testing":"^5.0.0","firebase":"^12.0.0","firebase-tools":"^15.0.0"}
+}

@@ -21,7 +21,7 @@ export default function App() {
   const parameters = new URLSearchParams(location.search)
   const inviteCode = location.pathname.match(/^\/join\/([A-Za-z0-9_-]+)$/)?.[1]
   const [session, setSession] = useState<{ join: JoinResult; name: string }>()
-  const canRestore = !MOCK && !!import.meta.env.VITE_FIREBASE_CONFIG && !inviteCode && parameters.get('director') !== '1' && parameters.get('kiosk') !== '1'
+  const canRestore = !MOCK && (!!import.meta.env.VITE_FIREBASE_CONFIG || import.meta.env.VITE_DEV_AUTH === '1') && parameters.get('director') !== '1' && parameters.get('kiosk') !== '1'
   const [restoring, setRestoring] = useState(canRestore)
   const [restoreError, setRestoreError] = useState('')
   const [restoreAttempt, setRestoreAttempt] = useState(0)
@@ -65,6 +65,9 @@ export default function App() {
   return <main className="app">
     <header className="app-header"><div className="brand">Alter<span className="hint">{data.workspace?.name ?? 'Your workspace'}</span></div><button onClick={() => setConfirmReset(true)} disabled={resetting}>Reset workspace</button></header>
     {MOCK && <p className="demo-banner">Demo workspace · sample answers and changes · resets on reload</p>}
+    {data.workspace?.simulated && <p className="demo-banner">Local development · simulated AI and Google resources · changes persist on this server</p>}
+    {data.workspace?.state === 'provisioning' && <p role="status">Setting up your team’s Google resources…</p>}
+    {data.workspace?.state === 'provisioning_failed' && <p role="alert" className="error">Google setup failed. Contact the administrator or reset the workspace to try again.</p>}
     <nav className="main-nav" aria-label="Workspace">{SCREENS.map((s) => <button key={s} aria-pressed={s === screen} onClick={() => setScreen(s)}>{s}{s === 'approvals' && pending > 0 && <span className="count">{pending}</span>}{s === 'escalations' && waiting > 0 && <span className="count">{waiting}</span>}</button>)}</nav>
     {streamError && <div role="alert" className="error"><p>{streamError}</p><button onClick={refresh}>Retry workspace updates</button></div>}
     {confirmReset && <section className="reset-confirmation" aria-label="Reset confirmation"><p>Reset this workspace to its starting state? Your current conversation and changes will be cleared.</p><div className="actions"><button onClick={() => void reset()} disabled={resetting}>{resetting ? 'Resetting…' : 'Confirm reset'}</button><button disabled={resetting} onClick={() => { setConfirmReset(false); setError('') }}>Cancel</button></div>{error && <p role="alert" className="error">{error}</p>}</section>}

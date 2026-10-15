@@ -1,0 +1,14 @@
+{
+  "name": "Arjun",
+  "role": "Engineer",
+  "status": "in_meetings",
+  "sources": [
+    {
+      "id": "backend-notes",
+      "title": "Backend handoff",
+      "locator": "AUTH-112",
+      "text": "Arjun maintains the sign-in backend endpoints. AUTH-112 is approved for production.",
+      "scope": "work"
+    }
+  ]
+}

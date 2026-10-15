@@ -80,6 +80,7 @@ export interface Escalation {
   askedBy: string
   question: string
   context: string
+  effectDescription?: string
   state: 'pending' | 'answered' | 'expired'
   response?: string
 }
@@ -130,6 +131,8 @@ export interface Workspace {
   name: string
   inviteCode: string
   director?: boolean
+  state?: 'provisioning' | 'provisioning_failed' | 'ready'
+  simulated?: boolean
   google: { folderUrl?: string; docs: Record<string, string>; sheetUrl?: string; calendarUrl?: string }
 }
 export interface WorkspaceData {

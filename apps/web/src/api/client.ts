@@ -6,12 +6,16 @@ const BASE = import.meta.env.VITE_API_BASE?.trim() || 'http://localhost:8080/v1'
 export const MOCK = import.meta.env.VITE_MOCK === '1'
 
 export async function authorizationHeaders(): Promise<Record<string, string>> {
-  if (import.meta.env.VITE_DEV_AUTH === '1') return { 'X-Dev-Uid': 'dev-user' }
+  if (import.meta.env.VITE_DEV_AUTH === '1') {
+    let uid = localStorage.getItem('alter.dev.uid')
+    if (!uid) { uid = 'dev_' + crypto.randomUUID(); localStorage.setItem('alter.dev.uid', uid) }
+    return { 'X-Dev-Uid': uid }
+  }
   const { firebaseIdToken } = await import('../firebase-auth')
   return { Authorization: `Bearer ${await firebaseIdToken()}` }
 }
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function httpCall<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', ...await authorizationHeaders() },
@@ -48,22 +52,22 @@ export interface Api {
 }
 
 const httpApi: Api = {
-  me: () => call('GET', '/me'),
-  createWorkspace: (name) => call('POST', '/workspaces', { name }),
-  joinWorkspace: (inviteCode, name) => call('POST', '/workspaces/join', { inviteCode, name }),
-  resetWorkspace: () => call('POST', '/workspaces/reset'),
-  chat: (message, conversationId, via = 'text') => call('POST', '/chat', { message, conversationId, via }),
-  askAlter: (mid, question) => call('POST', `/alters/${mid}/ask`, { question }),
-  revise: (id, instruction, via = 'text') => call('POST', `/approvals/${id}/revise`, { instruction, via }),
-  decide: (id, decision, expectedRevision) => call('POST', `/approvals/${id}/decision`, { decision, expectedRevision }),
-  respondEscalation: (id, text) => call('POST', `/escalations/${id}/respond`, { text }),
-  teach: (content) => call('POST', '/memories', { content }),
-  decideMemory: (id, decision) => call('POST', `/memories/${id}/decision`, { decision }),
-  setRule: (id, mode) => call('PUT', `/rules/${id}`, { mode }),
-  updateMe: (update) => call('PUT', '/me', update),
+  me: () => httpCall('GET', '/me'),
+  createWorkspace: (name) => httpCall('POST', '/workspaces', { name }),
+  joinWorkspace: (inviteCode, name) => httpCall('POST', '/workspaces/join', { inviteCode, name }),
+  resetWorkspace: () => httpCall('POST', '/workspaces/reset'),
+  chat: (message, conversationId, via = 'text') => httpCall('POST', '/chat', { message, conversationId, via }),
+  askAlter: (mid, question) => httpCall('POST', `/alters/${mid}/ask`, { question }),
+  revise: (id, instruction, via = 'text') => httpCall('POST', `/approvals/${id}/revise`, { instruction, via }),
+  decide: (id, decision, expectedRevision) => httpCall('POST', `/approvals/${id}/decision`, { decision, expectedRevision }),
+  respondEscalation: (id, text) => httpCall('POST', `/escalations/${id}/respond`, { text }),
+  teach: (content) => httpCall('POST', '/memories', { content }),
+  decideMemory: (id, decision) => httpCall('POST', `/memories/${id}/decision`, { decision }),
+  setRule: (id, mode) => httpCall('PUT', `/rules/${id}`, { mode }),
+  updateMe: (update) => httpCall('PUT', '/me', update),
   directorClaim: async (workspaceId, memberId, key) => {
-    await call('POST', '/director/claim', { workspaceId, memberId, key })
-    const me = await call<{ workspaceId: string; memberId: string; slot?: string }>('GET', '/me')
+    await httpCall('POST', '/director/claim', { workspaceId, memberId, key })
+    const me = await httpCall<{ workspaceId: string; memberId: string; slot?: string }>('GET', '/me')
     return { workspaceId: me.workspaceId, memberId: me.memberId, slot: me.slot ?? 'seeded', inviteUrl: '' }
   },
 }

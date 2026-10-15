@@ -1,10 +1,15 @@
-"""Pydantic mirrors of contract §4–5. Keep in sync with apps/web/src/api/types.ts."""
+"""Validated inputs and contract response shapes."""
 
-from typing import Literal
-
-from pydantic import BaseModel
+from typing import Literal, Annotated
+from pydantic import BaseModel, Field, ConfigDict
 
 Outcome = Literal["allow", "ask", "deny"]
+Text = Annotated[str, Field(min_length=1, max_length=10000)]
+Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{1,128}$")]
+
+
+class Input(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
 class Citation(BaseModel):
@@ -20,63 +25,66 @@ class Answer(BaseModel):
     question: str
     outcome: Outcome
     answer: str
-    citations: list[Citation] = []
+    citations: list[Citation] = Field(default_factory=list)
     escalationId: str | None = None
     traceId: str
     receiptId: str
 
 
-class CreateWorkspace(BaseModel):
-    name: str
+class CreateWorkspace(Input):
+    name: Annotated[str, Field(min_length=1, max_length=80)]
 
 
-class JoinWorkspace(BaseModel):
-    inviteCode: str
-    name: str
+class JoinWorkspace(CreateWorkspace):
+    inviteCode: Identifier
 
 
-class ChatRequest(BaseModel):
-    conversationId: str | None = None
-    message: str
+class ChatRequest(Input):
+    conversationId: Identifier | None = None
+    message: Text
     via: Literal["text", "voice"] = "text"
 
 
-class AskRequest(BaseModel):
-    question: str
+class AskRequest(Input):
+    question: Text
 
 
-class ReviseRequest(BaseModel):
-    instruction: str
+class ReviseRequest(Input):
+    instruction: Text
     via: Literal["text", "voice"] = "text"
 
 
-class DecisionRequest(BaseModel):
+class DecisionRequest(Input):
     decision: Literal["approve", "reject"]
-    expectedRevision: int
+    expectedRevision: Annotated[int, Field(ge=1)]
 
 
-class EscalationReply(BaseModel):
-    text: str
+class EscalationReply(Input):
+    text: Text
 
 
-class TeachMemory(BaseModel):
-    content: str
+class TeachMemory(Input):
+    content: Text
 
 
-class MemoryDecision(BaseModel):
+class MemoryDecision(Input):
     decision: Literal["approve", "revoke"]
 
 
-class RuleUpdate(BaseModel):
+class RuleUpdate(Input):
     mode: Outcome
 
 
-class UpdateMe(BaseModel):
+class UpdateMe(Input):
     status: Literal["available", "away"] | None = None
-    email: str | None = None
+    email: Annotated[str, Field(max_length=254)] | None = None
 
 
-class DirectorClaim(BaseModel):
-    workspaceId: str
-    memberId: str
-    key: str
+class DirectorClaim(Input):
+    workspaceId: Identifier
+    memberId: Identifier
+    key: Annotated[str, Field(min_length=1, max_length=4096)]
+
+
+class VideoWorkspace(CreateWorkspace):
+    pass

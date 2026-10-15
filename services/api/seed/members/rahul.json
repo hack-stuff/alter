@@ -1,0 +1,21 @@
+{
+  "name": "Rahul",
+  "role": "Engineer \u00b7 owns login revamp",
+  "status": "on_leave",
+  "sources": [
+    {
+      "id": "arch-sync-2026-10-08",
+      "title": "Arch sync \u00b7 Oct 8",
+      "locator": "12:04",
+      "text": "The old Google Sign-In button is being retired. Rahul decided on October 8 to switch to Google one-tap sign-in, which is faster for users.",
+      "scope": "work"
+    },
+    {
+      "id": "ticket-AUTH-112",
+      "title": "AUTH-112",
+      "locator": "status",
+      "text": "Google one-tap sign-in was approved for production on October 10. It is live in production.",
+      "scope": "work"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "members",
+      "fieldPath": "uid",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "liveBudgets",
+      "fieldPath": "expiresAt",
+      "ttl": true
+    },
+    {
+      "collectionGroup": "liveSessions",
+      "fieldPath": "expiresAt",
+      "ttl": true
+    },
+    {
+      "collectionGroup": "approvals",
+      "fieldPath": "action",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "approvals",
+      "fieldPath": "preview",
+      "indexes": []
+    }
+  ]
+}

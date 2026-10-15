@@ -29,3 +29,14 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+app = ["alters/prompts/*.md"]
+
+[tool.setuptools.data-files]
+"share/alter/seed" = ["seed/team.json", "seed/sheet.json"]
+"share/alter/seed/policies" = ["seed/policies/*.json"]
+"share/alter/seed/members" = ["seed/members/*.json"]
+"share/alter/seed/slots" = ["seed/slots/*.json"]
+"share/alter/seed/docs" = ["seed/docs/*.json"]
+"share/alter/seed/calendar" = ["seed/calendar/*.json"]

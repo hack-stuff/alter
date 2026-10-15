@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
-  testIgnore: ['**/pwa/**'],
+  testIgnore: ['**/pwa/**', '**/backend/**'],
   fullyParallel: true,
   workers: 2,
   timeout: 30_000,

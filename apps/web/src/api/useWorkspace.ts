@@ -10,10 +10,10 @@ export function useWorkspace(join?: JoinResult) {
   const [remote, setRemote] = useState<{ workspaceId?: string; data: WorkspaceData; error: string }>({ data: emptyWorkspace, error: '' })
   const [retry, setRetry] = useState(0)
   useEffect(() => {
-    if (!join || MOCK || import.meta.env.VITE_DEV_AUTH === '1') return
+    if (!join || MOCK) return
     let stopped = false
     let unsubscribe: (() => void) | undefined
-    void import('../firebase').then(({ watchWorkspace }) => {
+    void (import.meta.env.VITE_DEV_AUTH === '1' ? import('../api/polling') : import('../firebase')).then(({ watchWorkspace }) => {
       if (stopped) return
       unsubscribe = watchWorkspace(join, (data) => setRemote({ workspaceId: join.workspaceId, data, error: '' }), () => setRemote((state) => ({ ...state, workspaceId: join.workspaceId, error: 'Workspace updates are unavailable. Check your connection and try again.' })))
     }).catch(() => { if (!stopped) setRemote({ workspaceId: join.workspaceId, data: emptyWorkspace, error: 'Workspace updates could not load. Please try again.' }) })

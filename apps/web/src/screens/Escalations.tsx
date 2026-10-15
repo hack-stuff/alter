@@ -20,7 +20,7 @@ function Question({ item, members, onRefresh }: { item: Escalation; members: Mem
     {item.state === 'pending' ? <>
       <label>Your reply<textarea value={reply} onChange={(e) => { setReply(e.target.value); setConfirm(false) }} disabled={busy} /></label>
       <VoiceControl mode="reply" targetId={item.id} context={item.question} onTranscript={setReply} onResult={() => onRefresh()} draftOnly />
-      {confirm ? <div className="confirmation"><p>Your answer will be sent to {name}'s Alter <AlterBadge />. Any proposed actions still need their owner's approval.</p><blockquote>{reply}</blockquote><div className="actions"><button className="primary" onClick={() => void send()} disabled={busy}>Send reply</button><button onClick={() => setConfirm(false)} disabled={busy}>Keep editing</button></div></div>
+      {confirm ? <div className="confirmation"><p>Your answer will be sent to {name}'s Alter <AlterBadge />. {item.effectDescription ?? "Any proposed actions still need their owner's approval."}</p><blockquote>{reply}</blockquote><div className="actions"><button className="primary" onClick={() => void send()} disabled={busy}>Send reply</button><button onClick={() => setConfirm(false)} disabled={busy}>Keep editing</button></div></div>
         : <button onClick={() => setConfirm(true)} disabled={busy || !reply.trim()}>Review reply</button>}
     </> : item.response && <p className="saved-response">Your answer: {item.response}</p>}
     {error && <p role="alert" className="error">{error}</p>}

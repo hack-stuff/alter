@@ -1,0 +1,25 @@
+{
+  "headers": [
+    "id",
+    "title",
+    "owner",
+    "status",
+    "due"
+  ],
+  "rows": [
+    [
+      "AUTH-112",
+      "One-tap production approval",
+      "Rahul",
+      "Done",
+      "2026-10-10"
+    ],
+    [
+      "QA-001",
+      "QA sign-off",
+      "QA lead",
+      "Pending",
+      "Unconfirmed"
+    ]
+  ]
+}

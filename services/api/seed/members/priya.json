@@ -1,0 +1,14 @@
+{
+  "name": "Priya",
+  "role": "Product lead",
+  "status": "available",
+  "sources": [
+    {
+      "id": "roadmap",
+      "title": "Login revamp roadmap",
+      "locator": "Priorities",
+      "text": "Prioritize QA sign-off and the remaining two bugs before the login revamp launch. The status document is owned by Priya.",
+      "scope": "work"
+    }
+  ]
+}

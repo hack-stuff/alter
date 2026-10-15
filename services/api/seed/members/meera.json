@@ -1,0 +1,14 @@
+{
+  "name": "Meera",
+  "role": "Designer",
+  "status": "available",
+  "sources": [
+    {
+      "id": "mockups",
+      "title": "Login mock-ups",
+      "locator": "Delivery",
+      "text": "Meera owns the sign-in mock-ups. The mock-ups are due Friday.",
+      "scope": "work"
+    }
+  ]
+}

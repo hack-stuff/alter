@@ -20,10 +20,10 @@ export function Home({ name, workspaceId, approvals, events, onUpdate, active = 
   const [liveEvents, setLiveEvents] = useState<ProgressEvent[]>([])
   const [streamedMessages, setStreamedMessages] = useState<{ id: string; items: Message[] }>()
   useEffect(() => {
-    if (MOCK || !conversationId || import.meta.env.VITE_DEV_AUTH === '1') return
+    if (MOCK || !conversationId) return
     let stopped = false
     const unsubscribe: (() => void)[] = []
-    void import('../firebase').then(({ watchEvents, watchMessages }) => {
+    void (import.meta.env.VITE_DEV_AUTH === '1' ? import('../api/polling') : import('../firebase')).then(({ watchEvents, watchMessages }) => {
       if (stopped) return
       unsubscribe.push(watchEvents(workspaceId, conversationId, setLiveEvents, () => setLiveEvents([])))
       unsubscribe.push(watchMessages(workspaceId, conversationId, (items) => setStreamedMessages({ id: conversationId, items }), () => setStreamedMessages({ id: conversationId, items: [] })))
