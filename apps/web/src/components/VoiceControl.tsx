@@ -3,6 +3,7 @@ import { LiveSession } from '../live/session'
 import type { LiveMode } from '../live/modes'
 import { Icon } from './Icon'
 import type { WorkSurface } from '../agent/navigation'
+import { unlockVoiceAudio } from '../live/voiceAudio'
 
 interface Props {
   mode: LiveMode
@@ -24,6 +25,7 @@ interface Props {
   greet?: boolean
   onState?: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
   onNavigate?: (screen: WorkSurface) => void
+  onFirstSpeech?: () => void
 }
 export function VoiceControl(props: Props) {
   const callbacks = useRef(props)
@@ -36,21 +38,25 @@ export function VoiceControl(props: Props) {
   const [muted, setMuted] = useState(false)
   const [correcting, setCorrecting] = useState(false)
   const [level, setLevel] = useState(0)
+  const stateRef = useRef(state)
+  const started = useRef(false)
   useEffect(() => () => { session.current?.stop() }, [])
   function start() {
-    if (state !== 'closed' || props.active === false) return
+    if (stateRef.current !== 'closed' || props.active === false) return
+    stateRef.current = 'connecting'
+    started.current = true
     setError(''); setInput(''); setOutput(''); setMuted(props.mode === 'reply')
     const instance = new LiveSession({
       ...props,
       onResult: (result, tool, text) => { if (tool === 'respond_escalation' && props.draftOnly) callbacks.current.onTranscript?.(text); callbacks.current.onResult(result, tool, text) },
-      onState: (value) => { setState(value); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
+      onState: (value) => { stateRef.current = value; setState(value); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
+      onFirstSpeech: () => callbacks.current.onFirstSpeech?.(),
       onTranscript: (text, speaker, final) => { if (speaker === 'user') { setInput(text); if (final && props.draftOnly) callbacks.current.onTranscript?.(text) } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
       onError: setError,
       onLevel: (value) => { setLevel(value); callbacks.current.onLevel?.(value) },
     })
     session.current = instance; if (props.mode === 'reply') instance.mute(true); void instance.start()
   }
-  const started = useRef(false)
   const startRef = useRef(start)
   useEffect(() => { startRef.current = start })
   useEffect(() => {
@@ -61,8 +67,9 @@ export function VoiceControl(props: Props) {
   }, [props.autoStart, props.active])
   if (props.active === false) return null
   return <div className={`voice-control voice-${state}`} aria-label={`${props.mode} voice controls`}>
-    <div className="actions">{state === 'closed' ? <button type="button" onClick={start}><Icon name="mic" size={16} />{props.mode === 'revise' || props.mode === 'review' ? 'Revise by voice' : props.mode === 'reply' ? 'Speak your reply' : props.mode === 'huddle' ? 'Talk to this Alter' : 'Talk to your Alter'}</button> : <><span className="voice-wave" aria-hidden="true">{[.5,.8,1,.7,.4].map((factor, i) => <i key={i} style={{ height: 4 + level * factor * 16 }} />)}</span>
+    <div className="actions">{state === 'closed' ? <button type="button" onClick={() => { unlockVoiceAudio(); start() }}><Icon name="mic" size={16} />{/enable voice/i.test(error) ? 'Enable voice' : props.mode === 'revise' || props.mode === 'review' ? 'Revise by voice' : props.mode === 'reply' ? 'Speak your reply' : props.mode === 'huddle' ? 'Talk to this Alter' : 'Talk to your Alter'}</button> : <><span className="voice-wave" aria-hidden="true">{[.5,.8,1,.7,.4].map((factor, i) => <i key={i} style={{ height: 4 + level * factor * 16 }} />)}</span>
       <button type="button" onClick={() => { session.current?.stop() }}>End voice</button>
+      {props.mode === 'chat' && state !== 'connecting' && <button type="button" onClick={() => { unlockVoiceAudio(); session.current?.greet() }}>Hear my briefing</button>}
       {props.mode === 'reply' ? <button type="button" disabled={state === 'connecting'}
         onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setMuted(false); session.current?.mute(false) }}
         onPointerUp={() => { setMuted(true); session.current?.mute(true) }} onPointerCancel={() => { setMuted(true); session.current?.mute(true) }}

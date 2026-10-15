@@ -38,7 +38,7 @@ interface Offer {
   run: () => void
 }
 
-export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, onUpdate, onRefresh, onOpen }: {
+export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, ready = true, onUpdate, onRefresh, onOpen }: {
   name: string
   workspaceId: string
   members: Member[]
@@ -46,6 +46,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   escalations: Escalation[]
   events: ProgressEvent[]
   active?: boolean
+  ready?: boolean
   onUpdate: (a: Approval) => void
   onRefresh: () => void
   onOpen: (screen: 'meet' | 'plan' | 'approvals' | 'activity') => void
@@ -54,11 +55,11 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   const [dayError, setDayError] = useState('')
   const [voiceState, setVoiceState] = useState<'connecting' | 'listening' | 'speaking' | 'closed'>('closed')
   useEffect(() => {
-    if (MOCK || !active) return
+    if (MOCK || !active || !ready) return
     let stopped = false
     void dayApi.get().then((value) => { if (!stopped) { setDay(value); setDayError(value.agendaError) } }).catch((e) => { if (!stopped) setDayError(e.message) })
     return () => { stopped = true }
-  }, [workspaceId, active])
+  }, [workspaceId, active, ready])
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | undefined>(() => MOCK ? undefined : sessionStorage.getItem('alter.conversation.' + workspaceId) ?? undefined)
   const [draft, setDraft] = useState('')
@@ -177,7 +178,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
   // The Alter greets directly — talking is the interface, no buttons to press.
   useEffect(() => {
-    if (!MOCK || !active || sessionStorage.getItem('alter.greeted.' + workspaceId)) return
+    if (!MOCK || liveVoice || !active || sessionStorage.getItem('alter.greeted.' + workspaceId)) return
     const timer = setTimeout(() => {
       sessionStorage.setItem('alter.greeted.' + workspaceId, '1')
       say(greetingText)
@@ -224,7 +225,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   return <section className="screen alter-screen fx">
     <div className="fx-aurora" aria-hidden="true" />
     <div className="alter-face">
-      <div className={`alter-core ${speaking ? 'is-speaking' : ''} ${mic === 'listening' ? 'is-listening' : ''}`} aria-hidden="true">
+      <div className={`alter-core ${speaking ? 'is-speaking' : ''} ${mic === 'listening' || voiceState === 'listening' ? 'is-listening' : ''}`} aria-hidden="true">
         <span className="core-sweep" />
         <span className="alter-core-ring" />
         <span className="alter-core-ring alter-core-ring-far" />
@@ -238,6 +239,8 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
         </p>
       </div>
     </div>
+
+    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active} greet={!sessionStorage.getItem('alter.live.greeted.' + workspaceId)} onNavigate={onOpen} onState={setVoiceState} onFirstSpeech={() => sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1')} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
 
     <div className="fx-ticker" aria-hidden="true">
       {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}
@@ -253,7 +256,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
     <div className={`offer-grid ${picked ? 'is-clearing' : ''}`}>
       {OFFERS.map((offer) => (
-        <button key={offer.key} type="button" disabled={!active || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
+        <button key={offer.key} type="button" disabled={!ready || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
           <span className="offer-head">
             <span className="offer-glyph"><Icon name={offer.glyph} size={18} /></span>
             <span className="offer-num">{offer.num}</span>
@@ -290,8 +293,8 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     </div>
     {busy && <p className="thinking" role="status">{latest ?? 'Your Alter is working on your request…'}</p>}
     {conversation.length === 0 && <div className="suggested">{DIRECTIVES.map((d) => <button key={d.text} disabled={busy} onClick={() => d.open ? onOpen(d.open) : void send(d.text)}>{d.text} <span aria-hidden="true">↗</span></button>)}</div>}
-    <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy} /><button className="primary" disabled={busy || !draft.trim()}>Send</button></form>
-    {liveVoice && <VoiceControl mode="chat" active={active} greet={!sessionStorage.getItem('alter.live.greeted.' + workspaceId)} onNavigate={onOpen} onState={(state) => { setVoiceState(state); if (state === 'listening') sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1') }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />}
+    <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy || !ready} /><button className="primary" disabled={busy || !ready || !draft.trim()}>Send</button></form>
+
     {error && <p role="alert" className="error">{error}</p>}
   </section>
 }

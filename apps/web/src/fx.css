@@ -453,3 +453,10 @@
   .mtile.is-live, .eq i, .plan-canvas-screen .connection-path,
   .fx .diagram-node-card.node-status-voice, .join-core { animation: none !important; }
 }
+
+.alter-voice-dock { position: relative; width: min(720px, 100%); margin: 16px auto; }
+.alter-voice-dock .voice-control { border: 1px solid #52618c; border-radius: 16px; background: #111a33; padding: 14px 18px; }
+.alter-voice-dock .voice-control .actions { justify-content: center; flex-wrap: wrap; }
+.alter-voice-dock .voice-control button { color: #edf2ff; background: #24345b; border-color: #6579ae; }
+.alter-voice-dock .voice-control button:hover:not(:disabled) { background: #354a76; }
+.alter-voice-dock .voice-control > .hint { text-align: center; }

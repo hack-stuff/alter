@@ -61,7 +61,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   const cleaned = await page.evaluate(() => ({ closed: (window as any).liveHarness.closed, tracks: (window as any).testStreams.flatMap((s: MediaStream) => s.getTracks().map((t) => t.readyState)), contexts: (window as any).testAudio.map((a: AudioContext) => a.state) }))
   expect(cleaned.closed).toBe(1)
   expect(cleaned.tracks).toEqual(['ended'])
-  expect(cleaned.contexts).toEqual(['closed'])
+  await expect.poll(() => page.evaluate(() => (window as any).testAudio.map((a: AudioContext) => a.state))).toEqual(['suspended'])
 })
 
 test('a rejected token request releases the microphone and returns to text controls', async ({ page }) => {

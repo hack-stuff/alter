@@ -136,7 +136,8 @@ export default function App() {
           approvals={approvals}
           escalations={escalations}
           events={data.events}
-          active={screen === 'alter' && (MOCK || data.workspace?.state === 'ready')}
+          active={screen === 'alter'}
+          ready={MOCK || data.workspace?.state === 'ready'}
           onUpdate={updateApproval}
           onRefresh={refresh}
           onOpen={(s) => setScreen(s)}

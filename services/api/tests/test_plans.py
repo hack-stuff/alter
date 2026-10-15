@@ -280,3 +280,21 @@ def test_publications_in_independent_demo_runs_have_distinct_provider_operations
         assert c.get(f"/v1/artifacts/{card['id']}", headers=h).status_code == 200
         ids.append(response.json()["externalUrl"])
     assert ids[0] != ids[1]
+
+
+def test_voice_can_greet_during_setup_but_plan_actions_stay_blocked(system):
+    from app.auth import Caller
+    from app.live import LiveRelay
+    from app.meeting_models import LiveStart
+
+    c, e = system
+    e.workspaces.create(Caller("early-voice"), "Priya", "early-voice", demo_day=True)
+    ctx = e.auth.member(Caller("early-voice"))
+    context = json.loads(LiveRelay(e).context(ctx, LiveStart(mode="chat")))
+    assert context["owner"] == "Priya"
+    assert context["setupState"] == "provisioning"
+    assert context["availableWork"] == []
+    assert (
+        c.get("/v1/plans/login", headers={"X-Dev-Uid": "early-voice"}).status_code
+        == 409
+    )

@@ -13,6 +13,12 @@ test.use({
 test('one microphone follows Alter to saved diagram and consenting meeting', async ({
   page,
 }, info) => {
+  await page.addInitScript(() => {
+    const state = window as any
+    state.voiceContexts = []
+    const Native = window.AudioContext
+    window.AudioContext = class extends Native { constructor(options?: AudioContextOptions) { super(options); state.voiceContexts.push(this) } }
+  })
   await page.setExtraHTTPHeaders({
     'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.44' : '127.0.0.43',
   })
@@ -90,6 +96,7 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   await page.getByRole('button', { name: 'Start consenting session' }).click()
   await expect.poll(() => starts.at(-1)?.mode).toBe('huddle')
   expect(starts.at(-1)?.meetingId).toMatch(/^meet_/)
+  await expect.poll(() => page.evaluate(() => (window as any).voiceContexts.map((context: AudioContext) => context.state))).toEqual(['running'])
   await expect(page.getByRole('button', { name: 'End voice' })).toHaveCount(1)
   send!({
     toolCall: {

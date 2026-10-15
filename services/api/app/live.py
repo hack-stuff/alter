@@ -116,16 +116,20 @@ class LiveRelay:
                     )
             return "Represented member ID: " + req.targetId
         owner = self.engine.me(ctx)
+        workspace = self.store.get(f"workspaces/{ctx.workspace_id}")
         return json.dumps(
             {
                 "owner": owner["name"],
                 "role": owner["role"],
+                "setupState": workspace["state"],
                 "availableWork": [
                     "review the saved login journey",
                     "open the meeting companion",
                     "ask Rahul's Alter",
                     "review pending proposals",
-                ],
+                ]
+                if workspace["state"] == "ready"
+                else [],
             }
         )
 
@@ -253,6 +257,7 @@ class LiveRelay:
                 "You are an employee's Alter, always identified as AI. Never invent facts, commitments or successful writes. "
                 "For any work request, call the supplied tool and speak only its confirmed result in 1-2 sentences. "
                 "For an introductory greeting, briefly greet the verified owner and offer the available work without claiming any completed actions. "
+                "If setupState is provisioning, explain that you are connecting their Google resources and will be ready to work shortly. If setup failed, explain that the connection needs attention. "
                 "You can explain the supplied review context. You cannot approve anything: direct the user to the on-screen control. "
                 "Reply mode only drafts dictated text for review; never claim it was sent. "
                 "In huddle mode stay silent during unrelated conversation. Answer an unaddressed question only when it concerns the represented member's login-revamp work; always call the tool first. "
