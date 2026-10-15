@@ -225,6 +225,8 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   return <section className="screen alter-screen fx">
     <div className="fx-aurora" aria-hidden="true" />
     <div className="alter-content">
+    <div className="alter-landing">
+    <div className="alter-agent-panel">
     <div className="alter-face">
       <div className={`alter-core ${speaking ? 'is-speaking' : ''} ${mic === 'listening' || voiceState === 'listening' ? 'is-listening' : ''}`} aria-hidden="true">
         <span className="core-sweep" />
@@ -247,14 +249,9 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}
     </div>
 
-    {day?.agenda.length ? <section className="day-agenda" aria-label="Your Google Calendar agenda"><p className="eyebrow">From your connected Calendar</p>{day.agenda.map((event) => <article key={event.id}><time>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time><strong>{event.title}</strong>{/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) && <a href={event.meetUrl} target="_blank" rel="noreferrer">Join Google Meet ↗</a>}</article>)}</section> : !MOCK && <p className="hint">{dayError || 'No upcoming events in your connected demo calendar.'}</p>}
-    <article className="alter-says">
-      <p>{statusText}</p>
-      <p>{workedText}</p>
-      <p>{needsText}</p>
-      <p className="alter-ask">What would you like me to do next?</p>
-    </article>
+    </div>
 
+    <section className="alter-actions" aria-label="What your Alter can do next">
     <div className={`offer-grid ${picked ? 'is-clearing' : ''}`}>
       {OFFERS.map((offer) => (
         <button key={offer.key} type="button" disabled={!ready || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
@@ -270,6 +267,17 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       ))}
     </div>
     <p className="pick-echo" role="status">{pickEcho && <><span className="sparkle-i" aria-hidden="true">✦</span>{pickEcho}</>}</p>
+    </section>
+    </div>
+
+    <div className="alter-below">
+    <article className="alter-says">
+      <p>{statusText}</p>
+      <p>{workedText}</p>
+      <p>{needsText}</p>
+      <p className="alter-ask">What would you like me to do next?</p>
+    </article>
+    {day?.agenda.length ? <section className="day-agenda" aria-label="Your Google Calendar agenda"><p className="eyebrow">From your connected Calendar</p>{day.agenda.map((event) => <article key={event.id}><time>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time><strong>{event.title}</strong>{/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) && <a href={event.meetUrl} target="_blank" rel="noreferrer">Join Google Meet ↗</a>}</article>)}</section> : !MOCK && <p className="hint">{dayError || 'No upcoming events in your connected demo calendar.'}</p>}
 
     {asks.length > 0 && <div className="alter-needs">
       <p className="eyebrow">The team is waiting on your answer</p>
@@ -297,6 +305,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy || !ready} /><button className="primary" disabled={busy || !ready || !draft.trim()}>Send</button></form>
 
     {error && <p role="alert" className="error">{error}</p>}
+    </div>
     </div>
   </section>
 }
