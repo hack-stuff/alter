@@ -224,6 +224,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
   return <section className="screen alter-screen fx">
     <div className="fx-aurora" aria-hidden="true" />
+    <div className="alter-content">
     <div className="alter-face">
       <div className={`alter-core ${speaking ? 'is-speaking' : ''} ${mic === 'listening' || voiceState === 'listening' ? 'is-listening' : ''}`} aria-hidden="true">
         <span className="core-sweep" />
@@ -296,5 +297,6 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy || !ready} /><button className="primary" disabled={busy || !ready || !draft.trim()}>Send</button></form>
 
     {error && <p role="alert" className="error">{error}</p>}
+    </div>
   </section>
 }

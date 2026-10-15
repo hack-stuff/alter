@@ -43,7 +43,38 @@
 
 /* ---------- The console ---------- */
 
-.alter-screen.fx { min-height: calc(100dvh - 150px); }
+.app-alter {
+  background: #0b0f22;
+}
+
+.app-alter .app-header {
+  margin-bottom: 0;
+  color: #eef2ff;
+  border-bottom-color: rgba(148, 163, 214, 0.16);
+}
+
+.app-alter .brand {
+  color: #eef2ff;
+}
+
+.app-alter .brand .hint,
+.app-alter .app-nav-toggle,
+.app-alter .notice-toggle {
+  color: #b7c5e5;
+}
+
+.app-alter .app-nav-toggle:hover,
+.app-alter .notice-toggle:hover:not(:disabled) {
+  background: #192747;
+}
+.alter-screen.fx {
+  min-height: calc(100dvh - 102px);
+  max-width: none;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+.alter-content { max-width: 780px; margin: 0 auto; }
 
 .alter-face { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 36px 0 4px; }
 .alter-face-copy { display: flex; flex-direction: column; align-items: center; gap: 4px; }

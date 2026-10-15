@@ -101,7 +101,7 @@ export default function App() {
   }
 
   const stageView = screen === 'meet' || screen === 'plan'
-  return <main className="app">
+  return <main className={screen === 'alter' ? 'app app-alter' : 'app'}>
     {!stageView && <header className="app-header">
       <div className="brand" onClick={() => setScreen('alter')} style={{ cursor: 'pointer' }}>
         <span className="brand-mark"><Icon name="sparkle" size={19} /></span>Alter
