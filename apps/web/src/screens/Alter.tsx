@@ -109,7 +109,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
         : 'Nothing is waiting on you right now.'
   const greetingText = `${statusText} ${workedText} ${needsText} I’m always listening — just say what you need, or pick a card.`
 
-  const liveVoice = !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
+  const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
   // The agent is present by default: no tap-to-talk anywhere.
   const autoVoice = liveVoice
 

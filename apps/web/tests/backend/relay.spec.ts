@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { existsSync } from 'node:fs'
 
-test.use({ launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium', args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } })
+// Keep the pinned Linux browser when present (managed build images), otherwise
+// let Playwright resolve its own installed Chromium (macOS/local machines).
+const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined)
+
+test.use({ launchOptions: { executablePath: chromium, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } })
 
 test('Vertex relay client routes tools to the real local API and reconnects after stopping', async ({ page }, info) => {
   await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.5' : '127.0.0.4' })
@@ -21,12 +26,18 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   await page.goto('/')
   await page.getByLabel('Your name').fill('Relay demo')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
-  await expect.poll(() => audio).toBeGreaterThan(0)
+  // The live build keeps the Alter always-on, so voice may start on its own;
+  // in builds that still show the control, start it explicitly.
+  const talk = page.getByRole('button', { name: 'Talk to your Alter' })
+  await expect
+    .poll(async () => (await talk.isVisible()) || (await page.getByText('Listening… · up to 10 minutes').isVisible()), { timeout: 20_000 })
+    .toBe(true)
+  if (await talk.isVisible()) await talk.click()
+  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 20_000 })
+  await expect.poll(() => audio, { timeout: 20_000 }).toBeGreaterThan(0)
   send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'relay-call', name: 'alter_chat', args: { message: 'Why did we switch to one-tap?' } }] } }))
   await expect(page.getByRole('log').getByText('one-tap', { exact: false }).first()).toBeVisible()
-  await expect.poll(() => tools).toBe(1)
+  await expect.poll(() => tools, { timeout: 20_000 }).toBe(1)
   await page.getByRole('button', { name: 'End voice' }).click()
   await page.getByRole('button', { name: 'Talk to your Alter' }).click()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()

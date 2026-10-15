@@ -107,7 +107,7 @@ export function PlanCanvas({
   )
   const [isApproved, setIsApproved] = useState(false)
   const [voiceActive, setVoiceActive] = useState(false)
-  const liveVoice = !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
+  const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
   const [caption, setCaption] = useState('Listening — say what to change and watch the diagram redraw.')
   const [orbSpeaking, setOrbSpeaking] = useState(false)
   const [mic, setMic] = useState<'idle' | 'listening' | 'unsupported'>('idle')

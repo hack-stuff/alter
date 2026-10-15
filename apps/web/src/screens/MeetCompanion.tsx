@@ -40,7 +40,7 @@ export function MeetCompanion({
   const [latestAnswer, setLatestAnswer] = useState<Answer | null>(null)
   const [simulatedEscalation, setSimulatedEscalation] = useState(false)
   const rahulName = members.find((m) => m.id === 'rahul')?.name ?? 'Rahul'
-  const liveVoice = !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
+  const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
 
   function saveMeetUrl(url: string) {
     const trimmed = url.trim() || 'https://meet.google.com/new'
