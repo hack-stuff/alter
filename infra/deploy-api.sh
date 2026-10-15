@@ -8,7 +8,8 @@ set -euo pipefail
 : "${A2A_SECRET_ID:?Set the existing A2A HMAC secret ID}"
 : "${OAUTH_SECRET_ID:?Set the existing demo OAuth secret ID}"
 : "${DIRECTOR_SECRET_ID:?Set the existing director secret ID}"
-if rg -q REPLACE_ "$API_ENV_FILE"; then echo 'Replace all environment placeholders first.' >&2; exit 1; fi
+if [[ ! -r "$API_ENV_FILE" ]]; then echo 'API_ENV_FILE must name a readable environment YAML file.' >&2; exit 1; fi
+if grep -q REPLACE_ "$API_ENV_FILE"; then echo 'Replace all environment placeholders first.' >&2; exit 1; fi
 api_account="alter-api@${GCP_PROJECT}.iam.gserviceaccount.com"
 scheduler_account="alter-scheduler@${GCP_PROJECT}.iam.gserviceaccount.com"
 image="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/alter/alter-api:$(git rev-parse --short HEAD)"
