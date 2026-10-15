@@ -4,7 +4,7 @@ import { AlterBadge } from '../components/AlterBadge'
 
 export function Files({ workspace, inbox, members }: { workspace?: Workspace; inbox: InboxMessage[]; members: Member[] }) {
   const links = [
-    { name: 'Workspace Drive folder', url: workspace?.google?.folderUrl },
+    { name: 'Drive folder', url: workspace?.google?.folderUrl },
     ...Object.entries(workspace?.google?.docs ?? {}).map(([name, url]) => ({ name: name.replace(/([A-Z])/g, ' $1'), url })),
     { name: 'Login revamp tracker', url: workspace?.google?.sheetUrl },
     { name: 'Team calendar', url: workspace?.google?.calendarUrl },

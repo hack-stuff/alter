@@ -7,7 +7,7 @@ async function join(page: Page, path = '/') {
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
 async function navigate(page: Page, name: string) {
-  const nav = page.getByRole('navigation', { name: 'Workspace' })
+  const nav = page.getByRole('navigation', { name: 'Alter' })
   let button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true })
   if (!await button.count()) { await nav.getByRole('button', { name: /^More/ }).click(); button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true }) }
   await button.click()
@@ -15,20 +15,20 @@ async function navigate(page: Page, name: string) {
 
 test('an escalation requires review before sending and then appears answered', async ({ page }) => {
   await join(page)
-  await navigate(page, 'escalations')
-  await page.getByLabel('Your reply').fill('QA can sign off after the iOS crash is fixed.')
+  await navigate(page, 'team decisions')
+  await page.getByLabel('Your reply').filter({ visible: true }).fill('QA can sign off after the iOS crash is fixed.')
   await page.getByRole('button', { name: 'Review reply' }).click()
   await expect(page.getByText('Your answer will be sent', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Send reply', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Send reply', exact: true }).click()
-  await expect(page.getByText('Your answer: QA can sign off', { exact: false })).toBeVisible()
-  await navigate(page, 'activity')
+  await expect(page.getByText('Your answer: QA can sign off', { exact: false }).filter({ visible: true })).toBeVisible()
+  await navigate(page, 'work log')
   await expect(page.getByText('Replied to the QA sign-off question')).toBeVisible()
 })
 
 test('taught memories need approval; rules and preferences persist across screens', async ({ page }) => {
   await join(page)
-  await navigate(page, 'settings')
+  await navigate(page, 'rules')
   await page.getByLabel('Teach your Alter something').fill('Run accessibility checks before sign-off.')
   await page.getByRole('button', { name: 'Teach', exact: true }).click()
   const memory = page.locator('.memory').filter({ hasText: 'Run accessibility checks' })
@@ -43,7 +43,7 @@ test('taught memories need approval; rules and preferences persist across screen
   await page.getByLabel('Email me copies').fill('alex@example.com')
   await page.getByRole('button', { name: 'Save email' }).click()
   await expect(page.getByRole('status')).toContainText('Email preference saved')
-  await navigate(page, 'team'); await navigate(page, 'settings')
+  await navigate(page, 'the team'); await navigate(page, 'rules')
   await expect(page.getByLabel('Email me copies')).toHaveValue('alex@example.com')
   await expect(page.getByRole('group', { name: 'Share project status → team' }).getByRole('button', { name: 'Deny' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByText('External email: denied by organization', { exact: false })).toBeVisible()
@@ -51,7 +51,7 @@ test('taught memories need approval; rules and preferences persist across screen
 
 test('activity receipt drawer has sources and result; Escape closes it', async ({ page }) => {
   await join(page)
-  await navigate(page, 'activity')
+  await navigate(page, 'work log')
   await page.getByRole('button', { name: "Rahul's Alter answered you: why one-tap sign-in", exact: false }).click()
   const drawer = page.getByRole('dialog', { name: 'Action receipt' })
   await expect(drawer).toBeVisible()
@@ -62,16 +62,15 @@ test('activity receipt drawer has sources and result; Escape closes it', async (
   await expect(drawer).toHaveCount(0)
 })
 
-test('sheet and email previews work; approved demo email reaches the inbox', async ({ page, isMobile }) => {
+test('sheet and email previews work; approved demo email reaches the inbox', async ({ page }) => {
   await join(page)
   await page.getByRole('button', { name: 'Add a tracker row for the iOS crash' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
   await expect(page.getByRole('table')).toContainText('iOS sign-in crash')
-  if (isMobile) await page.getByRole('button', { name: 'Chat', exact: true }).click()
   await page.getByLabel('Message your Alter').fill('Email the team a QA summary')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Review proposal' })).toHaveCount(2)
-  await navigate(page, 'approvals')
+  await navigate(page, 'waiting')
   const email = page.getByRole('article', { name: 'Team email · QA summary' }).filter({ visible: true })
   await expect(email).toContainText('Workspace team inboxes')
   await email.getByRole('button', { name: 'Approve', exact: true }).click()
@@ -84,7 +83,7 @@ test('sheet and email previews work; approved demo email reaches the inbox', asy
 
 test('invite flow takes the security role and uses a shareable local invite URL', async ({ page }) => {
   await join(page, '/join/INV123')
-  await navigate(page, 'team')
+  await navigate(page, 'the team')
   await page.getByRole('button', { name: 'Copy invite link' }).click()
   await expect(page.getByLabel('Invite link')).toHaveValue(/\/join\/INV123$/)
   const role = await page.evaluate(async () => { const path = '/src/api/mock/mockApi.ts'; const { mockApi } = await import(path); return (await mockApi.me()).slot })

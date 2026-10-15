@@ -8,13 +8,13 @@ async function join(page: Page) {
 }
 
 async function navigate(page: Page, name: string) {
-  const nav = page.getByRole('navigation', { name: 'Workspace' })
+  const nav = page.getByRole('navigation', { name: 'Alter' })
   let button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true })
   if (!await button.count()) { await nav.getByRole('button', { name: /^More/ }).click(); button = nav.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).filter({ visible: true }) }
   await button.click()
 }
 
-test('chat opens a proposal; repeated revisions survive navigation and approval', async ({ page, isMobile }) => {
+test('chat opens a proposal; repeated revisions survive navigation and approval', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await join(page)
@@ -29,16 +29,14 @@ test('chat opens a proposal; repeated revisions survive navigation and approval'
   await card.getByRole('button', { name: 'Revise proposal' }).click()
   await expect(card.getByText('Document update · Revision 3')).toBeVisible()
   await expect(card.getByText('Retest the Android flow.', { exact: false })).toBeVisible()
-  await navigate(page, 'approvals')
+  await navigate(page, 'waiting')
   card = page.getByRole('article', { name: 'Status doc · QA section' }).filter({ visible: true })
   await expect(card.getByText('Retest the iOS flow.', { exact: false })).toBeVisible()
   await card.getByRole('button', { name: 'Approve', exact: true }).click()
   await expect(card.getByRole('status')).toHaveText('Applied in demo')
   await expect(card.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0)
-  await navigate(page, 'home')
-  if (isMobile) await page.getByRole('button', { name: /^Work \(/ }).click()
+  await navigate(page, 'ask')
   await expect(page.getByRole('article', { name: 'Status doc · QA section' }).getByRole('status')).toHaveText('Applied in demo')
-  if (isMobile) await page.getByRole('button', { name: 'Chat', exact: true }).click()
   await expect(page.getByText('I drafted a QA update', { exact: false })).toBeVisible()
   expect(errors).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
@@ -46,7 +44,7 @@ test('chat opens a proposal; repeated revisions survive navigation and approval'
 
 test('direct questions show allowed, escalated and private outcomes with sample rules', async ({ page }) => {
   await join(page)
-  await navigate(page, 'team')
+  await navigate(page, 'the team')
   await page.getByRole('button', { name: "Ask Rahul's Alter" }).click()
   const question = page.getByLabel("Question for Rahul's Alter")
   const cases = [
@@ -71,16 +69,17 @@ test('calendar proposal can be rejected; reset clears chat and restores proposal
   await expect(card.getByText('Attendees: You, Meera')).toBeVisible()
   await card.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect(card.getByRole('status')).toHaveText('rejected')
-  await navigate(page, 'settings')
-  await page.getByRole('button', { name: 'Reset workspace' }).click()
+  await navigate(page, 'rules')
+  await page.getByRole('button', { name: 'Reset Alter' }).click()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await navigate(page, 'approvals')
+  await navigate(page, 'waiting')
   await expect(card.getByRole('status')).toHaveText('rejected')
-  await navigate(page, 'settings')
-  await page.getByRole('button', { name: 'Reset workspace' }).click()
+  await navigate(page, 'rules')
+  await page.getByRole('button', { name: 'Reset Alter' }).click()
   await page.getByRole('button', { name: 'Confirm reset' }).click()
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Book 30 min with Meera on Thursday' })).toBeVisible()
-  await navigate(page, 'approvals')
+  await navigate(page, 'waiting')
   await expect(page.getByRole('article', { name: 'QA sync with Meera' }).getByRole('status')).toHaveText('Needs your approval')
 })
 

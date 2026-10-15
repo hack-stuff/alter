@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { AlterOrb } from '../components/AlterOrb'
+import { listen, speak } from '../agent/voice'
 import { Icon, Avatar } from '../components/Icon'
 import { OnScreenTips, type TipItem } from '../components/OnScreenTips'
 import { VoiceControl } from '../components/VoiceControl'
@@ -105,6 +107,25 @@ export function PlanCanvas({
   )
   const [isApproved, setIsApproved] = useState(false)
   const [voiceActive, setVoiceActive] = useState(false)
+  const liveVoice = !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
+  const [caption, setCaption] = useState('Listening — say what to change and watch the diagram redraw.')
+  const [orbSpeaking, setOrbSpeaking] = useState(false)
+  const [mic, setMic] = useState<'idle' | 'listening' | 'unsupported'>('idle')
+  const editRef = useRef(applyVoiceEdit)
+  useEffect(() => { editRef.current = applyVoiceEdit })
+  useEffect(() => {
+    if (liveVoice) return
+    return listen({
+      onState: (state) => setMic(state),
+      onInterim: (phrase) => setCaption(`“${phrase}”`),
+      onFinal: (phrase) => {
+        setCaption(`Heard “${phrase}” — on it.`)
+        editRef.current(phrase)
+        speak('Got it.', { onStart: () => setOrbSpeaking(true), onEnd: () => setOrbSpeaking(false) })
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveVoice])
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? nodes[0]
 
@@ -198,7 +219,7 @@ export function PlanCanvas({
 
   function handleApprove() {
     setIsApproved(true)
-    setFeedbackMsg('Approved! Updated Google Doc "Login Revamp — Status" and notified Meera and Arjun via Google Workspace.')
+    setFeedbackMsg('Approved! Updated Google Doc "Login Revamp — Status" and notified Meera and Arjun through their Alters.')
     onApproveDoc?.('One-Tap UI Architecture Plan Approved')
   }
 
@@ -230,13 +251,15 @@ export function PlanCanvas({
   ]
 
   return (
-    <section className="screen plan-canvas-screen">
+    <section className="screen plan-canvas-screen fx stage-dark">
+      <div className="fx-aurora" aria-hidden="true" />
+      <div className="stage-wipe" aria-hidden="true" />
       <div className="canvas-header">
         <button type="button" className="back-link-btn" onClick={onBack}>
-          ← Back to Priya's Workday
+          ← Back to your Alter
         </button>
         <div className="plan-title-block">
-          <p className="eyebrow">Google Workspace · Ongoing Plan</p>
+          <p className="eyebrow">Ongoing plan · co-edited with your Alter</p>
           <h2>Login Revamp — UI & System Architecture</h2>
           <p className="hint">
             Visual user journey from entry to authenticated session. Edit in real time using voice or suggested tips.
@@ -364,12 +387,17 @@ export function PlanCanvas({
               <span>{feedbackMsg}</span>
               {voiceActive && <span className="voice-active-indicator" style={{ marginLeft: 'auto', color: '#16a34a', fontWeight: 600 }}>● Listening</span>}
             </div>
-            <VoiceControl
-              mode="revise"
-              targetId="plan-canvas"
-              onActive={setVoiceActive}
-              onResult={(_res, _tool, input) => applyVoiceEdit(input)}
-            />
+            {liveVoice ? (
+              <VoiceControl
+                mode="revise"
+                targetId="plan-canvas"
+                autoStart
+                onActive={setVoiceActive}
+                onResult={(_res, _tool, input) => applyVoiceEdit(input)}
+              />
+            ) : (
+              <span className="stage-mic">{mic === 'listening' ? '● Listening — just say what to change' : mic === 'unsupported' ? 'Voice needs Chrome — the tips below still work' : 'Starting to listen…'}</span>
+            )}
           </div>
         </div>
 
@@ -394,7 +422,7 @@ export function PlanCanvas({
           )}
 
           <div className="detail-citations">
-            <h4>Google Workspace Sources</h4>
+            <h4>Sources</h4>
             <Citations sources={selectedNode.citations} />
           </div>
 
@@ -419,6 +447,12 @@ export function PlanCanvas({
           </div>
         </aside>
       </div>
+      <AlterOrb
+        state={orbSpeaking ? 'speaking' : mic === 'listening' ? 'listening' : 'idle'}
+        caption={caption}
+        label="Your Alter"
+        onHome={onBack}
+      />
     </section>
   )
 }

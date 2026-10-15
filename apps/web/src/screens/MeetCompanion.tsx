@@ -1,26 +1,46 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon, Avatar } from '../components/Icon'
 import { AlterBadge } from '../components/AlterBadge'
+import { AlterOrb } from '../components/AlterOrb'
 import { OnScreenTips, type TipItem } from '../components/OnScreenTips'
 import { VoiceControl } from '../components/VoiceControl'
 import { Citations } from '../components/Citations'
+import { listen, speak } from '../agent/voice'
 import type { Answer, Member } from '../api/types'
+
+// The meeting opens itself — a short live scene between the team and the Alters.
+// Rahul is on leave; his Alter sits in the room and answers for him.
+const SCRIPT: { at: number; who: string; tile: string; line: string }[] = [
+  { at: 900, who: 'Meera', tile: 'meera', line: 'Priya’s here. Let’s start with the sign-in rework.' },
+  { at: 5400, who: 'Arjun', tile: 'arjun', line: 'Quick one — why one-tap sign-in over the old Google button?' },
+  { at: 10000, who: "Rahul’s Alter", tile: 'rahul', line: 'The old button is being retired. Rahul switched us on October 8 — the sources are in the receipt.' },
+  { at: 15200, who: 'Meera', tile: 'meera', line: 'And when are we launching?' },
+  { at: 19600, who: "Rahul’s Alter", tile: 'rahul', line: 'That one is Rahul’s call. I’ve sent him a priority message to confirm the date.' },
+]
 
 export function MeetCompanion({
   members,
+  owner = 'Priya',
   onBack,
 }: {
   members: Member[]
+  owner?: string
   onBack: () => void
 }) {
   const [meetUrl, setMeetUrl] = useState<string>(
     () => localStorage.getItem('alter.demo.meet_url') || 'https://meet.google.com/new'
   )
   const [editingUrl, setEditingUrl] = useState(false)
+  const [caption, setCaption] = useState('You’re in. The room is live — Rahul’s Alter is standing in for him.')
+  const [feed, setFeed] = useState<{ who: string; line: string }[]>([])
+  const [sceneIdx, setSceneIdx] = useState(-1)
   const [speaking, setSpeaking] = useState(false)
-  const [voiceLevel, setVoiceLevel] = useState(0)
+  const [orbSpeaking, setOrbSpeaking] = useState(false)
+  const [mic, setMic] = useState<'idle' | 'listening' | 'unsupported'>('idle')
   const [latestAnswer, setLatestAnswer] = useState<Answer | null>(null)
   const [simulatedEscalation, setSimulatedEscalation] = useState(false)
+  const rahulName = members.find((m) => m.id === 'rahul')?.name ?? 'Rahul'
+  const liveVoice = !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
 
   function saveMeetUrl(url: string) {
     const trimmed = url.trim() || 'https://meet.google.com/new'
@@ -29,10 +49,29 @@ export function MeetCompanion({
     setEditingUrl(false)
   }
 
+  // The scene plays on its own — the "meeting starts" moment.
+  useEffect(() => {
+    const timers = SCRIPT.map((beat, index) => setTimeout(() => {
+      setSceneIdx(index)
+      setFeed((lines) => [...lines, { who: beat.who, line: beat.line }])
+      setCaption(`${beat.who}: ${beat.line}`)
+    }, beat.at))
+    const done = setTimeout(() => {
+      setSceneIdx(-1)
+      setCaption('Open floor — ask Rahul’s Alter anything below, out loud or by tapping.')
+    }, (SCRIPT.at(-1)?.at ?? 0) + 4600)
+    return () => { timers.forEach(clearTimeout); clearTimeout(done) }
+  }, [])
+
+  function say(text: string, onEnd?: () => void) {
+    setOrbSpeaking(true)
+    speak(text, { onStart: () => setOrbSpeaking(true), onEnd: () => { setOrbSpeaking(false); onEnd?.() } })
+  }
+
   function handlePromptTrigger(promptText: string) {
     const text = promptText.toLowerCase()
     if (text.includes('launch') || text.includes('date') || text.includes('when')) {
-      setLatestAnswer({
+      const answer: Answer = {
         alter: 'rahul',
         asker: 'priya',
         question: promptText,
@@ -45,10 +84,14 @@ export function MeetCompanion({
         escalationId: 'esc-launch-date',
         traceId: 'trace-escalation-1',
         receiptId: 'rcpt-esc-1',
-      })
+      }
+      setLatestAnswer(answer)
       setSimulatedEscalation(true)
+      setCaption(`${rahulName}’s Alter: ${answer.answer}`)
+      say(answer.answer)
+      setFeed((lines) => [...lines, { who: 'You → Rahul’s Alter', line: promptText }, { who: 'Rahul’s Alter', line: answer.answer }])
     } else if (text.includes('why') || text.includes('one-tap') || text.includes('button')) {
-      setLatestAnswer({
+      const answer: Answer = {
         alter: 'rahul',
         asker: 'priya',
         question: promptText,
@@ -61,10 +104,14 @@ export function MeetCompanion({
         ],
         traceId: 'trace-onetap-decision',
         receiptId: 'rcpt-onetap-1',
-      })
+      }
+      setLatestAnswer(answer)
       setSimulatedEscalation(false)
+      setCaption(`${rahulName}’s Alter: ${answer.answer}`)
+      say(answer.answer)
+      setFeed((lines) => [...lines, { who: 'You → Rahul’s Alter', line: promptText }, { who: 'Rahul’s Alter', line: answer.answer }])
     } else if (text.includes('auth-112') || text.includes('prod') || text.includes('approved')) {
-      setLatestAnswer({
+      const answer: Answer = {
         alter: 'rahul',
         asker: 'priya',
         question: promptText,
@@ -76,10 +123,27 @@ export function MeetCompanion({
         ],
         traceId: 'trace-auth-112',
         receiptId: 'rcpt-auth-1',
-      })
+      }
+      setLatestAnswer(answer)
       setSimulatedEscalation(false)
+      setCaption(`${rahulName}’s Alter: ${answer.answer}`)
+      say(answer.answer)
+      setFeed((lines) => [...lines, { who: 'You → Rahul’s Alter', line: promptText }, { who: 'Rahul’s Alter', line: answer.answer }])
+    } else {
+      setCaption(`Rahul’s Alter heard “${promptText}” — try asking about one-tap sign-in, AUTH-112, or the launch date.`)
     }
   }
+
+  const promptRef = useRef(handlePromptTrigger)
+  useEffect(() => { promptRef.current = handlePromptTrigger })
+  useEffect(() => {
+    if (liveVoice) return
+    return listen({
+      onState: (state) => setMic(state),
+      onInterim: (phrase) => setCaption(`“${phrase}”`),
+      onFinal: (phrase) => promptRef.current(phrase),
+    })
+  }, [liveVoice])
 
   const tips: TipItem[] = [
     {
@@ -103,53 +167,92 @@ export function MeetCompanion({
     },
   ]
 
+  const tileGlow = sceneIdx >= 0 ? SCRIPT[sceneIdx]?.tile : speaking ? 'rahul' : undefined
+
   return (
-    <section className="screen meet-companion-screen">
-      <div className="canvas-header">
+    <section className="screen meet-stage fx stage-dark">
+      <div className="fx-aurora" aria-hidden="true" />
+      <div className="stage-wipe" aria-hidden="true" />
+      <div className="stage-top">
         <button type="button" className="back-link-btn" onClick={onBack}>
-          ← Back to Priya's Workday
+          ← Back to the cards
         </button>
-        <div className="plan-title-block">
-          <p className="eyebrow">Google Meet Integration · Live Team Sync</p>
-          <h2>Team Sync (Google Meet) — Rahul&apos;s Stand-in</h2>
-          <p className="hint">
-            Rahul is on leave. His Alter is standing in with his verified knowledge and decision boundaries.
-          </p>
+        <span className="live-pill"><span className="pulse-dot" aria-hidden="true" /> LIVE · Google Meet</span>
+        <a href={meetUrl} target="_blank" rel="noreferrer" className="stage-join">
+          <Icon name="work" size={16} /> Open the real call ↗
+        </a>
+      </div>
+
+      <div className="stage-heading">
+        <p className="eyebrow">2:00 PM · Team sync</p>
+        <h2>Login Revamp — {rahulName}&apos;s stand-in</h2>
+        <p className="hint">
+          {rahulName} is on leave. His Alter is standing in with his verified knowledge and decision boundaries — ask it anything, out loud.
+        </p>
+      </div>
+
+      <div className="mtile-grid">
+        <div className={`mtile ${tileGlow === 'you' ? 'is-live' : ''}`}>
+          <div className="mtile-avatar">{owner[0]?.toUpperCase() ?? 'Y'}</div>
+          <strong>{owner} (You)</strong>
+          <span className="mtile-sub">Product Lead · Organizer</span>
+          <span className="mtile-chip">Your Alter is in the room ✦</span>
         </div>
-        <div className="canvas-header-actions">
-          <a
-            href={meetUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="primary button icon-button join-meet-hero-btn"
-          >
-            <Icon name="work" size={18} /> Join Google Meet Call ↗
-          </a>
+        <div className={`mtile ${tileGlow === 'meera' ? 'is-live' : ''}`}>
+          <Avatar name={members.find((m) => m.id === 'meera')?.name ?? 'Meera'} size="small" />
+          <strong>{members.find((m) => m.id === 'meera')?.name ?? 'Meera'}</strong>
+          <span className="mtile-sub">Product Designer · Sign-in mock-ups</span>
+          <span className="mtile-chip">Meera’s Alter · listening</span>
+        </div>
+        <div className={`mtile ${tileGlow === 'arjun' ? 'is-live' : ''}`}>
+          <Avatar name={members.find((m) => m.id === 'arjun')?.name ?? 'Arjun'} size="small" />
+          <strong>{members.find((m) => m.id === 'arjun')?.name ?? 'Arjun'}</strong>
+          <span className="mtile-sub">Backend Engineer · Auth endpoints</span>
+          <span className="mtile-chip">Arjun’s Alter · listening</span>
+        </div>
+        <div className={`mtile mtile-alter ${tileGlow === 'rahul' ? 'is-live' : ''}`}>
+          <div className="mtile-cube">R</div>
+          <strong>{rahulName}’s Alter <AlterBadge /></strong>
+          <span className="mtile-sub">In the room for {rahulName} — live voice, verified knowledge</span>
+          <span className="mtile-chip alter">AI stand-in · speaking now<span className="eq" aria-hidden="true"><i /><i /><i /><i /><i /></span></span>
+        </div>
+        <div className="mtile mtile-ghost">
+          <div className="mtile-avatar ghost">?</div>
+          <strong>{rahulName}</strong>
+          <span className="mtile-sub">On leave — not in this call</span>
+          <span className="mtile-chip ghost">His Alter answers for him</span>
         </div>
       </div>
 
-      <OnScreenTips
-        tips={tips}
-        title="Tips for asking questions in Meet"
-        onSelectPrompt={handlePromptTrigger}
-      />
+      <p className="stage-caption">{caption}{mic === 'listening' && !liveVoice ? <span className="stage-mic"> · ● Listening</span> : null}</p>
 
-      <div className="meet-layout-grid">
-        {/* Left Side: Real Meet Gateway & Room Configuration */}
-        <div className="meet-gateway-card card">
-          <div className="meet-banner">
-            <div className="live-pulse-badge">
-              <span className="pulse-dot" /> LIVE GOOGLE MEET
+      <div className="stage-lower">
+        <div className="stage-feed-card">
+          <p className="eyebrow">Live transcript</p>
+          {feed.length ? <ul className="stage-feed">{feed.map((line, i) => <li key={i}><strong>{line.who}</strong> {line.line}</li>)}</ul> : <p className="hint">The room is settling in…</p>}
+        </div>
+        <div className="stage-side">
+          {latestAnswer && (
+            <div className="latest-answer-bubble">
+              <p className="eyebrow">Answer from {rahulName}&apos;s Alter</p>
+              <p className="answer-text">{latestAnswer.answer}</p>
+              <Citations sources={latestAnswer.citations} />
+              {simulatedEscalation && (
+                <div className="escalation-alert-toast">
+                  <span className="alert-icon">⚑</span>
+                  <div>
+                    <strong>Priority notification sent to {rahulName}</strong>
+                    <p className="hint">
+                      Sent to {rahulName}&apos;s phone: &quot;Confirm launch date for Login Revamp (Asked in 2:00 PM Sync)&quot;
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-            <h3>Join with any device</h3>
-            <p className="hint">
-              Anyone with this link can join the real Google Meet call. Rahul&apos;s Alter is logged in as a
-              participant with an animated avatar and live voice.
-            </p>
-          </div>
-
-          <div className="meet-url-box">
-            <span className="url-label">Google Meet Link:</span>
+          )}
+          <OnScreenTips tips={tips} title="Ask the room — out loud or tap" onSelectPrompt={handlePromptTrigger} />
+          <div className="meet-url-box compact">
+            <span className="url-label">Meet link</span>
             {editingUrl ? (
               <form
                 className="url-edit-form"
@@ -166,114 +269,28 @@ export function MeetCompanion({
             ) : (
               <div className="url-display">
                 <code>{meetUrl}</code>
-                <button type="button" className="edit-btn" onClick={() => setEditingUrl(true)}>
-                  Change
-                </button>
+                <button type="button" className="edit-btn" onClick={() => setEditingUrl(true)}>Change</button>
               </div>
             )}
           </div>
-
-          {/* Meeting Room Roster */}
-          <div className="meet-roster">
-            <h4>Call Participants ({members.length ? members.length : 4})</h4>
-            <div className="roster-list">
-              <div className="roster-item">
-                <Avatar name="Priya" size="small" />
-                <div>
-                  <strong>Priya (You)</strong>
-                  <p className="hint">Product Lead · Organizer</p>
-                </div>
-              </div>
-
-              <div className="roster-item alter-roster-item">
-                <div className="avatar-cube-small">R</div>
-                <div>
-                  <strong>
-                    {members.find((m) => m.id === 'rahul')?.name ?? 'Rahul'}&apos;s Alter <AlterBadge />
-                  </strong>
-                  <p className="hint">{members.find((m) => m.id === 'rahul')?.role ?? 'Senior Engineer'} · AI stand-in</p>
-                </div>
-                <span className="status-pill active">In Call</span>
-              </div>
-
-              <div className="roster-item">
-                <Avatar name={members.find((m) => m.id === 'meera')?.name ?? 'Meera'} size="small" />
-                <div>
-                  <strong>{members.find((m) => m.id === 'meera')?.name ?? 'Meera'}</strong>
-                  <p className="hint">{members.find((m) => m.id === 'meera')?.role ?? 'Product Designer'} · Sign-in mock-ups</p>
-                </div>
-              </div>
-
-              <div className="roster-item">
-                <Avatar name={members.find((m) => m.id === 'arjun')?.name ?? 'Arjun'} size="small" />
-                <div>
-                  <strong>{members.find((m) => m.id === 'arjun')?.name ?? 'Arjun'}</strong>
-                  <p className="hint">{members.find((m) => m.id === 'arjun')?.role ?? 'Backend Engineer'} · Auth endpoints</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: In-App Companion HUD & Live Voice Tester */}
-        <div className="meet-hud-card card">
-          <div className="hud-header">
-            <h4>Live Meeting HUD & In-App Voice</h4>
-            <span className="hud-indicator">
-              {speaking ? 'Rahul’s Alter is Speaking' : 'Listening for questions…'}
-            </span>
-          </div>
-
-          {/* Speaking Visualizer Avatar */}
-          <div className={`meet-avatar-stage ${speaking ? 'is-speaking' : ''}`}>
-            <div
-              className="alter-cube"
-              style={{
-                transform: `scale(${1 + voiceLevel * 0.1})`,
-                boxShadow: speaking ? `0 0 ${20 + voiceLevel * 30}px rgba(133, 166, 234, 0.5)` : undefined,
-              }}
-            >
-              R
-            </div>
-            <div className="avatar-label">
-              <strong>Rahul&apos;s Alter <AlterBadge /></strong>
-              <span>Representing Rahul (Senior Engineer · On Leave)</span>
-            </div>
-          </div>
-
-          {/* Embedded Voice Control for In-App Live Interaction */}
-          <div className="in-app-voice-bar">
+          {liveVoice && (
             <VoiceControl
               mode="huddle"
               targetId="rahul"
+              autoStart
               onSpeaking={setSpeaking}
-              onLevel={setVoiceLevel}
               onResult={(res) => setLatestAnswer(res as Answer)}
             />
-          </div>
-
-          {/* Latest Answer & Escalation Result */}
-          {latestAnswer && (
-            <div className="latest-answer-bubble">
-              <p className="eyebrow">Answer from Rahul&apos;s Alter</p>
-              <p className="answer-text">{latestAnswer.answer}</p>
-              <Citations sources={latestAnswer.citations} />
-
-              {simulatedEscalation && (
-                <div className="escalation-alert-toast">
-                  <span className="alert-icon">⚑</span>
-                  <div>
-                    <strong>Priority notification sent to Rahul</strong>
-                    <p className="hint">
-                      Sent to Rahul&apos;s phone: &quot;Confirm launch date for Login Revamp (Asked in 2:00 PM Sync)&quot;
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
           )}
         </div>
       </div>
+
+      <AlterOrb
+        state={orbSpeaking ? 'speaking' : sceneIdx >= 0 ? 'working' : mic === 'listening' && !liveVoice ? 'listening' : 'idle'}
+        caption={orbSpeaking ? 'Rahul’s Alter is answering…' : 'Say what you need in the room — I’m handling it.'}
+        label="Your Alter"
+        onHome={onBack}
+      />
     </section>
   )
 }

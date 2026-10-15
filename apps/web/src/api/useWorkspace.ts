@@ -15,8 +15,8 @@ export function useWorkspace(join?: JoinResult) {
     let unsubscribe: (() => void) | undefined
     void (import.meta.env.VITE_DEV_AUTH === '1' ? import('../api/polling') : import('../firebase')).then(({ watchWorkspace }) => {
       if (stopped) return
-      unsubscribe = watchWorkspace(join, (data) => setRemote({ workspaceId: join.workspaceId, data, error: '' }), () => setRemote((state) => ({ ...state, workspaceId: join.workspaceId, error: 'Workspace updates are unavailable. Check your connection and try again.' })))
-    }).catch(() => { if (!stopped) setRemote({ workspaceId: join.workspaceId, data: emptyWorkspace, error: 'Workspace updates could not load. Please try again.' }) })
+      unsubscribe = watchWorkspace(join, (data) => setRemote({ workspaceId: join.workspaceId, data, error: '' }), () => setRemote((state) => ({ ...state, workspaceId: join.workspaceId, error: 'Your Alter’s updates are unavailable. Check your connection and try again.' })))
+    }).catch(() => { if (!stopped) setRemote({ workspaceId: join.workspaceId, data: emptyWorkspace, error: 'Could not load your Alter. Please try again.' }) })
     return () => { stopped = true; unsubscribe?.() }
   }, [join, retry])
   const current = remote.workspaceId === join?.workspaceId

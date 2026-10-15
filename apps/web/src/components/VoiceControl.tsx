@@ -18,6 +18,7 @@ interface Props {
   onCapture?: (text: string, kind: 'human' | 'alter') => void
   onActive?: (active: boolean) => void
   onLevel?: (level: number) => void
+  autoStart?: boolean
 }
 export function VoiceControl(props: Props) {
   const callbacks = useRef(props)
@@ -44,6 +45,14 @@ export function VoiceControl(props: Props) {
     })
     session.current = instance; if (props.mode === 'reply') instance.mute(true); void instance.start()
   }
+  const started = useRef(false)
+  const startRef = useRef(start)
+  useEffect(() => { startRef.current = start })
+  useEffect(() => {
+    if (!props.autoStart || started.current) return
+    const timer = setTimeout(() => { started.current = true; startRef.current() }, 700)
+    return () => clearTimeout(timer)
+  }, [props.autoStart])
   return <div className={`voice-control voice-${state}`} aria-label={`${props.mode} voice controls`}>
     <div className="actions">{state === 'closed' ? <button type="button" onClick={start}><Icon name="mic" size={16} />{props.mode === 'revise' || props.mode === 'review' ? 'Revise by voice' : props.mode === 'reply' ? 'Speak your reply' : props.mode === 'huddle' ? 'Talk to this Alter' : 'Talk to your Alter'}</button> : <><span className="voice-wave" aria-hidden="true">{[.5,.8,1,.7,.4].map((factor, i) => <i key={i} style={{ height: 4 + level * factor * 16 }} />)}</span>
       <button type="button" onClick={() => { session.current?.stop() }}>End voice</button>

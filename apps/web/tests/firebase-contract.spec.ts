@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 test.use({ baseURL: 'http://127.0.0.1:5175' })
 const fixture = (name: string) => JSON.parse(readFileSync(resolve('../../contracts/fixtures', `${name}.json`), 'utf8'))
 
-test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped Firestore snapshots', async ({ page, isMobile }) => {
+test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped Firestore snapshots', async ({ page }) => {
   const workspace = fixture('workspace'), approvals = fixture('approvals'), activity = fixture('activity')
   const records = {
     'workspaces/ws_demo': workspace.workspace,
@@ -74,14 +74,15 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   await page.getByRole('button', { name: 'Add a QA update to the status doc' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
   await expect(page.getByRole('article', { name: 'Status doc · QA section' })).toBeVisible()
-  if (isMobile) await page.getByRole('button', { name: 'Chat', exact: true }).click()
   await expect(page.getByRole('log').getByText('Streamed reply from the conversation collection.')).toBeVisible()
-  if (isMobile) await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /^More/ }).click()
-  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /^approvals/ }).filter({ visible: true }).click()
+  const alterNav = page.getByRole('navigation', { name: 'Alter' })
+  await alterNav.getByRole('button', { name: /^More/ }).click()
+  await alterNav.getByRole('button', { name: /^Waiting on you/ }).filter({ visible: true }).click()
   await expect(page.getByText('Another member private proposal')).toHaveCount(0)
   const observed = await page.evaluate(() => (window as any).firestoreHarness.observed)
   expect(observed.find((ref: any) => ref.path.endsWith('/approvals')).filters).toEqual([{ field: 'owner', op: '==', value: 'm_judge' }])
-  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /^activity/ }).click()
+  await alterNav.getByRole('button', { name: /^More/ }).click()
+  await alterNav.getByRole('button', { name: /^Work log/ }).filter({ visible: true }).click()
   await expect(page.getByText('2026-10-14', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Rahul's Alter answered/ })).toBeVisible()
   expect(headers.length).toBeGreaterThanOrEqual(3)

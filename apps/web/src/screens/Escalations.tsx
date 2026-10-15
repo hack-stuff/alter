@@ -4,7 +4,7 @@ import type { Escalation, Member } from '../api/types'
 import { AlterBadge } from '../components/AlterBadge'
 import { VoiceControl } from '../components/VoiceControl'
 
-function Question({ item, members, onRefresh }: { item: Escalation; members: Member[]; onRefresh: () => void }) {
+export function Question({ item, members, onRefresh }: { item: Escalation; members: Member[]; onRefresh: () => void }) {
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(false)

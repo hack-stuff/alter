@@ -21,14 +21,16 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
   }
 
   return (
-    <form className="screen join" onSubmit={submit}>
+    <form className="screen join join-fx" onSubmit={submit}>
+      <div className="fx-aurora" aria-hidden="true" />
+      <div className="join-core" aria-hidden="true"><span className="core-sweep" /><span className="core-letter">✦</span></div>
       <div className="welcome-mark"><Icon name="sparkle" size={24} />ALTER · YOUR AI REPRESENTATIVE</div><h1>A little more<br />room to get things done.</h1>
       <p>Your own AI representative at work. It answers for you, asks teammates' Alters, and acts in Google Docs, Sheets, Calendar and Gmail when you approve.</p>
       <label>
         Your name
         <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus disabled={busy} />
       </label>
-      <p className="hint">{inviteCode ? 'Join your teammates in their workspace. Your Alter starts with notes for your role.' : "You'll join the Login revamp team as QA lead. Your Alter starts with the team's QA notes."}</p>
+      <p className="hint">{inviteCode ? 'Join your teammates’ team. Your Alter starts with notes for your role.' : "You'll join the Login revamp team as QA lead. Your Alter starts with the team's QA notes."}</p>
       {error && <p className="error" role="alert">{error}</p>}
       <button className="primary" disabled={busy || !name.trim()}>{busy ? 'Setting up your team…' : 'Get my Alter'}</button>
     </form>

@@ -4,7 +4,7 @@ The application now connects meeting capture, review, Google writes, A2A continu
 
 ## Implemented
 
-- Warm ivory/cobalt visual system, editorial headings, shared icons and avatars, desktop sidebar and mobile Home / Work / Team / Activity navigation with a More menu.
+- Warm ivory/cobalt visual system, editorial headings, shared icons and avatars, and a character-first Alter surface with the remaining screens behind the More workbench menu.
 - Work screen with consenting transcript capture, review cards for the status document, team summary and task board; source chips, revisions, blue changes and reviewed confirmation.
 - Transcript segment IDs, immutable uploads, bounded capture, evidence-backed extraction, persisted review state and deep links. Pending uploads stay on the capturing device for retry. Mixed meeting audio does not authenticate a speaker.
 - Restart-safe meeting jobs with transactional outbox, Cloud Tasks dispatch, stable names, leases, deadlines, retry limits, pause/resume/cancel and reconciliation of uncertain writes. Provisioning/welcome still use the earlier in-process mechanism; arbitrary chat is still request-based.
@@ -21,7 +21,7 @@ The application now connects meeting capture, review, Google writes, A2A continu
 
 Use the existing commands in [Track A deployment](track-a-deployment.md). Start the API with `DEV_MODE=1` and the web app with `VITE_MOCK=0 VITE_DEV_AUTH=1`. This exercises persistence, workflows, real A2A HTTP and simulated Google adapters without provider charges. The app identifies local AI/Google simulation.
 
-Open **Work → New meeting**, choose participants, confirm capture consent, then add an actual transcript or start the meeting audio. End voice and choose **Prepare my review**. Edit the prepared work, inspect all cards, optionally authorize the specific production-readiness follow-up, and approve the displayed changes. A team summary is delivered to Alter inboxes; arbitrary external Gmail delivery remains prohibited.
+Open **More → Meetings → New meeting**, choose participants, confirm capture consent, then add an actual transcript or start the meeting audio. End voice and choose **Prepare my review**. Edit the prepared work, inspect all cards, optionally authorize the specific production-readiness follow-up, and approve the displayed changes. A team summary is delivered to Alter inboxes; arbitrary external Gmail delivery remains prohibited.
 
 For actual local Gemini reasoning, follow [Real model testing](real-model-testing.md), retaining `GCP_REGION=us-central1` and `VERTEX_LOCATION=global` for the selected text models. The native-audio model/region is configured independently.
 

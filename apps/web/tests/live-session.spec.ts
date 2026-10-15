@@ -20,10 +20,9 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
     const Native = window.AudioContext
     window.AudioContext = class extends Native { constructor(options?: AudioContextOptions) { super(options); state.testAudio.push(this) } }
   })
-  await page.goto('/')
+  await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.audio)).toBeGreaterThan(0)
   await page.evaluate(async () => {
@@ -72,10 +71,9 @@ test('a rejected token request releases the microphone and returns to text contr
     const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
     navigator.mediaDevices.getUserMedia = async (constraints) => { const stream = await original(constraints); (window as any).testStream = stream; return stream }
   })
-  await page.goto('/')
+  await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
   await expect(page.getByRole('alert')).toContainText('Your voice budget is used for now')
   await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeEnabled()
   expect(await page.evaluate(() => (window as any).testStream.getTracks()[0].readyState)).toBe('ended')
