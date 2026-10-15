@@ -22,12 +22,14 @@
     {
       "collectionGroup": "liveBudgets",
       "fieldPath": "expiresAt",
-      "ttl": true
+      "ttl": true,
+      "indexes": []
     },
     {
       "collectionGroup": "liveSessions",
       "fieldPath": "expiresAt",
-      "ttl": true
+      "ttl": true,
+      "indexes": []
     },
     {
       "collectionGroup": "approvals",
