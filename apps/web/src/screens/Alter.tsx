@@ -134,13 +134,13 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   const OFFERS: Offer[] = [
     {
       key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Google Meet linked' : 'Team conversation', title: 'Join the team sync',
-      desc: `Ask ${rahulName}’s Alter, capture the conversation, and prepare the follow-up. Open the actual Meet from the companion.`,
+      desc: `Ask ${rahulName}’s Alter, capture the sync, and prepare the follow-up.`,
       go: 'Take me in', hot: /join|sync|meet|room|call/, sayLine: 'Opening your meeting companion. Start capture after participants consent.',
       run: () => onOpen('meet'),
     },
     {
       key: 'plan', num: '02', glyph: 'files', kicker: 'On the canvas', title: 'Shape the login plan',
-      desc: 'Continue your saved login journey. Edit by voice, undo, then review its Google Docs publication.',
+      desc: 'Edit the saved login journey by voice, then review the Google Doc.',
       go: 'Open the canvas', hot: /plan|diagram|canvas|redraw|shape/, sayLine: 'Opening the live diagram — say what to change and watch it redraw.',
       run: () => onOpen('plan'),
     },
@@ -152,7 +152,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     },
     {
       key: 'ask', num: '04', glyph: 'sparkle', kicker: 'One question', title: 'Ask about the launch',
-      desc: `I’ll check with ${rahulName}’s Alter and bring back sources.`,
+      desc: `Get a sourced launch update from ${rahulName}’s Alter.`,
       go: 'Ask now', hot: /launch|date|when|ask about/, sayLine: 'Checking with the team now — one moment.',
       run: () => void send("Ask Rahul's Alter to confirm the launch date"),
     },
@@ -252,6 +252,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     </div>
 
     <section className="alter-actions" aria-label="What your Alter can do next">
+    <div className="alter-actions-heading"><h3>Where should we start?</h3></div>
     <div className={`offer-grid ${picked ? 'is-clearing' : ''}`}>
       {OFFERS.map((offer) => (
         <button key={offer.key} type="button" disabled={!ready || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>

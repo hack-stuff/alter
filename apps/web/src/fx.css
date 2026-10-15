@@ -48,6 +48,7 @@
 }
 
 .app-alter .app-header {
+  min-height: 80px;
   margin-bottom: 0;
   color: #eef2ff;
   border-bottom-color: rgba(148, 163, 214, 0.16);
@@ -68,7 +69,7 @@
   background: #192747;
 }
 .alter-screen.fx {
-  min-height: calc(100dvh - 102px);
+  min-height: calc(100dvh - 80px);
   max-width: none;
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -84,13 +85,33 @@
 }
 .alter-agent-panel { min-width: 0; }
 .alter-landing .alter-face { align-items: flex-start; text-align: left; padding: 0 0 12px; }
-.alter-landing .alter-face-copy { align-items: flex-start; }
+.alter-landing .alter-face-copy { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.alter-landing .alter-face-copy h2 { flex-basis: 100%; justify-content: flex-start; }
 .alter-landing .alter-state,
-.alter-landing .alter-mic { justify-content: flex-start; }
+.alter-landing .alter-mic { justify-content: flex-start; margin-top: 0; }
 .alter-landing .alter-core { width: 128px; height: 128px; }
 .alter-landing .alter-voice-dock { width: 100%; margin: 12px 0; }
+.alter-landing .alter-voice-dock .voice-control {
+  background: rgba(12, 19, 40, .78);
+  border-color: rgba(148, 163, 214, .24);
+  box-shadow: 0 12px 36px rgba(4, 7, 20, .2);
+}
+.alter-landing .alter-voice-dock .voice-control .actions button:nth-of-type(2) {
+  background: #284471;
+  border-color: #5572a8;
+}
+.alter-landing .alter-voice-dock .voice-control .transcript {
+  margin-top: 9px;
+  padding: 9px 0 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 214, .18);
+  border-radius: 0;
+}
 .alter-landing .fx-ticker { justify-content: flex-start; }
 .alter-actions { width: 100%; max-width: 660px; min-width: 0; justify-self: end; padding-top: 4px; }
+.alter-actions-heading { margin-bottom: 12px; }
+.alter-actions-heading h3 { color: #eef2ff; font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: 400; letter-spacing: -.025em; }
 .alter-actions .offer-grid { margin-top: 0; }
 .alter-below { max-width: 780px; margin: 38px auto 0; }
 
@@ -325,14 +346,14 @@
   .alter-actions .offer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .alter-actions .offer-card {
     gap: 5px;
-    min-height: 176px;
+    min-height: 156px;
     padding: 12px 14px;
   }
   .alter-actions .offer-glyph { width: 28px; height: 28px; }
-  .alter-actions .offer-kicker { font-size: 9px; }
-  .alter-actions .offer-card strong { font-size: 15px; }
-  .alter-actions .offer-desc { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: 11.5px; line-height: 1.35; }
-  .alter-actions .offer-go { padding-top: 0; font-size: 11px; }
+  .alter-actions .offer-kicker { font-size: 9.5px; }
+  .alter-actions .offer-card strong { font-size: 16px; }
+  .alter-actions .offer-desc { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12px; line-height: 1.4; }
+  .alter-actions .offer-go { padding-top: 0; font-size: 11.5px; }
 }
 
 @media (max-width: 760px) {
