@@ -392,11 +392,14 @@ class Engine:
             reply = await self.brain.chat(replace(ctx, conversation_id=cid), message)
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
+            from app.diagnostics import report_agent_failure
+
+            reference = report_agent_failure(exc, self.settings)
             raise error(
                 503,
                 "AGENT_UNAVAILABLE",
-                "Your Alter could not complete that request. Please try again.",
+                f"Your Alter could not complete that request. Please try again. Reference: {reference}",
             ) from None
         result = {"from": "alter", **reply, "ts": iso()}
 

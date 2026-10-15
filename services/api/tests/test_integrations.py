@@ -475,3 +475,54 @@ def test_agent_escalation_is_not_duplicated(team, monkeypatch):
     result = asyncio.run(e.ask_core(context, "rahul", "Why one-tap?", "one-trace"))
     assert result["outcome"] == "ask" and result["escalationId"]
     assert len(e.store.list(f"workspaces/{context.workspace_id}/escalations")) == 1
+
+
+def test_agent_failure_logs_safe_reference(team, monkeypatch, capsys):
+    c, e, h, r = team
+
+    class ProviderFailure(Exception):
+        code = 400
+        status = "INVALID_ARGUMENT"
+
+    async def fail(*args):
+        raise ProviderFailure(
+            "Function schema invalid; credential=private-token; prompt=private-question"
+        )
+
+    monkeypatch.setattr(e.brain, "chat", fail)
+    response = c.post("/v1/chat", headers=h, json={"message": "private-question"})
+    assert response.status_code == 503
+    details = json.loads(capsys.readouterr().err.strip().splitlines()[-1])
+    assert details["category"] == "model_tool_or_schema_configuration"
+    assert details["providerCode"] == 400 and details["frames"]
+    assert details["reference"] in response.text
+    assert "private-token" not in json.dumps(details) + response.text
+    assert "private-question" not in json.dumps(details) + response.text
+
+
+def test_real_adk_runner_with_provider_double(team, monkeypatch):
+    from google.adk.models.base_llm import BaseLlm
+    from google.adk.models.llm_response import LlmResponse
+    from google.genai import types
+    from app.alters import factory
+    from app.alters.brain import VertexBrain
+
+    c, e, h, r = team
+    original = factory.build_alter
+
+    class TestModel(BaseLlm):
+        async def generate_content_async(self, llm_request, stream=False):
+            yield LlmResponse(
+                content=types.Content(
+                    role="model", parts=[types.Part(text='{"claims":[]}')]
+                )
+            )
+
+    def build(*args, **kwargs):
+        result = original(*args, **kwargs)
+        result[0].model = TestModel(model="test")
+        return result
+
+    monkeypatch.setattr(factory, "build_alter", build)
+    result = asyncio.run(VertexBrain(e).chat(e.auth.member(Caller("alice")), "Hello"))
+    assert result["text"] and result["approvalIds"] == []
