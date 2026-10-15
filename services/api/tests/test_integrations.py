@@ -526,3 +526,105 @@ def test_real_adk_runner_with_provider_double(team, monkeypatch):
     monkeypatch.setattr(factory, "build_alter", build)
     result = asyncio.run(VertexBrain(e).chat(e.auth.member(Caller("alice")), "Hello"))
     assert result["text"] and result["approvalIds"] == []
+
+
+def test_gemini_tools_have_explicit_object_properties(team):
+    from app.alters.factory import build_alter
+    from google.adk.tools import FunctionTool
+
+    c, e, h, r = team
+    context = e.auth.member(Caller("alice"))
+    agent, *_ = build_alter(e, context, e.me(context) | {"id": context.member_id})
+
+    def validate(schema):
+        if not isinstance(schema, dict):
+            return
+        if schema.get("type") == "OBJECT":
+            assert schema.get("properties"), schema
+        for value in schema.values():
+            if isinstance(value, dict):
+                validate(value)
+            elif isinstance(value, list):
+                for entry in value:
+                    validate(entry)
+
+    for function in agent.tools:
+        declaration = FunctionTool(function)._get_declaration()
+        validate(declaration.parameters.model_dump(mode="json", exclude_none=True))
+
+
+def test_vertex_revision_preserves_server_targets(team, monkeypatch):
+    from app.alters.brain import VertexPlanner
+
+    c, e, h, r = team
+    fake = SimpleNamespace(
+        models=SimpleNamespace(
+            generate_content=lambda **kwargs: SimpleNamespace(
+                text='{"sections":[{"section":"QA","lines":["Updated."]}]}'
+            )
+        )
+    )
+    e.__dict__["model_client"] = fake
+    current = {
+        "kind": "doc_edit",
+        "action": {
+            "document": "statusDoc",
+            "fileId": "server-file",
+            "requiredRevisionId": "server-revision",
+            "sections": [{"section": "QA", "lines": ["Old."]}],
+        },
+    }
+    result = VertexPlanner(e, e.auth.member(Caller("alice"))).revise(
+        current, "Update QA"
+    )
+    assert (
+        result["fileId"] == "server-file"
+        and result["requiredRevisionId"] == "server-revision"
+    )
+    assert result["sections"][0]["lines"] == ["Updated."]
+
+
+def test_real_adk_runner_invokes_typed_document_tool(team, monkeypatch):
+    from google.adk.models.base_llm import BaseLlm
+    from google.adk.models.llm_response import LlmResponse
+    from google.genai import types
+    from app.alters import factory
+    from app.alters.brain import VertexBrain
+
+    c, e, h, r = team
+    original = factory.build_alter
+
+    class ToolModel(BaseLlm):
+        calls: int = 0
+
+        async def generate_content_async(self, llm_request, stream=False):
+            self.calls += 1
+            part = (
+                types.Part(
+                    function_call=types.FunctionCall(
+                        name="propose_doc",
+                        args={
+                            "title": "QA acceptance",
+                            "sections": [{"section": "QA", "lines": ["Draft only."]}],
+                        },
+                    )
+                )
+                if self.calls == 1
+                else types.Part(text='{"claims":[]}')
+            )
+            yield LlmResponse(content=types.Content(role="model", parts=[part]))
+
+    def build(*args, **kwargs):
+        result = original(*args, **kwargs)
+        result[0].model = ToolModel(model="test")
+        return result
+
+    monkeypatch.setattr(factory, "build_alter", build)
+    result = asyncio.run(
+        VertexBrain(e).chat(e.auth.member(Caller("alice")), "Prepare a document")
+    )
+    assert len(result["approvalIds"]) == 1
+    card = e.proposals.owned(e.auth.member(Caller("alice")), result["approvalIds"][0])
+    assert card["state"] == "proposed" and card["action"]["sections"][0]["lines"] == [
+        "Draft only."
+    ]

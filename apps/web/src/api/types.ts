@@ -132,6 +132,7 @@ export interface Workspace {
   inviteCode: string
   director?: boolean
   state?: 'provisioning' | 'provisioning_failed' | 'ready'
+  aiBackend?: 'local' | 'vertex'
   simulated?: boolean
   google: { folderUrl?: string; docs: Record<string, string>; sheetUrl?: string; calendarUrl?: string }
 }

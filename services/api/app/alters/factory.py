@@ -4,6 +4,7 @@ from functools import cached_property
 from pydantic import BaseModel, Field
 from google.adk.models.google_llm import Gemini
 from pathlib import Path
+from app.alters.schemas import DocumentSection
 
 
 class ProjectGemini(Gemini):
@@ -141,15 +142,31 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
         remote_answers.append(answer)
         return answer
 
-    async def propose_doc(title: str, sections: list[dict]) -> dict:
+    async def propose_doc(title: str, sections: list[DocumentSection]) -> dict:
         """Propose a new document. This never applies a Google write."""
-        return await propose("doc_create", {"title": title, "sections": sections})
+        return await propose(
+            "doc_create",
+            {
+                "title": title,
+                "sections": [
+                    DocumentSection.model_validate(section).model_dump()
+                    for section in sections
+                ],
+            },
+        )
 
-    async def propose_doc_edit(document: str, sections: list[dict]) -> dict:
+    async def propose_doc_edit(document: str, sections: list[DocumentSection]) -> dict:
         """Propose complete replacement sections for a registered workspace document."""
         return await propose(
             "doc_edit",
-            {"document": document, "title": "Document update", "sections": sections},
+            {
+                "document": document,
+                "title": "Document update",
+                "sections": [
+                    DocumentSection.model_validate(section).model_dump()
+                    for section in sections
+                ],
+            },
         )
 
     async def propose_sheet_update(rows: list[list[str]], start_row: int = 0) -> dict:
@@ -265,6 +282,8 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
         instruction=f"{base}\n{role}\n{mode}\nIdentity: {member['name']}, status: {member['status']}. Workspace member ID: {member['id']}. Return exact source sentences as claims with sourceId and locator. Never place ungrounded factual text outside claims.",
         tools=tools,
         output_schema=AgentResult,
+        disallow_transfer_to_parent=True,
+        disallow_transfer_to_peers=True,
         before_model_callback=charge,
     )
     return agent, observed, proposal_ids, trace_ids, remote_answers, effects

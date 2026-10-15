@@ -104,6 +104,7 @@ class LocalApps:
                 "calendarUrl": self.url(ids["calendar"]),
             },
             "simulated": True,
+            "aiBackend": self.settings.ai_backend,
         }
 
     def read_doc(self, wid, file_id):

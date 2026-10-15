@@ -33,3 +33,12 @@ def team(system):
     ).json()
     engine.workspaces.provision(result["workspaceId"])
     return client, engine, headers, result
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--live-models",
+        action="store_true",
+        default=False,
+        help="Enable paid real Vertex model tests; requires ADC and explicit project/model configuration.",
+    )

@@ -635,6 +635,7 @@ class Engine:
                     "director",
                     "state",
                     "simulated",
+                    "aiBackend",
                 )
                 if key in workspace
             },
