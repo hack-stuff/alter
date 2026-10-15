@@ -31,8 +31,12 @@ gcloud builds submit --project="$GCP_PROJECT" --config=infra/cloudbuild.yaml --s
 gcloud run deploy alter-api --project="$GCP_PROJECT" --region="$GCP_REGION" --image="$image" --service-account="$api_account" --env-vars-file="$API_ENV_FILE" --allow-unauthenticated --min-instances=1 --max-instances=3 --cpu=1 --memory=1Gi --no-cpu-throttling --timeout=180 --concurrency=20
 # The public HTTP endpoint verifies Firebase, A2A HMAC, or scheduler OIDC itself.
 actual_url="$(gcloud run services describe alter-api --project="$GCP_PROJECT" --region="$GCP_REGION" --format='value(status.url)')"
-if [[ "$SERVICE_URL" != "$actual_url" ]]; then
-  echo 'Cloud Run returned a different URL. Update SERVICE_URL/SCHEDULER_AUDIENCE in the local env file and rerun deployment before validation.' >&2
+# Cloud Run may display the deterministic URL while status.url contains the
+# equivalent service-hash URL. Both identify this deployed service.
+project_number="$(gcloud projects describe "$GCP_PROJECT" --format='value(projectNumber)')"
+deterministic_url="https://alter-api-${project_number}.${GCP_REGION}.run.app"
+if [[ "${SERVICE_URL%/}" != "${actual_url%/}" && "${SERVICE_URL%/}" != "$deterministic_url" ]]; then
+  echo "Configured SERVICE_URL does not match this service. Use $actual_url or $deterministic_url, and set SCHEDULER_AUDIENCE to the same URL." >&2
   exit 1
 fi
 job_args=(--project="$GCP_PROJECT" --location="$GCP_REGION" --schedule='*/15 * * * *' --uri="${SERVICE_URL}/internal/cleanup" --http-method=POST --oidc-service-account-email="$scheduler_account" --oidc-token-audience="$SERVICE_URL" --time-zone=Etc/UTC --attempt-deadline=180s)
