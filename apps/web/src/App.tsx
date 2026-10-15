@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { api, MOCK, ApiError } from './api/client'
 import { useWorkspace } from './api/useWorkspace'
 import type { Approval, JoinResult } from './api/types'
+import { WorkdayHome } from './screens/WorkdayHome'
+import { MeetCompanion } from './screens/MeetCompanion'
+import { PlanCanvas } from './screens/PlanCanvas'
 import { Home } from './screens/Home'
 import { Join } from './screens/Join'
 import { Team } from './screens/Team'
@@ -17,8 +20,13 @@ import { Work } from './screens/Work'
 import { Notifications } from './components/Notifications'
 import './App.css'
 
-type Screen = 'home' | 'work' | 'team' | 'approvals' | 'escalations' | 'activity' | 'settings' | 'files'
-const SCREENS: Screen[] = ['home', 'work', 'team', 'activity', 'approvals', 'escalations', 'files', 'settings']
+type Screen = 'workday' | 'meet' | 'plan' | 'home' | 'work' | 'team' | 'approvals' | 'escalations' | 'activity' | 'settings' | 'files'
+const PRIMARY_SCREENS: { id: Screen; label: string; icon: string }[] = [
+  { id: 'workday', label: 'Workday View', icon: 'sparkle' },
+  { id: 'meet', label: 'Google Meet', icon: 'work' },
+  { id: 'plan', label: 'Visual Plan', icon: 'files' },
+]
+const SECONDARY_SCREENS: Screen[] = ['activity', 'team', 'files', 'home', 'work', 'approvals', 'escalations', 'settings']
 
 export default function App() {
   const parameters = new URLSearchParams(location.search)
@@ -36,7 +44,9 @@ export default function App() {
     }).finally(() => { if (!cancelled) setRestoring(false) })
     return () => { cancelled = true }
   }, [canRestore, restoreAttempt])
-  const [screen, setScreen] = useState<Screen>(parameters.has('meeting') ? 'work' : parameters.has('decision') ? 'escalations' : parameters.get('view') === 'files' ? 'files' : 'home')
+  const [screen, setScreen] = useState<Screen>(
+    parameters.has('meeting') ? 'work' : parameters.has('decision') ? 'escalations' : parameters.get('view') === 'files' ? 'files' : 'workday'
+  )
   const { data, error: streamError, refresh } = useWorkspace(session?.join)
   const [overrides, setOverrides] = useState<Record<string, Approval>>({})
   const [resetting, setResetting] = useState(false)
@@ -44,7 +54,7 @@ export default function App() {
   const [generation, setGeneration] = useState(0)
   const [more, setMore] = useState(false)
   const [error, setError] = useState('')
-  function joined(join: JoinResult, name: string) { setSession({ join, name }); setOverrides({}); setScreen('home') }
+  function joined(join: JoinResult, name: string) { setSession({ join, name }); setOverrides({}); setScreen('workday') }
   function updateApproval(updated: Approval) { setOverrides((cards) => ({ ...cards, [updated.id]: updated })) }
   async function reset() {
     if (!session || resetting) return
@@ -67,16 +77,104 @@ export default function App() {
   const waiting = escalations.filter((e) => e.state === 'pending').length
   const inviteUrl = data.workspace?.inviteCode ? new URL(`/join/${data.workspace.inviteCode}`, location.origin).href : session.join.inviteUrl
   return <main className="app">
-    <header className="app-header"><div className="brand"><span className="brand-mark"><Icon name="sparkle" size={19} /></span>Alter<span className="hint">{data.workspace?.name ?? 'Your workspace'}</span></div><div className="header-actions"><Notifications items={data.notifications ?? []} onOpen={(path) => { const params = new URL(path, location.origin).searchParams; setScreen(params.has('meeting') ? 'work' : params.has('decision') ? 'escalations' : 'files'); if (params.has('meeting')) { sessionStorage.setItem('alter.open.meeting', params.get('meeting')!); setGeneration((g) => g + 1) } }} /><Avatar name={session.name} size="small" /></div></header>
-    {MOCK && <p className="demo-banner">Demo workspace · sample answers and changes · resets on reload</p>}
+    <header className="app-header">
+      <div className="brand" onClick={() => setScreen('workday')} style={{ cursor: 'pointer' }}>
+        <span className="brand-mark"><Icon name="sparkle" size={19} /></span>Alter
+        <span className="hint">Personal Intern · Google Workspace</span>
+      </div>
+      <div className="header-actions">
+        <Notifications items={data.notifications ?? []} onOpen={(path) => { const params = new URL(path, location.origin).searchParams; setScreen(params.has('meeting') ? 'work' : params.has('decision') ? 'escalations' : 'files'); if (params.has('meeting')) { sessionStorage.setItem('alter.open.meeting', params.get('meeting')!); setGeneration((g) => g + 1) } }} />
+        <Avatar name={session.name} size="small" />
+      </div>
+    </header>
+    {MOCK && <p className="demo-banner">Demo workspace · Priya&apos;s workday · resets on reload</p>}
     {data.workspace?.simulated && <p className="demo-banner">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Vertex AI and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</p>}
     {data.workspace?.state === 'provisioning' && <p role="status">Setting up your team’s Google resources…</p>}
     {data.workspace?.state === 'provisioning_failed' && <p role="alert" className="error">Google setup failed. Contact the administrator or reset the workspace to try again.</p>}
-    <nav className="main-nav" aria-label="Workspace"><div className="nav-wordmark"><Icon name="sparkle" size={25} />alter</div><p className="nav-section-label">Your workspace</p>{SCREENS.map((s, i) => <button className={i > 3 ? 'secondary-nav' : ''} key={s} aria-pressed={s === screen} onClick={() => { setScreen(s); setMore(false) }}><Icon name={s} size={19} /><span>{s}</span>{s === 'approvals' && pending > 0 && <span className="count">{pending}</span>}{s === 'escalations' && waiting > 0 && <span className="count">{waiting}</span>}</button>)}<button className="more-toggle" aria-expanded={more} onClick={() => setMore(!more)}><Icon name="more" size={21} /><span>More</span>{pending + waiting > 0 && <span className="count">{pending + waiting}</span>}</button>{more && <div className="mobile-more-menu">{SCREENS.slice(4).map((s) => <button key={s} aria-pressed={s === screen} onClick={() => { setScreen(s); setMore(false) }}><Icon name={s} size={18} /><span>{s}</span>{s === 'approvals' && pending > 0 && <span className="count">{pending}</span>}{s === 'escalations' && waiting > 0 && <span className="count">{waiting}</span>}</button>)}</div>}<div className="nav-footer"><Avatar name={session.name} size="small" /><span>{session.name}<br /><small>Your personal workspace</small></span></div></nav>
+
+    <nav className="main-nav" aria-label="Workspace">
+      <div className="nav-wordmark" onClick={() => setScreen('workday')} style={{ cursor: 'pointer' }}>
+        <Icon name="sparkle" size={25} />alter
+      </div>
+      <p className="nav-section-label">Workday Experience</p>
+      {PRIMARY_SCREENS.map((item) => (
+        <button
+          key={item.id}
+          aria-pressed={screen === item.id}
+          onClick={() => { setScreen(item.id); setMore(false) }}
+          className={item.id === 'meet' ? 'nav-meet-btn' : ''}
+        >
+          <Icon name={item.icon} size={19} />
+          <span>{item.label}</span>
+          {item.id === 'meet' && <span className="live-dot" />}
+        </button>
+      ))}
+
+      <p className="nav-section-label" style={{ marginTop: '16px' }}>Intern Records</p>
+      {SECONDARY_SCREENS.slice(0, 3).map((s) => (
+        <button key={s} aria-pressed={s === screen} onClick={() => { setScreen(s); setMore(false) }}>
+          <Icon name={s} size={18} />
+          <span>{s}</span>
+          {s === 'approvals' && pending > 0 && <span className="count">{pending}</span>}
+          {s === 'escalations' && waiting > 0 && <span className="count">{waiting}</span>}
+        </button>
+      ))}
+
+      <button className="more-toggle" aria-expanded={more} onClick={() => setMore(!more)}>
+        <Icon name="more" size={21} />
+        <span>More ({SECONDARY_SCREENS.length - 3})</span>
+      </button>
+
+      {more && (
+        <div className="mobile-more-menu">
+          {SECONDARY_SCREENS.map((s) => (
+            <button key={s} aria-pressed={s === screen} onClick={() => { setScreen(s); setMore(false) }}>
+              <Icon name={s} size={18} />
+              <span>{s}</span>
+              {s === 'approvals' && pending > 0 && <span className="count">{pending}</span>}
+              {s === 'escalations' && waiting > 0 && <span className="count">{waiting}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="nav-footer">
+        <Avatar name={session.name} size="small" />
+        <span>{session.name}<br /><small>Product Lead</small></span>
+      </div>
+    </nav>
+
     {streamError && <div role="alert" className="error"><p>{streamError}</p><button onClick={refresh}>Retry workspace updates</button></div>}
     {confirmReset && <section className="reset-confirmation" aria-label="Reset confirmation"><p>Reset this workspace to its starting state? Your current conversation and changes will be cleared.</p><div className="actions"><button onClick={() => void reset()} disabled={resetting}>{resetting ? 'Resetting…' : 'Confirm reset'}</button><button disabled={resetting} onClick={() => { setConfirmReset(false); setError('') }}>Cancel</button></div>{error && <p role="alert" className="error">{error}</p>}</section>}
+
     <div key={generation}>
-      <div hidden={screen !== 'home'}><Home key={session.join.workspaceId} active={screen === 'home'} name={session.name} workspaceId={session.join.workspaceId} approvals={approvals} events={data.events} onUpdate={updateApproval} /></div>
+      {screen === 'workday' && (
+        <WorkdayHome
+          name={session.name}
+          members={data.members}
+          approvals={approvals}
+          onOpenMeet={() => setScreen('meet')}
+          onOpenPlan={() => setScreen('plan')}
+          onOpenAdmin={(s) => setScreen(s)}
+          onVoiceChat={() => setScreen('home')}
+        />
+      )}
+      {screen === 'meet' && (
+        <MeetCompanion
+          members={data.members}
+          onBack={() => setScreen('workday')}
+        />
+      )}
+      {screen === 'plan' && (
+        <PlanCanvas
+          members={data.members}
+          onBack={() => setScreen('workday')}
+          onApproveDoc={() => { refresh() }}
+        />
+      )}
+      <div hidden={screen !== 'home'}>
+        <Home key={session.join.workspaceId} active={screen === 'home'} name={session.name} workspaceId={session.join.workspaceId} approvals={approvals} events={data.events} onUpdate={updateApproval} />
+      </div>
       {screen === 'work' && <Work key={session.join.workspaceId} members={data.members} memberId={session.join.memberId} initialId={parameters.get('meeting') ?? undefined} />}
       {screen === 'team' && <Team members={data.members} memberId={session.join.memberId} inviteUrl={inviteUrl} workspaceId={session.join.workspaceId} />}
       {screen === 'approvals' && <Approvals approvals={approvals} onUpdate={updateApproval} />}
@@ -88,3 +186,4 @@ export default function App() {
     <footer className="connected-apps" aria-label="Workspace apps">Docs · Drive · Sheets · Calendar · Gmail</footer>
   </main>
 }
+
