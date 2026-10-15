@@ -19,8 +19,11 @@ class Workspaces:
             "inviteUrl": f"{self.settings.public_origin.rstrip('/')}/join/{invite}",
         }
 
-    def create(self, caller: Caller, name, ip, director=False):
+    def create(self, caller: Caller, name, ip, director=False, demo_day=False):
         wid, mid, code = new_id("ws_"), new_id("m_"), secrets.token_urlsafe(18)
+        slot = "product_lead" if demo_day else SLOTS[0]
+        if demo_day:
+            mid, name = "priya", "Priya"
 
         def create(tx):
             bound = tx.get(f"userBindings/{caller.uid}")
@@ -40,6 +43,7 @@ class Workspaces:
                     "inviteCode": code,
                     "creatorUid": caller.uid,
                     "director": director,
+                    "demoDay": demo_day,
                     "humanCount": 1,
                     "state": "provisioning",
                     "generation": new_id(),
@@ -48,8 +52,8 @@ class Workspaces:
                 },
             )
             tx.set(f"invites/{code}", {"workspaceId": wid, "invitedBy": name})
-            seed_workspace(tx, wid, mid, name, caller.uid)
-            return self.result(wid, mid, SLOTS[0], code)
+            seed_workspace(tx, wid, mid, name, caller.uid, slot)
+            return self.result(wid, mid, slot, code)
 
         return self.store.atomic(create)
 

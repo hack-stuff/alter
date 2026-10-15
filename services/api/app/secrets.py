@@ -3,7 +3,7 @@
 A development run may set ALTER_SECRET_DIR (default ~/.config/alter/secrets) to
 keep the demo OAuth bundle and similar local secrets out of git and out of the
 cloud. The fallback only reads a file when one exists for the requested secret;
-the deployed backend has no such directory and keeps using Secret Manager.
+the deployed backend always uses Secret Manager, even if a local file exists.
 """
 
 import os
@@ -21,9 +21,10 @@ def local_key(name: str) -> str:
 
 
 class Secrets:
-    def __init__(self):
+    def __init__(self, allow_local=False):
         self.values = {}
         self.lock = Lock()
+        self.allow_local = allow_local
 
     def read(self, name):
         if not name:
@@ -38,6 +39,8 @@ class Secrets:
             return self.values[name]
 
     def _local_file(self, name):
+        if not self.allow_local:
+            return None
         directory = Path(os.getenv("ALTER_SECRET_DIR") or DEFAULT_DIR)
         candidate = directory / f"{local_key(name)}.json"
         return candidate if candidate.is_file() else None

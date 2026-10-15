@@ -16,6 +16,10 @@ from app.errors import error
 from app.util import iso, now
 
 TOOLS = {
+    "diagram": (
+        "revise_diagram",
+        {"planId": "Open design plan ID", "instruction": "Requested design edit"},
+    ),
     "chat": ("alter_chat", {"message": "Work request"}),
     "revise": (
         "revise_approval",
@@ -64,6 +68,13 @@ class LiveRelay:
             raise error(
                 403, "ROOM_SCOPE", "Room voice is limited to its assigned meeting."
             )
+        if req.mode == "diagram":
+            plan = self.engine.plans.public(
+                ctx, self.engine.plans.get(ctx, req.targetId or "")
+            )
+            return json.dumps(
+                {k: plan[k] for k in ("id", "title", "revision", "nodes")}
+            )[:24000]
         if req.mode == "revise":
             card = self.engine.proposals.owned(ctx, req.targetId or "")
             return json.dumps(self.engine.meetings.public(card))[:18000]
@@ -104,7 +115,19 @@ class LiveRelay:
                         409, "CAPTURE_CLOSED", "Start a matching meeting capture first."
                     )
             return "Represented member ID: " + req.targetId
-        return "Answer the owner's work requests through the authenticated tool."
+        owner = self.engine.me(ctx)
+        return json.dumps(
+            {
+                "owner": owner["name"],
+                "role": owner["role"],
+                "availableWork": [
+                    "review the saved login journey",
+                    "open the meeting companion",
+                    "ask Rahul's Alter",
+                    "review pending proposals",
+                ],
+            }
+        )
 
     def start(self, ctx, req):
         if not self.engine.settings.live_model:
@@ -229,6 +252,7 @@ class LiveRelay:
             instruction = (
                 "You are an employee's Alter, always identified as AI. Never invent facts, commitments or successful writes. "
                 "For any work request, call the supplied tool and speak only its confirmed result in 1-2 sentences. "
+                "For an introductory greeting, briefly greet the verified owner and offer the available work without claiming any completed actions. "
                 "You can explain the supplied review context. You cannot approve anything: direct the user to the on-screen control. "
                 "Reply mode only drafts dictated text for review; never claim it was sent. "
                 "In huddle mode stay silent during unrelated conversation. Answer an unaddressed question only when it concerns the represented member's login-revamp work; always call the tool first. "

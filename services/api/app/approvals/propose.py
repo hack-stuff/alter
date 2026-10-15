@@ -277,6 +277,12 @@ class Proposals:
 
     def revise(self, ctx, aid, instruction, planner):
         current = self.owned(ctx, aid)
+        if current.get("planBinding"):
+            raise error(
+                409,
+                "EDIT_PLAN",
+                "Edit the design on its canvas, then prepare a new publication.",
+            )
         if current["state"] != "proposed":
             raise error(
                 409, "ALREADY_DECIDED", "Only pending proposals can be revised."

@@ -21,7 +21,7 @@ export function OnScreenTips({ tips, title = 'Quick tips for judges', className 
     <aside className={`on-screen-tips ${className}`} aria-label="Guidance tips">
       <div className="tips-header">
         <span className="tips-badge"><Icon name="sparkle" size={14} />{title}</span>
-        <span className="tips-hint">Click any voice prompt to speak or simulate</span>
+        <span className="tips-hint">Say it, or click to send the instruction</span>
       </div>
       <div className="tips-list">
         {tips.map((tip, idx) => {
@@ -38,11 +38,11 @@ export function OnScreenTips({ tips, title = 'Quick tips for judges', className 
                   onSelectPrompt(tip.text)
                 }
               }}
-              title={isSay ? `Click to voice: "${tip.text}"` : tip.text}
+              title={isSay ? `Send instruction: "${tip.text}"` : tip.text}
             >
               <span className="tip-prefix">{isSay ? '🎙️ Try saying:' : '👆 Try doing:'}</span>
               <span className="tip-text">{isSay ? `"${tip.text}"` : tip.text}</span>
-              {isSay && <span className="tip-action-tag">Speak ↗</span>}
+              {isSay && <span className="tip-action-tag">Use prompt ↗</span>}
             </button>
           )
         })}

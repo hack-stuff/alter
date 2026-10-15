@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LiveSession } from '../live/session'
 import type { LiveMode } from '../live/modes'
 import { Icon } from './Icon'
+import type { WorkSurface } from '../agent/navigation'
 
 interface Props {
   mode: LiveMode
@@ -19,6 +20,10 @@ interface Props {
   onActive?: (active: boolean) => void
   onLevel?: (level: number) => void
   autoStart?: boolean
+  active?: boolean
+  greet?: boolean
+  onState?: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
+  onNavigate?: (screen: WorkSurface) => void
 }
 export function VoiceControl(props: Props) {
   const callbacks = useRef(props)
@@ -33,12 +38,12 @@ export function VoiceControl(props: Props) {
   const [level, setLevel] = useState(0)
   useEffect(() => () => { session.current?.stop() }, [])
   function start() {
-    if (state !== 'closed') return
+    if (state !== 'closed' || props.active === false) return
     setError(''); setInput(''); setOutput(''); setMuted(props.mode === 'reply')
     const instance = new LiveSession({
       ...props,
       onResult: (result, tool, text) => { if (tool === 'respond_escalation' && props.draftOnly) callbacks.current.onTranscript?.(text); callbacks.current.onResult(result, tool, text) },
-      onState: (value) => { setState(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
+      onState: (value) => { setState(value); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
       onTranscript: (text, speaker, final) => { if (speaker === 'user') { setInput(text); if (final && props.draftOnly) callbacks.current.onTranscript?.(text) } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
       onError: setError,
       onLevel: (value) => { setLevel(value); callbacks.current.onLevel?.(value) },
@@ -49,10 +54,12 @@ export function VoiceControl(props: Props) {
   const startRef = useRef(start)
   useEffect(() => { startRef.current = start })
   useEffect(() => {
+    if (props.active === false) { session.current?.stop(); started.current = false; return }
     if (!props.autoStart || started.current) return
     const timer = setTimeout(() => { started.current = true; startRef.current() }, 700)
     return () => clearTimeout(timer)
-  }, [props.autoStart])
+  }, [props.autoStart, props.active])
+  if (props.active === false) return null
   return <div className={`voice-control voice-${state}`} aria-label={`${props.mode} voice controls`}>
     <div className="actions">{state === 'closed' ? <button type="button" onClick={start}><Icon name="mic" size={16} />{props.mode === 'revise' || props.mode === 'review' ? 'Revise by voice' : props.mode === 'reply' ? 'Speak your reply' : props.mode === 'huddle' ? 'Talk to this Alter' : 'Talk to your Alter'}</button> : <><span className="voice-wave" aria-hidden="true">{[.5,.8,1,.7,.4].map((factor, i) => <i key={i} style={{ height: 4 + level * factor * 16 }} />)}</span>
       <button type="button" onClick={() => { session.current?.stop() }}>End voice</button>

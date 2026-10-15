@@ -437,3 +437,18 @@ select { font: inherit; border: 1px solid #bbcbd4; border-radius: 8px; padding: 
   .alter-says p { font-size: 15px; }
   .alter-ask { font-size: 17.5px; }
 }
+
+/* Connected workday: keep the artifact scroll inside its surface on a phone. */
+.day-agenda { max-width: 720px; margin: 24px auto; position: relative; }
+.day-agenda article { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 12px 0; border-bottom: 1px solid #94a3d62b; }
+.day-agenda time { color: #aab7d8; font-size: 12px; min-width: 110px; }
+.plan-canvas-screen .diagram-viewport { min-width: 0; overflow-x: auto; }
+.plan-canvas-screen .diagram-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.plan-canvas-screen .canvas-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.plan-canvas-screen .canvas-workspace-grid { min-width: 0; }
+.plan-canvas-screen section[aria-label="Review design publication"] { position: relative; margin-top: 24px; }
+.stage-dark .approval-card { color: var(--ink); }
+.stage-dark .approval-card .hint, .stage-dark .approval-card p { color: var(--muted); }
+.meet-stage .stage-side { min-width: 0; }
+.meet-stage .stage-feed-card label { display: grid; gap: 8px; }
+.meet-stage .check-label { display: flex !important; gap: 8px; }

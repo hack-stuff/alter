@@ -30,7 +30,7 @@ class Engine:
             if settings.store_backend == "sqlite"
             else FirestoreStore(settings.project)
         )
-        self.secrets = Secrets()
+        self.secrets = Secrets(allow_local=settings.dev_mode)
         self.auth = Authentication(settings, self.store, verifier)
         if apps:
             self.apps = apps
@@ -67,6 +67,9 @@ class Engine:
         self.meetings = Meetings(self)
         self.workflows = Workflows(self)
         self.notifications = Notifications(self)
+        from app.plans import Plans
+
+        self.plans = Plans(self)
         self.injected = (
             store is not None
             or apps is not None
@@ -92,7 +95,15 @@ class Engine:
             vertexai=True,
             project=self.settings.project,
             location=self.settings.model_location,
-            http_options={"timeout": 30000},
+            http_options={
+                "timeout": self.settings.model_timeout_ms,
+                "retry_options": {
+                    "attempts": 2,
+                    "initial_delay": 1,
+                    "max_delay": 2,
+                    "http_status_codes": [429, 500, 502, 503, 504],
+                },
+            },
         )
 
     def require_ready(self):
@@ -498,10 +509,15 @@ class Engine:
             from app.diagnostics import report_agent_failure
 
             reference = report_agent_failure(exc, self.settings)
+            message = (
+                "The model took too long. Please retry your question."
+                if getattr(exc, "code", None) == 504 or isinstance(exc, TimeoutError)
+                else "Your Alter could not complete that request. Please try again."
+            )
             raise error(
                 503,
                 "AGENT_UNAVAILABLE",
-                f"Your Alter could not complete that request. Please try again. Reference: {reference}",
+                f"{message} Reference: {reference}",
             ) from None
         result = {"from": "alter", **reply, "ts": iso()}
 
@@ -848,6 +864,7 @@ class Engine:
             not workspace
             or workspace.get("generation") != generation
             or workspace["state"] != "ready"
+            or workspace.get("demoDay")
         ):
             return
         key = f"workspaces/{wid}/welcome/{mid}"

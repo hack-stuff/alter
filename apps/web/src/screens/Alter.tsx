@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, MOCK, httpCall } from '../api/client'
+import { dayApi, type Day } from '../api/day'
+import { workSurface } from '../agent/navigation'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
 import { VoiceControl } from '../components/VoiceControl'
@@ -48,6 +50,15 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   onRefresh: () => void
   onOpen: (screen: 'meet' | 'plan' | 'approvals' | 'activity') => void
 }) {
+  const [day, setDay] = useState<Day>()
+  const [dayError, setDayError] = useState('')
+  const [voiceState, setVoiceState] = useState<'connecting' | 'listening' | 'speaking' | 'closed'>('closed')
+  useEffect(() => {
+    if (MOCK || !active) return
+    let stopped = false
+    void dayApi.get().then((value) => { if (!stopped) { setDay(value); setDayError(value.agendaError) } }).catch((e) => { if (!stopped) setDayError(e.message) })
+    return () => { stopped = true }
+  }, [workspaceId, active])
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | undefined>(() => MOCK ? undefined : sessionStorage.getItem('alter.conversation.' + workspaceId) ?? undefined)
   const [draft, setDraft] = useState('')
@@ -79,6 +90,8 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   }
   async function send(text: string) {
     if (busy || !text.trim()) return
+    const destination = workSurface(text)
+    if (destination) { onOpen(destination); setDraft(''); return }
     setBusy(true); setError('')
     try {
       let cid = conversationId
@@ -100,14 +113,14 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   const needsCount = pending.length + asks.length
   const stateLine = busy ? `Working — ${latest ?? 'on it'}` : needsCount ? `${needsCount} thing${needsCount === 1 ? '' : 's'} waiting on you` : 'Here with you'
 
-  const statusText = `Good afternoon ${name}. It’s 2:00 PM — your Login Revamp team sync is starting on Google Meet, and ${rahulName} is on leave, so his Alter is standing in for him.`
-  const workedText = `Since lunch I checked the AUTH-112 production status with ${rahulName}’s Alter and updated §2 of the status doc — the receipts are in my work log.`
+  const statusText = `Hello ${name}. Your login journey and team follow-up are here. ${rahulName}'s Alter can help with his permitted project knowledge.`
+  const workedText = 'Continue the design, ask a teammate’s Alter, or open the meeting companion. I’ll show you the work before publishing it.'
   const needsText = pending.length && asks.length
     ? `${pending.length} drafts wait for your okay, and the team has a question only you can answer — both are listed below.`
     : pending.length ? `${pending.length === 1 ? 'One draft is' : `${pending.length} drafts are`} waiting for your okay — I haven’t touched a single file until you say so.`
       : asks.length ? 'One question from the team needs your answer — it’s below.'
         : 'Nothing is waiting on you right now.'
-  const greetingText = `${statusText} ${workedText} ${needsText} I’m always listening — just say what you need, or pick a card.`
+  const greetingText = `${statusText} ${workedText} ${needsText} Say what you need when voice is connected, or pick a card.`
 
   const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
   // The agent is present by default: no tap-to-talk anywhere.
@@ -119,14 +132,14 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
   const OFFERS: Offer[] = [
     {
-      key: 'meet', num: '01', glyph: 'work', kicker: 'Live now', title: 'Join the team sync',
-      desc: `Meera and Arjun are already in the room. ${rahulName} is on leave — his Alter stands in and answers for him.`,
-      go: 'Take me in', hot: /join|sync|meet|room|call/, sayLine: 'Taking you into the team sync — I’ll take notes and handle what comes up.',
+      key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Google Meet linked' : 'Team conversation', title: 'Join the team sync',
+      desc: `Ask ${rahulName}’s Alter, capture the conversation, and prepare the follow-up. Open the actual Meet from the companion.`,
+      go: 'Take me in', hot: /join|sync|meet|room|call/, sayLine: 'Opening your meeting companion. Start capture after participants consent.',
       run: () => onOpen('meet'),
     },
     {
       key: 'plan', num: '02', glyph: 'files', kicker: 'On the canvas', title: 'Shape the login plan',
-      desc: 'The one-tap login diagram is live on the table. Say what to change and watch it redraw.',
+      desc: 'Continue your saved login journey. Edit by voice, undo, then review its Google Docs publication.',
       go: 'Open the canvas', hot: /plan|diagram|canvas|redraw|shape/, sayLine: 'Opening the live diagram — say what to change and watch it redraw.',
       run: () => onOpen('plan'),
     },
@@ -153,7 +166,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     pickedRef.current = offer.key
     setPicked(offer.key)
     setPickEcho(offer.sayLine)
-    say(offer.sayLine)
+    if (MOCK) say(offer.sayLine)
     window.setTimeout(() => {
       pickedRef.current = null
       setPicked(null)
@@ -164,9 +177,9 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
   // The Alter greets directly — talking is the interface, no buttons to press.
   useEffect(() => {
-    if (sessionStorage.getItem('alter.greeted')) return
+    if (!MOCK || !active || sessionStorage.getItem('alter.greeted.' + workspaceId)) return
     const timer = setTimeout(() => {
-      sessionStorage.setItem('alter.greeted', '1')
+      sessionStorage.setItem('alter.greeted.' + workspaceId, '1')
       say(greetingText)
     }, 900)
     return () => clearTimeout(timer)
@@ -201,11 +214,11 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     })
   }, [liveVoice, active])
 
-  const micLine = liveVoice ? 'Always listening' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — the cards and typing still work' : 'Starting to listen…'
+  const micLine = liveVoice ? voiceState === 'listening' ? 'Listening' : voiceState === 'speaking' ? 'Speaking' : voiceState === 'connecting' ? 'Connecting voice…' : 'Voice is off — start below' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — the cards and typing still work' : 'Starting to listen…'
   const ticker = [
-    { live: true, text: `2:00 PM · Team sync — ${rahulName}’s Alter on stand-in` },
-    { text: 'AUTH-112 · verified in production' },
-    { text: needsCount ? `${needsCount} awaiting your call` : 'queue clear' },
+    { text: day?.role ?? 'Your personal work companion' },
+    { text: day?.meetUrl ? 'Google Meet linked · host presence unverified' : 'Connect a Meet link in the companion' },
+    { text: needsCount ? `${needsCount} awaiting your call` : 'Nothing waiting on you' },
   ]
 
   return <section className="screen alter-screen fx">
@@ -221,15 +234,16 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
         <h2>{name}&apos;s Alter <AlterBadge /></h2>
         <p className="alter-state"><span className="presence-dot" aria-hidden="true" /> {stateLine}</p>
         <p className="alter-mic"><span className="alter-mic-dot" aria-hidden="true" /> {micLine}
-          <button type="button" className="alter-mute" aria-label={muted ? 'Unmute your Alter' : 'Mute your Alter'} onClick={() => { const next = !muted; setVoiceMuted(next); setMuted(next); if (next) { stopSpeaking(); setSpeaking(false) } }}>{muted ? '🔇' : '🔊'}</button>
+          {!liveVoice && <button type="button" className="alter-mute" aria-label={muted ? 'Unmute your Alter' : 'Mute your Alter'} onClick={() => { const next = !muted; setVoiceMuted(next); setMuted(next); if (next) { stopSpeaking(); setSpeaking(false) } }}>{muted ? '🔇' : '🔊'}</button>}
         </p>
       </div>
     </div>
 
     <div className="fx-ticker" aria-hidden="true">
-      {ticker.map((chip, i) => <span key={i} className={`fx-chip ${chip.live ? 'is-live' : ''}`}><i /> {chip.text}</span>)}
+      {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}
     </div>
 
+    {day?.agenda.length ? <section className="day-agenda" aria-label="Your Google Calendar agenda"><p className="eyebrow">From your connected Calendar</p>{day.agenda.map((event) => <article key={event.id}><time>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time><strong>{event.title}</strong>{/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) && <a href={event.meetUrl} target="_blank" rel="noreferrer">Join Google Meet ↗</a>}</article>)}</section> : !MOCK && <p className="hint">{dayError || 'No upcoming events in your connected demo calendar.'}</p>}
     <article className="alter-says">
       <p>{statusText}</p>
       <p>{workedText}</p>
@@ -239,7 +253,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
     <div className={`offer-grid ${picked ? 'is-clearing' : ''}`}>
       {OFFERS.map((offer) => (
-        <button key={offer.key} type="button" className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
+        <button key={offer.key} type="button" disabled={!active || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
           <span className="offer-head">
             <span className="offer-glyph"><Icon name={offer.glyph} size={18} /></span>
             <span className="offer-num">{offer.num}</span>
@@ -277,7 +291,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     {busy && <p className="thinking" role="status">{latest ?? 'Your Alter is working on your request…'}</p>}
     {conversation.length === 0 && <div className="suggested">{DIRECTIVES.map((d) => <button key={d.text} disabled={busy} onClick={() => d.open ? onOpen(d.open) : void send(d.text)}>{d.text} <span aria-hidden="true">↗</span></button>)}</div>}
     <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy} /><button className="primary" disabled={busy || !draft.trim()}>Send</button></form>
-    {liveVoice && <VoiceControl mode="chat" autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />}
+    {liveVoice && <VoiceControl mode="chat" active={active} greet={!sessionStorage.getItem('alter.live.greeted.' + workspaceId)} onNavigate={onOpen} onState={(state) => { setVoiceState(state); if (state === 'listening') sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1') }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />}
     {error && <p role="alert" className="error">{error}</p>}
   </section>
 }

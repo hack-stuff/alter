@@ -2,7 +2,7 @@
 // its knowledge and decisions come only from Track A via these tools.
 import { Type, type FunctionDeclaration } from '@google/genai'
 
-export type LiveMode = 'chat' | 'revise' | 'reply' | 'huddle' | 'review'
+export type LiveMode = 'chat' | 'revise' | 'reply' | 'huddle' | 'review' | 'diagram'
 
 interface ModeConfig {
   systemInstruction: string
@@ -21,6 +21,10 @@ const VOICE_RULES =
   'Say a short filler like "On it" before slow tool calls. You can never approve anything; approval is the on-screen button.'
 
 export const MODES: Record<LiveMode, ModeConfig> = {
+  diagram: {
+    systemInstruction: `Help edit the open private design. Call revise_diagram for edits. ${VOICE_RULES}`,
+    tools: [tool('revise_diagram', 'Edit the open saved design draft. This never publishes or approves it.', { planId: str, instruction: str })],
+  },
   chat: {
     systemInstruction: `You are the user's Alter (AI), their personal work representative. Pass every request to alter_chat. ${VOICE_RULES}`,
     tools: [tool('alter_chat', "Send the user's request to their Alter and get its reply.", { message: str })],

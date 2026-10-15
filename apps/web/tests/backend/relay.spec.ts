@@ -26,13 +26,8 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   await page.goto('/')
   await page.getByLabel('Your name').fill('Relay demo')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  // The live build keeps the Alter always-on, so voice may start on its own;
-  // in builds that still show the control, start it explicitly.
-  const talk = page.getByRole('button', { name: 'Talk to your Alter' })
-  await expect
-    .poll(async () => (await talk.isVisible()) || (await page.getByText('Listening… · up to 10 minutes').isVisible()), { timeout: 20_000 })
-    .toBe(true)
-  if (await talk.isVisible()) await talk.click()
+  // This connected build starts voice automatically. Clicking the temporary
+  // start control races its transition to the active session.
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 20_000 })
   await expect.poll(() => audio, { timeout: 20_000 }).toBeGreaterThan(0)
   send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'relay-call', name: 'alter_chat', args: { message: 'Why did we switch to one-tap?' } }] } }))

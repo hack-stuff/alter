@@ -8,6 +8,7 @@ import { connectRelay } from './relay'
 export interface LiveOptions extends ToolContext {
   mode: LiveMode
   context?: string
+  greet?: boolean
   inputDeviceId?: string
   outputDeviceId?: string
   onState: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
@@ -15,6 +16,7 @@ export interface LiveOptions extends ToolContext {
   onError: (message: string) => void
   onLevel?: (level: number) => void
 }
+let currentSession: LiveSession | undefined
 export class LiveSession {
   private options: LiveOptions
   private connection?: Session
@@ -37,6 +39,9 @@ export class LiveSession {
   private cancelled = new Set<string>()
   constructor(options: LiveOptions) { this.options = options }
   async start() {
+    if (currentSession && currentSession !== this) currentSession.stop()
+    // oxlint-disable-next-line typescript/no-this-alias -- Own one microphone across work surfaces.
+    currentSession = this
     this.options.onState('connecting')
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Voice needs a secure browser connection and microphone access. You can continue by text.')
@@ -55,6 +60,7 @@ export class LiveSession {
       if (!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()) {
         connection = await connectRelay(this.options, (message) => { void this.message(message) }, () => this.stop(), (message) => this.options.onError(message), this.abort.signal)
       } else {
+      if (this.options.mode === 'diagram') throw new Error('Design voice editing requires the Vertex relay. Leave VITE_LIVE_TOKEN_BASE empty.')
       const { firebaseIdToken } = await import('../firebase-auth')
       const base = import.meta.env.VITE_LIVE_TOKEN_BASE?.trim() || `${import.meta.env.VITE_API_BASE?.trim() || 'http://localhost:8080/v1'}/live/token`
       const response = await fetch(base, {
@@ -96,7 +102,8 @@ export class LiveSession {
       }
       this.source.connect(this.microphone); this.microphone.connect(this.silence); this.silence.connect(this.audio.destination)
       this.options.onState('listening')
-      if (this.options.targetId) this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Open ${this.options.mode} target ID: ${this.options.targetId}. ${this.options.context ?? ''}. ${this.options.draftOnly ? 'Read the question briefly, then draft a reply for on-screen review; do not claim it was sent.' : ''}` }] }], turnComplete: this.options.mode === 'reply' })
+      if (this.options.greet && this.options.mode === 'chat') this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Greet me briefly using the verified owner context. Offer the available work. Do not claim that any work is completed.' }] }], turnComplete: true })
+      if (this.options.targetId && !['diagram', 'huddle'].includes(this.options.mode)) this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Open ${this.options.mode} target ID: ${this.options.targetId}. ${this.options.context ?? ''}. ${this.options.draftOnly ? 'Read the question briefly, then draft a reply for on-screen review; do not claim it was sent.' : ''}` }] }], turnComplete: this.options.mode === 'reply' })
     } catch (error) {
       if (!this.stopped) this.options.onError(error instanceof Error ? error.message : 'Could not start voice. Please use text.')
       this.stop()
@@ -154,6 +161,7 @@ export class LiveSession {
   mute(value: boolean) { this.muted = value; if (value) this.connection?.sendRealtimeInput({ audioStreamEnd: true }) }
   correct(text: string) { if (!this.stopped && text.trim()) this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Correction to my last transcript: ${text.trim()}` }] }], turnComplete: true }) }
   stop() {
+    if (currentSession === this) currentSession = undefined
     const alreadyStopped = this.stopped
     if (!alreadyStopped) {
       if (this.input) this.options.onTranscript(this.input, 'user', true)

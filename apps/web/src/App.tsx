@@ -120,7 +120,7 @@ export default function App() {
       </div>
     </header>}
 
-    {!stageView && data.workspace?.simulated && <p className="demo-banner">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Vertex AI and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</p>}
+    {data.workspace?.simulated && <p className="demo-banner">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Vertex AI and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</p>}
     {!stageView && data.workspace?.state === 'provisioning' && <p role="status">Your Alter is connecting to your team’s Google resources…</p>}
     {!stageView && data.workspace?.state === 'provisioning_failed' && <p role="alert" className="error">Google setup failed. Reset the demo or contact the administrator to try again.</p>}
 
@@ -136,7 +136,7 @@ export default function App() {
           approvals={approvals}
           escalations={escalations}
           events={data.events}
-          active={screen === 'alter'}
+          active={screen === 'alter' && (MOCK || data.workspace?.state === 'ready')}
           onUpdate={updateApproval}
           onRefresh={refresh}
           onOpen={(s) => setScreen(s)}
@@ -146,6 +146,9 @@ export default function App() {
         <MeetCompanion
           members={data.members}
           owner={session.name}
+          workspaceId={session.join.workspaceId}
+          memberId={session.join.memberId}
+          onReview={(id) => { sessionStorage.setItem('alter.open.meeting', id); setScreen('work'); setGeneration((g) => g + 1) }}
           onBack={() => setScreen('alter')}
         />
       )}

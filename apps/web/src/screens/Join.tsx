@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../api/client'
+import { api, MOCK, httpCall } from '../api/client'
 import type { JoinResult } from '../api/types'
 import { Icon } from '../components/Icon'
 
@@ -26,6 +26,7 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
       <div className="join-core" aria-hidden="true"><span className="core-sweep" /><span className="core-letter">✦</span></div>
       <div className="welcome-mark"><Icon name="sparkle" size={24} />ALTER · YOUR AI REPRESENTATIVE</div><h1>A little more<br />room to get things done.</h1>
       <p>Your own AI representative at work. It answers for you, asks teammates' Alters, and acts in Google Docs, Sheets, Calendar and Gmail when you approve.</p>
+      {!inviteCode && !MOCK && <><button type="button" className="primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void httpCall<JoinResult>('POST', '/demo/day').then((result) => onJoined(result, 'Priya')).catch((e) => setError(e.message)).finally(() => setBusy(false)) }}>{busy ? 'Preparing your day…' : "Step into Priya’s day"}</button><p className="hint">A fictional workday with your own isolated project files. The connected build uses real AI and Google services.</p></>}
       <label>
         Your name
         <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus disabled={busy} />

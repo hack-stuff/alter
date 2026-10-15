@@ -1,294 +1,450 @@
 import { useEffect, useRef, useState } from 'react'
-import { Icon, Avatar } from '../components/Icon'
-import { AlterBadge } from '../components/AlterBadge'
+import { api, MOCK, ApiError } from '../api/client'
+import { dayApi } from '../api/day'
+import { meetingApi, type MeetingDetail } from '../api/meetings'
 import { AlterOrb } from '../components/AlterOrb'
-import { OnScreenTips, type TipItem } from '../components/OnScreenTips'
+import { OnScreenTips } from '../components/OnScreenTips'
 import { VoiceControl } from '../components/VoiceControl'
 import { Citations } from '../components/Citations'
-import { listen, speak } from '../agent/voice'
+import { LiveTrace } from '../components/LiveTrace'
+import { RoomSetup } from '../components/RoomSetup'
 import type { Answer, Member } from '../api/types'
 
-// The meeting opens itself — a short live scene between the team and the Alters.
-// Rahul is on leave; his Alter sits in the room and answers for him.
-const SCRIPT: { at: number; who: string; tile: string; line: string }[] = [
-  { at: 900, who: 'Meera', tile: 'meera', line: 'Priya’s here. Let’s start with the sign-in rework.' },
-  { at: 5400, who: 'Arjun', tile: 'arjun', line: 'Quick one — why one-tap sign-in over the old Google button?' },
-  { at: 10000, who: "Rahul’s Alter", tile: 'rahul', line: 'The old button is being retired. Rahul switched us on October 8 — the sources are in the receipt.' },
-  { at: 15200, who: 'Meera', tile: 'meera', line: 'And when are we launching?' },
-  { at: 19600, who: "Rahul’s Alter", tile: 'rahul', line: 'That one is Rahul’s call. I’ve sent him a priority message to confirm the date.' },
-]
-
+type Segment = { id: string; text: string; kind: 'human' | 'alter' }
 export function MeetCompanion({
   members,
   owner = 'Priya',
+  workspaceId,
+  memberId,
   onBack,
+  onReview,
 }: {
   members: Member[]
   owner?: string
+  workspaceId: string
+  memberId: string
   onBack: () => void
+  onReview: (id: string) => void
 }) {
-  const [meetUrl, setMeetUrl] = useState<string>(
-    () => localStorage.getItem('alter.demo.meet_url') || 'https://meet.google.com/new'
+  const key = `alter.live.meeting.${workspaceId}.${memberId}`
+  const [meetingId, setMeetingId] = useState(
+    () => sessionStorage.getItem(key) ?? '',
   )
-  const [editingUrl, setEditingUrl] = useState(false)
-  const [caption, setCaption] = useState('You’re in. The room is live — Rahul’s Alter is standing in for him.')
-  const [feed, setFeed] = useState<{ who: string; line: string }[]>([])
-  const [sceneIdx, setSceneIdx] = useState(-1)
-  const [speaking, setSpeaking] = useState(false)
-  const [orbSpeaking, setOrbSpeaking] = useState(false)
-  const [mic, setMic] = useState<'idle' | 'listening' | 'unsupported'>('idle')
-  const [latestAnswer, setLatestAnswer] = useState<Answer | null>(null)
-  const [simulatedEscalation, setSimulatedEscalation] = useState(false)
-  const rahulName = members.find((m) => m.id === 'rahul')?.name ?? 'Rahul'
-  const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
-
-  function saveMeetUrl(url: string) {
-    const trimmed = url.trim() || 'https://meet.google.com/new'
-    setMeetUrl(trimmed)
-    localStorage.setItem('alter.demo.meet_url', trimmed)
-    setEditingUrl(false)
-  }
-
-  // The scene plays on its own — the "meeting starts" moment.
+  const [meeting, setMeeting] = useState<MeetingDetail>()
+  const [meetUrl, setMeetUrl] = useState('')
+  const [urlDraft, setUrlDraft] = useState('')
+  const [consent, setConsent] = useState(false)
+  const [question, setQuestion] = useState('')
+  const [transcript, setTranscript] = useState('')
+  const [latest, setLatest] = useState<Answer>()
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const [voice, setVoice] = useState<
+    'connecting' | 'listening' | 'speaking' | 'closed'
+  >('closed')
+  const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const [unsaved, setUnsaved] = useState(0)
+  const queue = useRef<Segment[]>([])
+  const upload = useRef<Promise<void> | undefined>(undefined)
   useEffect(() => {
-    const timers = SCRIPT.map((beat, index) => setTimeout(() => {
-      setSceneIdx(index)
-      setFeed((lines) => [...lines, { who: beat.who, line: beat.line }])
-      setCaption(`${beat.who}: ${beat.line}`)
-    }, beat.at))
-    const done = setTimeout(() => {
-      setSceneIdx(-1)
-      setCaption('Open floor — ask Rahul’s Alter anything below, out loud or by tapping.')
-    }, (SCRIPT.at(-1)?.at ?? 0) + 4600)
-    return () => { timers.forEach(clearTimeout); clearTimeout(done) }
+    let stopped = false
+    void dayApi
+      .get()
+      .then((day) => {
+        if (!stopped) {
+          setMeetUrl(day.meetUrl)
+          setUrlDraft(day.meetUrl)
+        }
+      })
+      .catch((e) => {
+        if (!stopped) setError(e.message)
+      })
+    return () => {
+      stopped = true
+    }
   }, [])
-
-  function say(text: string, onEnd?: () => void) {
-    setOrbSpeaking(true)
-    speak(text, { onStart: () => setOrbSpeaking(true), onEnd: () => { setOrbSpeaking(false); onEnd?.() } })
-  }
-
-  function handlePromptTrigger(promptText: string) {
-    const text = promptText.toLowerCase()
-    if (text.includes('launch') || text.includes('date') || text.includes('when')) {
-      const answer: Answer = {
-        alter: 'rahul',
-        asker: 'priya',
-        question: promptText,
-        outcome: 'ask',
-        answer:
-          "That one is Rahul's call. Since he is on leave, I've sent him a priority message to confirm the launch date.",
-        citations: [
-          { sourceId: 'roadmap', title: 'Login revamp roadmap', locator: 'Priorities' },
-        ],
-        escalationId: 'esc-launch-date',
-        traceId: 'trace-escalation-1',
-        receiptId: 'rcpt-esc-1',
+  useEffect(() => {
+    if (!meetingId) return
+    try {
+      queue.current = JSON.parse(
+        localStorage.getItem('alter.capture.' + meetingId) ?? '[]',
+      )
+      setUnsaved(queue.current.length)
+    } catch {
+      queue.current = []
+    }
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout>
+    const update = async () => {
+      try {
+        const value = await meetingApi.get(meetingId)
+        if (!stopped) setMeeting(value)
+      } catch (e) {
+        if (!stopped) {
+          setError(
+            e instanceof Error ? e.message : 'The meeting could not load.',
+          )
+          if (e instanceof ApiError && e.status === 404) {
+            sessionStorage.removeItem(key)
+            setMeetingId('')
+          }
+        }
       }
-      setLatestAnswer(answer)
-      setSimulatedEscalation(true)
-      setCaption(`${rahulName}’s Alter: ${answer.answer}`)
-      say(answer.answer)
-      setFeed((lines) => [...lines, { who: 'You → Rahul’s Alter', line: promptText }, { who: 'Rahul’s Alter', line: answer.answer }])
-    } else if (text.includes('why') || text.includes('one-tap') || text.includes('button')) {
-      const answer: Answer = {
-        alter: 'rahul',
-        asker: 'priya',
-        question: promptText,
-        outcome: 'allow',
-        answer:
-          'The old Google Sign-In button is being retired by Google, so Rahul switched us on October 8. One-tap sign-in is also significantly faster for mobile users.',
-        citations: [
-          { sourceId: 'arch-sync-2026-10-08', title: 'Arch sync · Oct 8', locator: '12:04' },
-          { sourceId: 'doc-login', title: 'Login design doc §2', locator: 'Decision record' },
-        ],
-        traceId: 'trace-onetap-decision',
-        receiptId: 'rcpt-onetap-1',
-      }
-      setLatestAnswer(answer)
-      setSimulatedEscalation(false)
-      setCaption(`${rahulName}’s Alter: ${answer.answer}`)
-      say(answer.answer)
-      setFeed((lines) => [...lines, { who: 'You → Rahul’s Alter', line: promptText }, { who: 'Rahul’s Alter', line: answer.answer }])
-    } else if (text.includes('auth-112') || text.includes('prod') || text.includes('approved')) {
-      const answer: Answer = {
-        alter: 'rahul',
-        asker: 'priya',
-        question: promptText,
-        outcome: 'allow',
-        answer:
-          'Google one-tap sign-in was approved for production on October 10 under ticket AUTH-112. It is already verified and live in production.',
-        citations: [
-          { sourceId: 'ticket-AUTH-112', title: 'AUTH-112', locator: 'status: approved' },
-        ],
-        traceId: 'trace-auth-112',
-        receiptId: 'rcpt-auth-1',
-      }
-      setLatestAnswer(answer)
-      setSimulatedEscalation(false)
-      setCaption(`${rahulName}’s Alter: ${answer.answer}`)
-      say(answer.answer)
-      setFeed((lines) => [...lines, { who: 'You → Rahul’s Alter', line: promptText }, { who: 'Rahul’s Alter', line: answer.answer }])
-    } else {
-      setCaption(`Rahul’s Alter heard “${promptText}” — try asking about one-tap sign-in, AUTH-112, or the launch date.`)
+      if (!stopped) timer = setTimeout(() => void update(), 2000)
+    }
+    void update()
+    return () => {
+      stopped = true
+      clearTimeout(timer)
+    }
+  }, [meetingId, key])
+  async function action(label: string, fn: () => Promise<void>) {
+    if (busy) return
+    setBusy(label)
+    setError('')
+    try {
+      await fn()
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'The request could not finish. Please retry.',
+      )
+    } finally {
+      setBusy('')
     }
   }
-
-  const promptRef = useRef(handlePromptTrigger)
-  useEffect(() => { promptRef.current = handlePromptTrigger })
-  useEffect(() => {
-    if (liveVoice) return
-    return listen({
-      onState: (state) => setMic(state),
-      onInterim: (phrase) => setCaption(`“${phrase}”`),
-      onFinal: (phrase) => promptRef.current(phrase),
+  function flush(): Promise<void> {
+    if (upload.current)
+      return upload.current.then(() =>
+        queue.current.length ? flush() : undefined,
+      )
+    upload.current = (async () => {
+      while (queue.current.length) {
+        const batch = queue.current.slice(0, 10)
+        await meetingApi.append(meetingId, batch)
+        queue.current.splice(0, batch.length)
+        localStorage.setItem(
+          'alter.capture.' + meetingId,
+          JSON.stringify(queue.current),
+        )
+        setUnsaved(queue.current.length)
+      }
+    })().finally(() => {
+      upload.current = undefined
     })
-  }, [liveVoice])
-
-  const tips: TipItem[] = [
-    {
-      type: 'say',
-      text: 'Why did we switch to one-tap sign-in instead of the old button?',
-      highlight: true,
-    },
-    {
-      type: 'say',
-      text: 'When are we launching the login revamp?',
-      highlight: true,
-    },
-    {
-      type: 'say',
-      text: 'Is the sign-in setup approved for production under AUTH-112?',
-    },
-    {
-      type: 'do',
-      text: 'Open Google Meet in a new browser tab',
-      action: () => window.open(meetUrl, '_blank', 'noreferrer'),
-    },
-  ]
-
-  const tileGlow = sceneIdx >= 0 ? SCRIPT[sceneIdx]?.tile : speaking ? 'rahul' : undefined
-
+    return upload.current
+  }
+  function capture(text: string, kind: 'human' | 'alter') {
+    if (!meetingId || meeting?.state !== 'capturing') return
+    for (let i = 0; i < text.length; i += 4000) {
+      const part = text.slice(i, i + 4000).trim()
+      if (part)
+        queue.current.push({
+          id: 'seg_' + crypto.randomUUID().replaceAll('-', ''),
+          text: part,
+          kind,
+        })
+    }
+    localStorage.setItem(
+      'alter.capture.' + meetingId,
+      JSON.stringify(queue.current),
+    )
+    setUnsaved(queue.current.length)
+    void flush().catch(() =>
+      setError(
+        'Some transcript segments are saved on this device. Retry upload before preparing the review.',
+      ),
+    )
+  }
+  const ask = (text: string) =>
+    void action('Checking with Rahul’s Alter…', async () => {
+      if (!text.trim()) return
+      const answer =
+        meeting?.state === 'capturing'
+          ? await meetingApi.ask(meeting.id, text)
+          : await api.askAlter('rahul', text)
+      setLatest(answer)
+      setQuestion('')
+      capture(text, 'human')
+      capture(answer.answer, 'alter')
+    })
+  async function finish() {
+    setVoiceEnabled(false)
+    // Let microphone cleanup flush the last utterance and the server release its lease.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await flush()
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await meetingApi.finish(meetingId)
+        break
+      } catch (e) {
+        if (!(e instanceof ApiError) || e.status !== 409 || attempt >= 3)
+          throw e
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+    }
+    onReview(meetingId)
+  }
   return (
     <section className="screen meet-stage fx stage-dark">
       <div className="fx-aurora" aria-hidden="true" />
-      <div className="stage-wipe" aria-hidden="true" />
-      <div className="stage-top">
-        <button type="button" className="back-link-btn" onClick={onBack}>
-          ← Back to the cards
+      <header className="stage-top">
+        <button className="back-link-btn" onClick={onBack}>
+          ← Back to your Alter
         </button>
-        <span className="live-pill"><span className="pulse-dot" aria-hidden="true" /> LIVE · Google Meet</span>
-        <a href={meetUrl} target="_blank" rel="noreferrer" className="stage-join">
-          <Icon name="work" size={16} /> Open the real call ↗
-        </a>
-      </div>
-
+        <span className="live-pill">Meeting companion</span>
+        {meetUrl && (
+          <a
+            href={meetUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="stage-join"
+          >
+            Open Google Meet ↗
+          </a>
+        )}
+      </header>
       <div className="stage-heading">
-        <p className="eyebrow">2:00 PM · Team sync</p>
-        <h2>Login Revamp — {rahulName}&apos;s stand-in</h2>
+        <p className="eyebrow">{owner}'s team sync</p>
+        <h2>Login revamp · Rahul’s Alter</h2>
         <p className="hint">
-          {rahulName} is on leave. His Alter is standing in with his verified knowledge and decision boundaries — ask it anything, out loud.
+          Ask about Rahul’s permitted work. The actual Google Meet opens
+          separately; this page does not join a call or establish that a
+          participant is present.
         </p>
       </div>
-
-      <div className="mtile-grid">
-        <div className={`mtile ${tileGlow === 'you' ? 'is-live' : ''}`}>
-          <div className="mtile-avatar">{owner[0]?.toUpperCase() ?? 'Y'}</div>
-          <strong>{owner} (You)</strong>
-          <span className="mtile-sub">Product Lead · Organizer</span>
-          <span className="mtile-chip">Your Alter is in the room ✦</span>
-        </div>
-        <div className={`mtile ${tileGlow === 'meera' ? 'is-live' : ''}`}>
-          <Avatar name={members.find((m) => m.id === 'meera')?.name ?? 'Meera'} size="small" />
-          <strong>{members.find((m) => m.id === 'meera')?.name ?? 'Meera'}</strong>
-          <span className="mtile-sub">Product Designer · Sign-in mock-ups</span>
-          <span className="mtile-chip">Meera’s Alter · listening</span>
-        </div>
-        <div className={`mtile ${tileGlow === 'arjun' ? 'is-live' : ''}`}>
-          <Avatar name={members.find((m) => m.id === 'arjun')?.name ?? 'Arjun'} size="small" />
-          <strong>{members.find((m) => m.id === 'arjun')?.name ?? 'Arjun'}</strong>
-          <span className="mtile-sub">Backend Engineer · Auth endpoints</span>
-          <span className="mtile-chip">Arjun’s Alter · listening</span>
-        </div>
-        <div className={`mtile mtile-alter ${tileGlow === 'rahul' ? 'is-live' : ''}`}>
-          <div className="mtile-cube">R</div>
-          <strong>{rahulName}’s Alter <AlterBadge /></strong>
-          <span className="mtile-sub">In the room for {rahulName} — live voice, verified knowledge</span>
-          <span className="mtile-chip alter">AI stand-in · speaking now<span className="eq" aria-hidden="true"><i /><i /><i /><i /><i /></span></span>
-        </div>
-        <div className="mtile mtile-ghost">
-          <div className="mtile-avatar ghost">?</div>
-          <strong>{rahulName}</strong>
-          <span className="mtile-sub">On leave — not in this call</span>
-          <span className="mtile-chip ghost">His Alter answers for him</span>
-        </div>
-      </div>
-
-      <p className="stage-caption">{caption}{mic === 'listening' && !liveVoice ? <span className="stage-mic"> · ● Listening</span> : null}</p>
-
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {busy && <p role="status">{busy}</p>}
       <div className="stage-lower">
         <div className="stage-feed-card">
-          <p className="eyebrow">Live transcript</p>
-          {feed.length ? <ul className="stage-feed">{feed.map((line, i) => <li key={i}><strong>{line.who}</strong> {line.line}</li>)}</ul> : <p className="hint">The room is settling in…</p>}
-        </div>
-        <div className="stage-side">
-          {latestAnswer && (
-            <div className="latest-answer-bubble">
-              <p className="eyebrow">Answer from {rahulName}&apos;s Alter</p>
-              <p className="answer-text">{latestAnswer.answer}</p>
-              <Citations sources={latestAnswer.citations} />
-              {simulatedEscalation && (
-                <div className="escalation-alert-toast">
-                  <span className="alert-icon">⚑</span>
-                  <div>
-                    <strong>Priority notification sent to {rahulName}</strong>
-                    <p className="hint">
-                      Sent to {rahulName}&apos;s phone: &quot;Confirm launch date for Login Revamp (Asked in 2:00 PM Sync)&quot;
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <OnScreenTips tips={tips} title="Ask the room — out loud or tap" onSelectPrompt={handlePromptTrigger} />
-          <div className="meet-url-box compact">
-            <span className="url-label">Meet link</span>
-            {editingUrl ? (
-              <form
-                className="url-edit-form"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  const input = (e.currentTarget.elements.namedItem('url') as HTMLInputElement).value
-                  saveMeetUrl(input)
-                }}
+          {!meetingId && (
+            <section>
+              <h3>Capture this conversation</h3>
+              <p>
+                Save real questions and voice transcripts, then let your Alter
+                prepare the follow-up.
+              </p>
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                />
+                The participants consent to transcript capture.
+              </label>
+              <button
+                className="primary"
+                disabled={!consent || !!busy || MOCK}
+                onClick={() =>
+                  void action('Starting your saved meeting…', async () => {
+                    const value = await meetingApi.create(
+                      'Login revamp · team sync',
+                      members
+                        .filter((m) =>
+                          ['priya', 'meera', 'arjun'].includes(m.id),
+                        )
+                        .map((m) => m.id),
+                      'rahul',
+                    )
+                    sessionStorage.setItem(key, value.id)
+                    setMeetingId(value.id)
+                    setMeeting(await meetingApi.get(value.id))
+                    setVoiceEnabled(true)
+                  })
+                }
               >
-                <input name="url" defaultValue={meetUrl} placeholder="https://meet.google.com/..." autoFocus />
-                <button type="submit" className="primary">Save</button>
-                <button type="button" onClick={() => setEditingUrl(false)}>Cancel</button>
-              </form>
-            ) : (
-              <div className="url-display">
-                <code>{meetUrl}</code>
-                <button type="button" className="edit-btn" onClick={() => setEditingUrl(true)}>Change</button>
-              </div>
-            )}
-          </div>
-          {liveVoice && (
+                Start consenting session
+              </button>
+            </section>
+          )}
+          {meeting && (
+            <>
+              <p className="eyebrow">
+                {meeting.state} · {meeting.segmentCount} saved transcript
+                segments{unsaved ? ` · ${unsaved} waiting to upload` : ''}
+              </p>
+              <ul className="stage-feed">
+                {meeting.segments.map((segment) => (
+                  <li key={segment.id}>
+                    <strong>
+                      {segment.kind === 'alter'
+                        ? 'Alter'
+                        : 'Meeting audio / entered transcript'}
+                    </strong>{' '}
+                    {segment.text}
+                  </li>
+                ))}
+              </ul>
+              {meeting.state === 'capturing' ? (
+                <>
+                  <label>
+                    Add actual meeting transcript
+                    <textarea
+                      value={transcript}
+                      onChange={(e) => setTranscript(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    disabled={!transcript.trim() || !!busy}
+                    onClick={() => {
+                      capture(transcript, 'human')
+                      setTranscript('')
+                    }}
+                  >
+                    Save transcript
+                  </button>
+                  {unsaved > 0 && (
+                    <button
+                      onClick={() =>
+                        void action('Uploading transcript…', flush)
+                      }
+                    >
+                      Retry transcript upload
+                    </button>
+                  )}
+                  <RoomSetup meetingId={meeting.id} memberId="rahul" />
+                  <p className="hint">
+                    This page captures its selected microphone only. To hear the
+                    Google Meet call, use the recording rig and route Meet audio
+                    into it.
+                  </p>
+                  <button
+                    className="primary"
+                    disabled={!!busy}
+                    onClick={() =>
+                      void action('Preparing the meeting follow-up…', finish)
+                    }
+                  >
+                    Meeting finished — prepare my review
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="primary"
+                  onClick={() => onReview(meeting.id)}
+                >
+                  Open meeting follow-up
+                </button>
+              )}
+            </>
+          )}
+          {!meeting && (
+            <p className="hint">No transcript has been recorded here yet.</p>
+          )}
+        </div>
+        <aside className="stage-side">
+          <OnScreenTips
+            title="Ask Rahul’s Alter"
+            tips={[
+              { type: 'say', text: 'Why did we switch to one-tap sign-in?' },
+              { type: 'say', text: 'When are we launching the login revamp?' },
+              { type: 'say', text: 'Is AUTH-112 approved for production?' },
+            ]}
+            onSelectPrompt={ask}
+          />
+          <form
+            className="composer"
+            onSubmit={(e) => {
+              e.preventDefault()
+              ask(question)
+            }}
+          >
+            <label className="sr-only" htmlFor="meeting-question">
+              Question for Rahul’s Alter
+            </label>
+            <input
+              id="meeting-question"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              disabled={!!busy}
+            />
+            <button disabled={!!busy || !question.trim()}>Ask</button>
+          </form>
+          {latest && (
+            <article
+              className="latest-answer-bubble"
+              aria-label="Rahul’s actual answer"
+            >
+              <p className="eyebrow">
+                {latest.outcome === 'ask'
+                  ? 'Owner decision needed'
+                  : latest.outcome === 'deny'
+                    ? 'Not shared'
+                    : 'Answer from Rahul’s Alter'}
+              </p>
+              <p>{latest.answer}</p>
+              <Citations sources={latest.citations} />
+              {latest.escalationId && (
+                <p className="hint">
+                  Priority question saved for Rahul. Phone delivery depends on
+                  his registered notification device.
+                </p>
+              )}
+              <LiveTrace workspaceId={workspaceId} traceId={latest.traceId} />
+            </article>
+          )}
+          <details className="meet-url-box">
+            <summary>
+              {meetUrl
+                ? 'Change the linked Google Meet'
+                : 'Connect an existing Google Meet'}
+            </summary>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void action('Saving the meeting link…', async () => {
+                  const value = await dayApi.setMeetUrl(urlDraft)
+                  setMeetUrl(value.meetUrl)
+                })
+              }}
+            >
+              <label>
+                Existing Google Meet link
+                <input
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                  placeholder="https://meet.google.com/abc-defg-hij"
+                />
+              </label>
+              <button disabled={!!busy}>Save Meet link</button>
+            </form>
+            <p className="hint">
+              The host must join Rahul’s AI account using the rig and admit
+              external guests. A saved link does not connect the audio.
+            </p>
+          </details>
+          {!MOCK && meeting?.state === 'capturing' && (
             <VoiceControl
               mode="huddle"
               targetId="rahul"
+              meetingId={meeting.id}
               autoStart
-              onSpeaking={setSpeaking}
-              onResult={(res) => setLatestAnswer(res as Answer)}
+              active={voiceEnabled}
+              onState={setVoice}
+              onCapture={capture}
+              onResult={(res) => setLatest(res as Answer)}
             />
           )}
-        </div>
+        </aside>
       </div>
-
       <AlterOrb
-        state={orbSpeaking ? 'speaking' : sceneIdx >= 0 ? 'working' : mic === 'listening' && !liveVoice ? 'listening' : 'idle'}
-        caption={orbSpeaking ? 'Rahul’s Alter is answering…' : 'Say what you need in the room — I’m handling it.'}
-        label="Your Alter"
+        state={
+          busy
+            ? 'working'
+            : voice === 'speaking'
+              ? 'speaking'
+              : voice === 'listening'
+                ? 'listening'
+                : 'idle'
+        }
+        caption={
+          busy || 'Ask, inspect the sources, then review the resulting work.'
+        }
         onHome={onBack}
       />
     </section>

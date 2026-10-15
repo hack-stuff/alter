@@ -14,6 +14,19 @@ class Application:
             root = f"workspaces/{ctx.workspace_id}"
             current = tx.get(root + "/approvals/" + aid)
             workspace = tx.get(root)
+            binding = current.get("planBinding")
+            if binding and decision == "approve":
+                plan = tx.get(root + "/plans/" + binding["id"])
+                if (
+                    not plan
+                    or plan["owner"] != ctx.member_id
+                    or plan["revision"] != binding["revision"]
+                ):
+                    raise error(
+                        409,
+                        "STALE_REVISION",
+                        "The design changed. Prepare and review its latest version before publishing.",
+                    )
             if current["revision"] != revision:
                 raise error(
                     409,

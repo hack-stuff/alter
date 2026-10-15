@@ -3,6 +3,11 @@
    Imported after App.css so these rules win at equal specificity. */
 
 .fx {
+  --ink: #eef2ff;
+  --muted: #b7c5e5;
+  --surface: #15203a;
+  --soft: #192747;
+  --line: #344463;
   --ink-fx: #eef2ff;
   --mut-fx: #9aa6c8;
   --line-fx: rgba(148, 163, 214, .16);
@@ -113,7 +118,8 @@
 
 /* ---------- The corner orb (dock the intern, anywhere) ---------- */
 
-.alter-orb { position: fixed; right: 26px; bottom: 24px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.alter-orb { position: fixed; right: 26px; bottom: 24px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none; }
+.alter-orb .orb-core { pointer-events: auto; }
 .orb-caption {
   max-width: 330px; margin: 0; padding: 10px 14px;
   font-size: 13px; line-height: 1.55; color: #dfe6fb; text-align: left;
@@ -217,6 +223,18 @@
 .fx .node-details-panel h3 { color: #eef2ff; }
 .fx .badge-approved { background: rgba(16, 185, 129, .16); color: #7ff0c3; border-color: rgba(16, 185, 129, .4); }
 .fx .canvas-voice-footer .voice-feedback { color: #c9d3f2; }
+.fx .diagram-node-card .node-title { color: #eef2ff; }
+.fx .diagram-node-card .node-category-tag { color: #b7c5e5; }
+.fx .tip-text { color: #e0e8ff; }
+.fx .tip-prefix { color: #b9d8f3; }
+.fx .tip-pill:hover:not(:disabled) { background: #263454; border-color: #8fa2ff; }
+.fx .canvas-header-actions button:not(.primary) { background: #202b4c; border-color: #7081b5; color: #eef2ff; }
+.fx .canvas-header-actions button:not(.primary):hover:not(:disabled) { background: #2e3e63; }
+.fx .canvas-voice-footer .voice-feedback { background: #192747; border-color: #506394; color: #e0e8ff; }
+.stage-dark summary { color: #b9d8f3; }
+.fx .approval-card .diff-line { background: #1c3655; color: #e0edff; }
+.fx .approval-card .diff-label { color: #a6cfff; }
+.fx .approval-card .preview-after { background: #15203a; }
 
 /* ---------- Responsive + motion ---------- */
 

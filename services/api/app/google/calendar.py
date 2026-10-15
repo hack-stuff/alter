@@ -54,7 +54,9 @@ def provision(service, wid):
     for block in load("calendar/blocks.json"):
         for offset in range(block["days"]):
             day = (start + timedelta(days=offset)).replace(hour=block["hour"])
-            eid = sha256(f"{wid}:{block['member']}:{offset}".encode()).hexdigest()
+            eid = sha256(
+                f"{wid}:{block.get('key', block['member'])}:{offset}".encode()
+            ).hexdigest()
             try:
                 run(service.events().get(calendarId=cid, eventId=eid))
             except Exception as exc:
@@ -80,6 +82,45 @@ def provision(service, wid):
                     )
                 )
     return cid
+
+
+def agenda(service, cid, member, start, end):
+    result = []
+    token = None
+    while len(result) < 20:
+        page = run(
+            service.events().list(
+                calendarId=cid,
+                timeMin=start,
+                timeMax=end,
+                singleEvents=True,
+                orderBy="startTime",
+                maxResults=50,
+                pageToken=token,
+            )
+        )
+        for event in page.get("items", []):
+            ids = json.loads(
+                event.get("extendedProperties", {})
+                .get("private", {})
+                .get("memberIds", "[]")
+            )
+            if event.get("status") == "cancelled" or (ids and member not in ids):
+                continue
+            result.append(
+                {
+                    "id": event["id"],
+                    "title": event.get("summary", "Untitled event"),
+                    "start": event["start"].get("dateTime", event["start"].get("date")),
+                    "end": event["end"].get("dateTime", event["end"].get("date")),
+                    "meetUrl": event.get("hangoutLink", ""),
+                    "url": event.get("htmlLink", ""),
+                }
+            )
+        token = page.get("nextPageToken")
+        if not token:
+            break
+    return result[:20]
 
 
 def availability(service, cid, members, start, end):

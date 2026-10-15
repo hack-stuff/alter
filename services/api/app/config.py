@@ -43,6 +43,8 @@ class Settings:
     task_service_account: str = ""
     live_model: str = ""
     live_location: str = ""
+    meet_url: str = ""
+    model_timeout_ms: int = 60000
 
     @property
     def model_location(self):
@@ -91,6 +93,10 @@ class Settings:
             task_service_account=os.getenv("WORKFLOW_SERVICE_ACCOUNT", ""),
             live_model=os.getenv("LIVE_MODEL", ""),
             live_location=os.getenv("LIVE_LOCATION", ""),
+            meet_url=os.getenv("MEET_URL", ""),
+            model_timeout_ms=max(
+                10000, min(120000, int(os.getenv("MODEL_TIMEOUT_MS", "60000")))
+            ),
         )
 
     def missing(self):

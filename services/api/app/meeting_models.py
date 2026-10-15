@@ -71,7 +71,7 @@ class WorkCommand(Input):
 
 
 class LiveStart(Input):
-    mode: Literal["chat", "revise", "reply", "huddle", "review"]
+    mode: Literal["chat", "revise", "reply", "huddle", "review", "diagram"]
     targetId: Identifier | None = None
     conversationId: Identifier | None = None
     meetingId: Identifier | None = None

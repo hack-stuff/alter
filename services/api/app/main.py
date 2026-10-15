@@ -14,6 +14,8 @@ from app.engine import Engine, public_card
 from app.errors import error
 from app.models import *
 from app.meeting_models import *
+from app.plans import PlanEdit, PlanRevision
+from app.day import MeetLink, day, validate_meet_url
 from app.util import identifier, now
 
 
@@ -176,6 +178,28 @@ def create_app(settings=None, engine=None):
         )
         return result
 
+    @app.post("/v1/demo/day")
+    async def enter_day(request: Request, user=Depends(caller)):
+        # Creates only a fresh isolated demo. It cannot claim someone else's role.
+        binding = engine.store.get(f"userBindings/{user.uid}")
+        if binding:
+            ctx = engine.auth.member(user)
+            current = engine.store.get(f"workspaces/{ctx.workspace_id}")
+            if not current.get("demoDay"):
+                raise error(
+                    409,
+                    "ALREADY_JOINED",
+                    "Your current Alter is already connected. Open it rather than replacing it.",
+                )
+            return engine.workspaces.result(
+                ctx.workspace_id, ctx.member_id, "product_lead", current["inviteCode"]
+            )
+        result = await run_in_threadpool(
+            engine.workspaces.create, user, "Priya", ip(request), False, True
+        )
+        engine.schedule(provision(result["workspaceId"], result["memberId"]))
+        return result
+
     @app.get("/v1/me")
     def me(ctx=Depends(member)):
         return engine.me(ctx)
@@ -193,6 +217,37 @@ def create_app(settings=None, engine=None):
     @app.post("/v1/chat")
     async def chat(req: ChatRequest, ctx=Depends(member)):
         return await engine.chat(ctx, req.message, req.conversationId)
+
+    @app.get("/v1/day")
+    def current_day(ctx=Depends(member)):
+        return day(engine, ctx)
+
+    @app.put("/v1/day/meet-link")
+    def meet_link(req: MeetLink, ctx=Depends(member)):
+        url = validate_meet_url(req.url)
+        path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+
+        def save(tx):
+            tx.set(path, {**tx.get(path), "meetUrl": url})
+
+        engine.store.atomic(save)
+        return {"meetUrl": url}
+
+    @app.get("/v1/plans/{pid}")
+    def get_plan(pid: str, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.get(ctx, identifier(pid)))
+
+    @app.post("/v1/plans/{pid}/revise")
+    def edit_plan(pid: str, req: PlanEdit, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.revise(ctx, identifier(pid), req))
+
+    @app.post("/v1/plans/{pid}/undo")
+    def undo_plan(pid: str, req: PlanRevision, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.undo(ctx, identifier(pid), req))
+
+    @app.post("/v1/plans/{pid}/prepare")
+    def prepare_plan(pid: str, req: PlanRevision, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.prepare(ctx, identifier(pid), req))
 
     @app.post("/v1/alters/{member_id}/ask", response_model=Answer)
     async def ask(member_id: str, req: AskRequest, ctx=Depends(member)):

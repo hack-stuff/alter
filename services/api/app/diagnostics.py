@@ -22,6 +22,10 @@ def report_agent_failure(exc, settings):
         category = "permission_denied"
     elif code == 429:
         category = "quota_or_capacity"
+    elif code in (408, 504) or isinstance(exc, TimeoutError):
+        category = "provider_deadline_exceeded"
+    elif code in (500, 502, 503):
+        category = "provider_unavailable"
     elif code == 400 and any(
         word in message for word in ("function", "tool", "schema", "mime")
     ):
