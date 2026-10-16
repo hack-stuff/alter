@@ -12,6 +12,7 @@ service cloud.firestore {
     match /workspaces/{wid} {
       allow read: if member(wid);
       match /members/{mid} { allow read: if member(wid); }
+      match /contacts/{mid} { allow read: if owner(wid, mid); }
       match /approvals/{aid} { allow read: if owner(wid, resource.data.owner); }
       match /escalations/{eid} { allow read: if owner(wid, resource.data.owner); }
       match /memories/{mid} { allow read: if owner(wid, resource.data.owner); }

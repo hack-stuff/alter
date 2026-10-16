@@ -1,5 +1,6 @@
 """Application orchestration. Identity and write authority never come from the model."""
 
+from copy import deepcopy
 from functools import cached_property
 from datetime import timedelta
 import asyncio, hmac, re, secrets
@@ -13,6 +14,7 @@ from app.errors import error
 from app.util import new_id, iso, now, identifier
 from app.rate_limits import take
 from app.receipts import record
+from app.contacts import contact
 from app.workspaces.provision import Workspaces
 from app.approvals.propose import Proposals
 from app.approvals.apply import Application
@@ -95,13 +97,25 @@ class Engine:
                 "The service is not configured. Please contact the workspace administrator.",
             )
 
-    def charge(self, wid):
-        self.store.atomic(lambda tx: take(tx, f"models:{wid}", 60))
+    def charge(self, wid, mid):
+        """Count one model call against the member and the workspace hourly limits."""
+
+        def count(tx):
+            take(
+                tx,
+                f"models:{wid}:{mid}",
+                self.settings.model_calls_per_member,
+                message="You've reached your hourly limit for your Alter. Please try again later.",
+            )
+            take(tx, f"models:{wid}", self.settings.model_calls_per_workspace)
+
+        self.store.atomic(count)
 
     def me(self, ctx):
         value = self.store.get(f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}")
         return {
             **value,
+            **contact(self.store, ctx.workspace_id, ctx.member_id),
             "workspaceId": ctx.workspace_id,
             "memberId": ctx.member_id,
             "slot": value.get("slot", "seeded"),
@@ -118,15 +132,27 @@ class Engine:
 
         def save(tx):
             path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+            private = f"workspaces/{ctx.workspace_id}/contacts/{ctx.member_id}"
             value = tx.get(path)
-            result = {**value, **update}
+            # Teammates can read member documents, so the address lives in a
+            # document only its owner can read. Older documents drop it here.
+            public = {
+                k: v for k, v in value.items() if k not in ("email", "emailVerified")
+            }
+            if "status" in update:
+                public["status"] = update["status"]
+            tx.set(path, public)
+            details = tx.get(private) or {}
             if email is not None:
-                result["emailVerified"] = bool(
-                    ctx.caller.email_verified
-                    and ctx.caller.email.casefold() == email.casefold()
-                )
-            tx.set(path, result)
-            return result
+                details = {
+                    "email": email,
+                    "emailVerified": bool(
+                        ctx.caller.email_verified
+                        and ctx.caller.email.casefold() == email.casefold()
+                    ),
+                }
+                tx.set(private, details)
+            return {**public, **details}
 
         return self.store.atomic(save)
 
@@ -215,7 +241,7 @@ class Engine:
             raise error(404, "NOT_FOUND", "No such teammate.")
         if ctx.member_id not in members:
             raise error(403, "FORBIDDEN", "Workspace membership is required.")
-        self.charge(ctx.workspace_id)
+        self.charge(ctx.workspace_id, ctx.member_id)
         model = self.model_client if self.settings.ai_backend == "vertex" else None
         intent = await asyncio.to_thread(
             classify, question, model, self.settings.model_fast
@@ -399,7 +425,7 @@ class Engine:
             )
 
         self.store.atomic(begin)
-        self.charge(ctx.workspace_id)
+        self.charge(ctx.workspace_id, ctx.member_id)
         self.event(ctx, cid, "Checking your knowledge and workspace…")
         try:
             from dataclasses import replace
@@ -492,12 +518,16 @@ class Engine:
                     ctx.workspace_id, workspace["googleIds"]["statusDoc"]
                 )
                 member = self.store.get(root + "/members/" + ctx.member_id)
-                content = current["sections"] + [
-                    {
-                        "section": "Confirmed commitments",
-                        "lines": [f"{member['name']} confirmed {decision['date']}."],
-                    }
-                ]
+                line = f"{member['name']} confirmed {decision['date']}."
+                content = deepcopy(current["sections"])
+                existing = next(
+                    (s for s in content if s["section"] == "Confirmed commitments"),
+                    None,
+                )
+                if existing is None:
+                    content.append({"section": "Confirmed commitments", "lines": [line]})
+                elif line not in existing["lines"]:
+                    existing["lines"].append(line)
                 if item.get("effectApprovalId"):
                     card = self.proposals.owned(ctx, item["effectApprovalId"])
                 else:
@@ -659,7 +689,21 @@ class Engine:
                 if workspace.get("simulated")
                 else {}
             ),
-            "members": self.store.list(root + "/members"),
+            "members": [
+                {
+                    **{
+                        k: v
+                        for k, v in item.items()
+                        if k not in ("email", "emailVerified")
+                    },
+                    **(
+                        contact(self.store, ctx.workspace_id, ctx.member_id)
+                        if item["id"] == ctx.member_id
+                        else {}
+                    ),
+                }
+                for item in self.store.list(root + "/members")
+            ],
             "approvals": [public_card(a) for a in owned("approvals")],
             "escalations": owned("escalations"),
             "memories": owned("memories"),

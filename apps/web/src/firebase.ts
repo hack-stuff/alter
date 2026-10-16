@@ -25,12 +25,18 @@ export function watchWorkspace(join: JoinResult, next: (data: WorkspaceData) => 
   const subscriptions: Unsubscribe[] = []
   let stopped = false
   let state: WorkspaceData = structuredClone(emptyWorkspace)
-  const emit = () => { if (!stopped) next({ ...state }) }
+  // Your own email comes from a document only you can read; teammates never see it.
+  let contact: { email?: string } = {}
+  const emit = () => { if (!stopped) next({ ...state, members: state.members.map((m) => m.id === join.memberId ? { ...m, ...contact } : m) }) }
   const fail = (error: Error) => { if (!stopped) failed(error) }
   void firebaseIdToken().then(() => {
     if (stopped) return
     const { db } = services()
     const base = `workspaces/${join.workspaceId}`
+    subscriptions.push(onSnapshot(doc(db, `${base}/contacts/${join.memberId}`), (snapshot) => {
+      const data = snapshot.exists() ? snapshot.data() : {}
+      contact = typeof data.email === 'string' ? { email: data.email } : {}; emit()
+    }, fail))
     subscriptions.push(onSnapshot(doc(db, base), (snapshot) => {
       state = { ...state, workspace: snapshot.exists() ? normalize(snapshot.data()) as Workspace : undefined }; emit()
     }, fail))

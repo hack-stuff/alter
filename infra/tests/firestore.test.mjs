@@ -18,7 +18,8 @@ before(async () => {
       'workspaces/w1/memories/one':{owner:'a'},'workspaces/w1/receipts/one':{visibleTo:['a']},
       'workspaces/w1/activity/one':{visibleTo:['a']},'workspaces/w1/sources/private':{owner:'b'},
       'workspaces/w1/conversations/chat':{owner:'a'},'workspaces/w1/conversations/chat/messages/one':{text:'private'},
-      'workspaces/w1/inbox/b/messages/one':{body:'private'},'workspaces/w1/rules/b/items/one':{mode:'deny'},
+      'workspaces/w1/inbox/b/messages/one':{body:'private'},
+      'workspaces/w1/contacts/a':{email:'alice@example.com'},'workspaces/w1/contacts/b':{email:'bob@example.com'},'workspaces/w1/rules/b/items/one':{mode:'deny'},
     }
     for (const [path,data] of Object.entries(seed)) await setDoc(doc(db,path),data)
   })
@@ -28,7 +29,8 @@ test('workspace membership and private collections',async()=>{
   const db=env.authenticatedContext('alice').firestore()
   await assertSucceeds(getDoc(doc(db,'workspaces/w1')))
   await assertSucceeds(getDoc(doc(db,'workspaces/w1/members/b')))
-  for (const path of ['workspaces/w2','userBindings/alice','workspaces/w1/sources/private','workspaces/w1/inbox/b/messages/one','workspaces/w1/rules/b/items/one']) await assertFails(getDoc(doc(db,path)))
+  await assertSucceeds(getDoc(doc(db,'workspaces/w1/contacts/a')))
+  for (const path of ['workspaces/w1/contacts/b','workspaces/w2','userBindings/alice','workspaces/w1/sources/private','workspaces/w1/inbox/b/messages/one','workspaces/w1/rules/b/items/one']) await assertFails(getDoc(doc(db,path)))
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'workspaces/w1')))
 })
 test('owner-filtered query succeeds; unfiltered and cross-owner reads fail',async()=>{

@@ -45,11 +45,11 @@ def date_decision(text):
             )
             if not match:
                 return None
-            value = date(
-                int(match[3]) if match[3] else now().year,
-                MONTHS[match[1].lower()],
-                int(match[2]),
-            )
+            month, day = MONTHS[match[1].lower()], int(match[2])
+            value = date(int(match[3]) if match[3] else now().year, month, day)
+            if not match[3] and value < now().date():
+                # "January 5" said in October means next January.
+                value = date(now().year + 1, month, day)
         remainder = text[: match.start()] + text[match.end() :]
         bare = remainder.strip(" .,!:").lower() in ("", "on", "by")
         affirmative = re.search(

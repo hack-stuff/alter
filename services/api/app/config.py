@@ -39,6 +39,10 @@ class Settings:
     admin_email: str = ""
     allow_forwarded_ip: bool = False
     trace_delay: float = 0.3
+    # Hourly model-call limits: per member so one person can't use up the team's
+    # allowance, and per workspace as the overall cost cap.
+    model_calls_per_member: int = 120
+    model_calls_per_workspace: int = 400
 
     @property
     def model_location(self):
@@ -84,6 +88,12 @@ class Settings:
             admin_email=os.getenv("ADMIN_EMAIL", ""),
             allow_forwarded_ip=os.getenv("TRUST_FORWARDED_IP", "0") == "1",
             trace_delay=float(os.getenv("TRACE_DELAY_SECONDS", ".3")),
+            model_calls_per_member=int(
+                os.getenv("MODEL_CALLS_PER_MEMBER_PER_HOUR", "120")
+            ),
+            model_calls_per_workspace=int(
+                os.getenv("MODEL_CALLS_PER_WORKSPACE_PER_HOUR", "400")
+            ),
         )
 
     def missing(self):

@@ -4,7 +4,13 @@ from app.util import now
 from app.errors import error
 
 
-def take(tx, scope, limit, window=3600):
+def take(
+    tx,
+    scope,
+    limit,
+    window=3600,
+    message="This workspace is busy. Please try again later.",
+):
     instant = now()
     key = hashlib.sha256(scope.encode()).hexdigest()
     path = f"rateLimits/{key}"
@@ -12,9 +18,7 @@ def take(tx, scope, limit, window=3600):
     period = int(instant.timestamp()) // window
     used = state["used"] if state["window"] == period else 0
     if used >= limit:
-        raise error(
-            429, "RATE_LIMITED", "This workspace is busy. Please try again later."
-        )
+        raise error(429, "RATE_LIMITED", message)
     tx.set(
         path,
         {

@@ -63,8 +63,6 @@ def seed_member(tx, wid, mid, name, uid, slot):
             "kind": "human",
             "status": "available",
             "joinedAt": iso(),
-            "email": "",
-            "emailVerified": False,
         },
     )
     for rule in load("policies/slot-default.json")["rules"]:

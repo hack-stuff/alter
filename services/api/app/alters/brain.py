@@ -203,7 +203,7 @@ class VertexPlanner:
             raise
 
     def draft_document(self, payload, sources):
-        self.engine.charge(self.ctx.workspace_id)
+        self.engine.charge(self.ctx.workspace_id, self.ctx.member_id)
         response = self.generate(
             model=self.engine.settings.model_pro,
             contents=json.dumps({"draft": payload, "sources": sources}),
@@ -219,7 +219,7 @@ class VertexPlanner:
 
     def revise(self, current, instruction):
         schema = REVISION_SCHEMAS[current["kind"]]
-        self.engine.charge(self.ctx.workspace_id)
+        self.engine.charge(self.ctx.workspace_id, self.ctx.member_id)
         response = self.generate(
             model=self.engine.settings.model_pro,
             contents=json.dumps(
@@ -242,7 +242,7 @@ class VertexPlanner:
         }
 
     def atomic_memory(self, content):
-        self.engine.charge(self.ctx.workspace_id)
+        self.engine.charge(self.ctx.workspace_id, self.ctx.member_id)
         response = self.generate(
             model=self.engine.settings.model_fast,
             contents=content,

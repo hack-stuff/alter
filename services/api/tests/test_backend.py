@@ -488,3 +488,80 @@ def test_started_conversation_is_owned_and_titled_by_first_message(team):
         ).status_code
         == 403
     )
+
+
+def test_member_email_is_private_to_its_owner(team):
+    c, e, h, r = team
+    from app.auth import Caller
+
+    code = e.store.get(f"workspaces/{r['workspaceId']}")["inviteCode"]
+    bob = e.workspaces.join(Caller("bob"), "Bob", code)
+    saved = c.put("/v1/me", headers=h, json={"email": "alice@example.com"})
+    assert saved.status_code == 200 and saved.json()["email"] == "alice@example.com"
+    root = f"workspaces/{r['workspaceId']}"
+    assert "email" not in e.store.get(f"{root}/members/{r['memberId']}")
+    assert e.store.get(f"{root}/contacts/{r['memberId']}")["email"] == "alice@example.com"
+    assert c.get("/v1/me", headers=h).json()["email"] == "alice@example.com"
+    own = c.get("/v1/workspace", headers=h).json()["members"]
+    assert next(m for m in own if m["id"] == r["memberId"])["email"] == "alice@example.com"
+    seen = c.get("/v1/workspace", headers={"X-Dev-Uid": "bob"}).json()["members"]
+    assert all("email" not in m for m in seen if m["id"] != bob["memberId"])
+    status = c.put("/v1/me", headers=h, json={"status": "away"}).json()
+    assert status["status"] == "away" and status["email"] == "alice@example.com"
+
+
+def test_legacy_member_email_is_hidden_and_removed(team):
+    c, e, h, r = team
+    path = f"workspaces/{r['workspaceId']}/members/{r['memberId']}"
+    e.store.set(path, {**e.store.get(path), "email": "old@example.com", "emailVerified": False})
+    members = c.get("/v1/workspace", headers=h).json()["members"]
+    assert all("email" not in m for m in members)
+    c.put("/v1/me", headers=h, json={"status": "away"})
+    assert "email" not in e.store.get(path)
+
+
+def test_confirmed_commitments_share_one_section(team):
+    from app.escalations import date_decision
+    from datetime import timedelta
+    from app.util import now
+
+    c, e, h, r = team
+    later = (now() + timedelta(days=10)).date().isoformat()
+    for _ in range(2):
+        eid = e.escalate(r["workspaceId"], r["memberId"], "rahul", "Sign off?", "", True)["id"]
+        assert date_decision(f"Yes, {later}")
+        reply = c.post(f"/v1/escalations/{eid}/respond", headers=h, json={"text": f"Yes, {later}"})
+        assert reply.status_code == 200, reply.text
+    workspace = e.store.get(f"workspaces/{r['workspaceId']}")
+    doc = e.apps.read_doc(r["workspaceId"], workspace["googleIds"]["statusDoc"])
+    confirmed = [s for s in doc["sections"] if s["section"] == "Confirmed commitments"]
+    assert len(confirmed) == 1 and len(confirmed[0]["lines"]) == 1
+
+
+def test_month_without_year_means_the_next_occurrence(monkeypatch):
+    from datetime import datetime, timezone
+    from app import escalations
+
+    monkeypatch.setattr(escalations, "now", lambda: datetime(2026, 10, 16, tzinfo=timezone.utc))
+    assert escalations.date_decision("Yes, January 5")["date"] == "2027-01-05"
+    assert escalations.date_decision("Yes, October 30")["date"] == "2026-10-30"
+    assert escalations.date_decision("Yes, January 5, 2026") is None
+
+
+def test_model_budget_is_per_member_with_a_workspace_cap(team):
+    from dataclasses import replace
+    from fastapi import HTTPException
+
+    c, e, h, r = team
+    e.settings = replace(e.settings, model_calls_per_member=2, model_calls_per_workspace=3)
+    wid = r["workspaceId"]
+    e.charge(wid, "alice")
+    e.charge(wid, "alice")
+    with pytest.raises(HTTPException) as member_limit:
+        e.charge(wid, "alice")
+    assert "your hourly limit" in str(member_limit.value.detail)
+    # Bob still fits: Alice's refused call did not use workspace allowance.
+    e.charge(wid, "bob")
+    with pytest.raises(HTTPException) as workspace_limit:
+        e.charge(wid, "carol")
+    assert "workspace is busy" in str(workspace_limit.value.detail)

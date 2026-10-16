@@ -1,6 +1,7 @@
 from app.errors import error
 from app.util import iso
 from app.receipts import record
+from app.contacts import contact
 
 
 class Application:
@@ -67,9 +68,11 @@ class Application:
         failure = None
         try:
             self.proposals.validate(ctx, card["action"])
-            member = self.store.get(f"workspaces/{wid}/members/{ctx.member_id}") | {
-                "id": ctx.member_id
-            }
+            member = (
+                self.store.get(f"workspaces/{wid}/members/{ctx.member_id}")
+                | contact(self.store, wid, ctx.member_id)
+                | {"id": ctx.member_id}
+            )
             result = self.apps.apply(wid, card, member, ctx.caller)
         except Exception as exc:
             try:

@@ -248,7 +248,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
     async def charge(callback_context, llm_request):
         import asyncio
 
-        await asyncio.to_thread(engine.charge, ctx.workspace_id)
+        await asyncio.to_thread(engine.charge, ctx.workspace_id, ctx.member_id)
 
     tools = [search_knowledge, read_doc, read_sheet, get_availability]
     tools += (
