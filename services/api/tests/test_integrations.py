@@ -667,3 +667,79 @@ def test_vertex_location_from_environment(monkeypatch):
     monkeypatch.setenv("VERTEX_LOCATION", "global")
     settings = Settings.from_env()
     assert settings.model_location == "global" and settings.region == "us-central1"
+
+
+def test_vertex_revision_can_rename_document(team, monkeypatch):
+    from app.alters.brain import VertexPlanner
+
+    c, e, h, r = team
+    fake = SimpleNamespace(
+        models=SimpleNamespace(
+            generate_content=lambda **kwargs: SimpleNamespace(
+                text='{"title":"Q3 Launch Plan","sections":[{"section":"QA","lines":["Same."]}]}'
+            )
+        )
+    )
+    e.__dict__["model_client"] = fake
+    current = {
+        "kind": "doc_create",
+        "action": {"title": "Draft", "sections": [{"section": "QA", "lines": ["Same."]}]},
+    }
+    result = VertexPlanner(e, e.auth.member(Caller("alice"))).revise(current, "Rename")
+    assert result["title"] == "Q3 Launch Plan"
+
+
+def test_agent_failure_reports_the_model_that_failed(team, capsys):
+    import json
+    from app.alters.brain import VertexPlanner
+    from app.diagnostics import report_agent_failure
+
+    c, e, h, r = team
+
+    def fail(**kwargs):
+        raise RuntimeError("not found")
+
+    e.__dict__["model_client"] = SimpleNamespace(
+        models=SimpleNamespace(generate_content=fail)
+    )
+    planner = VertexPlanner(e, e.auth.member(Caller("alice")))
+    try:
+        planner.draft_document({"title": "T", "sections": []}, [])
+    except RuntimeError as exc:
+        report_agent_failure(exc, e.settings)
+    payload = json.loads(capsys.readouterr().err.strip().splitlines()[-1])
+    assert payload["failedModel"] == e.settings.model_pro
+
+
+def test_doc_edit_revision_cannot_rename_the_document():
+    from app.alters.schemas import REVISION_SCHEMAS
+
+    assert "title" not in REVISION_SCHEMAS["doc_edit"].model_fields
+    assert "title" in REVISION_SCHEMAS["doc_create"].model_fields
+
+
+def test_document_title_is_capped_and_required(team):
+    from fastapi import HTTPException
+
+    c, e, h, r = team
+    ctx = e.auth.member(Caller("alice"))
+    section = [{"section": "QA", "lines": ["Draft."]}]
+    card = e.proposals.build(ctx, "doc_create", {"title": "x" * 500, "sections": section}, "r")
+    assert len(card["action"]["title"]) == 200
+    with pytest.raises(HTTPException) as caught:
+        e.proposals.build(ctx, "doc_create", {"title": "  ", "sections": section}, "r")
+    assert caught.value.status_code == 422
+
+
+def test_failed_model_ignores_cycles_and_handled_context(team, capsys):
+    import json
+    from app.diagnostics import report_agent_failure
+
+    c, e, h, r = team
+    handled = RuntimeError("handled")
+    handled.alter_model = "stale"
+    a, b = RuntimeError("a"), RuntimeError("b")
+    a.__cause__, b.__cause__, a.__context__ = b, a, handled
+    report_agent_failure(a, e.settings)
+    payload = json.loads(capsys.readouterr().err.strip().splitlines()[-1])
+    assert "failedModel" not in payload

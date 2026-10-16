@@ -93,7 +93,10 @@ class Proposals:
         before = []
         if kind in ("doc_create", "doc_edit"):
             action["sections"] = sections(action["sections"])
-            title = str(action.get("title", "Document update"))[:200]
+            title = str(action.get("title", "Document update")).strip()[:200]
+            if not title:
+                raise error(422, "INVALID_PROPOSAL", "Provide a document title.")
+            action["title"] = title
             if kind == "doc_edit":
                 key = action.get("document", "statusDoc")
                 action["fileId"] = workspace["googleIds"].get(key, key)

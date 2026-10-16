@@ -7,6 +7,14 @@ from pathlib import Path
 from app.alters.schemas import DocumentSection
 
 
+def plain(sections):
+    """ADK may pass models or dicts; Proposals.build validates the shape and limits."""
+    return [
+        section.model_dump() if isinstance(section, BaseModel) else section
+        for section in sections
+    ]
+
+
 class ProjectGemini(Gemini):
     project: str
     location: str
@@ -148,10 +156,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             "doc_create",
             {
                 "title": title,
-                "sections": [
-                    DocumentSection.model_validate(section).model_dump()
-                    for section in sections
-                ],
+                "sections": plain(sections),
             },
         )
 
@@ -162,10 +167,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             {
                 "document": document,
                 "title": "Document update",
-                "sections": [
-                    DocumentSection.model_validate(section).model_dump()
-                    for section in sections
-                ],
+                "sections": plain(sections),
             },
         )
 

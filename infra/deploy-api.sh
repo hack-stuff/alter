@@ -36,7 +36,8 @@ actual_url="$(gcloud run services describe alter-api --project="$GCP_PROJECT" --
 # equivalent service-hash URL. Both identify this deployed service.
 project_number="$(gcloud projects describe "$GCP_PROJECT" --format='value(projectNumber)')"
 deterministic_url="https://alter-api-${project_number}.${GCP_REGION}.run.app"
-if [[ "${SERVICE_URL%/}" != "${actual_url%/}" && "${SERVICE_URL%/}" != "$deterministic_url" ]]; then
+SERVICE_URL="${SERVICE_URL%/}"
+if [[ "$SERVICE_URL" != "${actual_url%/}" && "$SERVICE_URL" != "$deterministic_url" ]]; then
   echo "Configured SERVICE_URL does not match this service. Use $actual_url or $deterministic_url, and set SCHEDULER_AUDIENCE to the same URL." >&2
   exit 1
 fi

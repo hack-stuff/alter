@@ -635,10 +635,15 @@ class Engine:
                     "director",
                     "state",
                     "simulated",
-                    "aiBackend",
                 )
                 if key in workspace
-            },
+            }
+            # The current backend, not the one recorded at provision time.
+            | (
+                {"aiBackend": self.settings.ai_backend}
+                if workspace.get("simulated")
+                else {}
+            ),
             "members": self.store.list(root + "/members"),
             "approvals": [public_card(a) for a in owned("approvals")],
             "escalations": owned("escalations"),

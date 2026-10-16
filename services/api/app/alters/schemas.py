@@ -12,8 +12,14 @@ class DocumentContent(BaseModel):
     sections: list[DocumentSection]
 
 
-class SheetContent(BaseModel):
+class DocumentRevision(BaseModel):
+    title: str | None = None
+    sections: list[DocumentSection]
+
+
+class SheetRevision(BaseModel):
     rows: list[list[str]]
+    startRow: int | None = None
 
 
 class EventContent(BaseModel):
@@ -30,9 +36,10 @@ class EmailContent(BaseModel):
 
 
 REVISION_SCHEMAS = {
-    "doc_create": DocumentContent,
+    "doc_create": DocumentRevision,
+    # A doc_edit title only labels the card; it never renames the document.
     "doc_edit": DocumentContent,
-    "sheet_update": SheetContent,
+    "sheet_update": SheetRevision,
     "calendar_event": EventContent,
     "email": EmailContent,
 }

@@ -156,7 +156,10 @@ def test_join_capacity_and_reset(team):
             {
                 "title": "QA sync",
                 "attendees": ["meera"],
-                "start": (now() + timedelta(days=2)).isoformat(),
+                # Fixed hour outside Meera's seeded 13:00–14:00 UTC design review.
+                "start": (now() + timedelta(days=2))
+                .replace(hour=16, minute=0, second=0, microsecond=0)
+                .isoformat(),
                 "duration": 30,
             },
         ),

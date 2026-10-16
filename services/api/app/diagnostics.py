@@ -35,7 +35,8 @@ def report_agent_failure(exc, settings):
         "category": category,
         "region": settings.region,
         "vertexLocation": settings.model_location,
-        "model": settings.model_fast,
+        "modelFast": settings.model_fast,
+        "modelPro": settings.model_pro,
         "frames": [
             {
                 "file": Path(frame.filename).name,
@@ -45,6 +46,15 @@ def report_agent_failure(exc, settings):
             for frame in traceback.extract_tb(exc.__traceback__)[-10:]
         ],
     }
+    # Follow explicit causes only: __context__ can hold an earlier, handled
+    # failure, and the bound guards against cyclic chains.
+    failed = exc
+    for _ in range(5):
+        if failed is None or hasattr(failed, "alter_model"):
+            break
+        failed = failed.__cause__
+    if hasattr(failed, "alter_model"):
+        payload["failedModel"] = failed.alter_model
     if isinstance(code, int):
         payload["providerCode"] = code
     if isinstance(status, str) and re.fullmatch(r"[A-Z_]{1,64}", status):

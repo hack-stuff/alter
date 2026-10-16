@@ -78,7 +78,8 @@ class Settings:
             template_ids=json.loads(os.getenv("GOOGLE_TEMPLATE_IDS", "{}")),
             search_serving_config=os.getenv("SEARCH_SERVING_CONFIG", ""),
             welcome_delay=float(os.getenv("WELCOME_DELAY_SECONDS", "20")),
-            scheduler_audience=os.getenv("SCHEDULER_AUDIENCE", ""),
+            # The deploy script strips the trailing slash from the job audience too.
+            scheduler_audience=os.getenv("SCHEDULER_AUDIENCE", "").rstrip("/"),
             scheduler_email=os.getenv("SCHEDULER_SERVICE_ACCOUNT", ""),
             admin_email=os.getenv("ADMIN_EMAIL", ""),
             allow_forwarded_ip=os.getenv("TRUST_FORWARDED_IP", "0") == "1",
