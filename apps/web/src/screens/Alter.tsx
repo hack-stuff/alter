@@ -215,7 +215,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     })
   }, [liveVoice, active])
 
-  const micLine = liveVoice ? voiceState === 'listening' ? 'Listening' : voiceState === 'speaking' ? 'Speaking' : voiceState === 'connecting' ? 'Connecting voice…' : 'Voice is off — start below' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — the cards and typing still work' : 'Starting to listen…'
+  const micLine = liveVoice ? voiceState === 'listening' ? 'Listening' : voiceState === 'speaking' ? 'Speaking' : voiceState === 'connecting' ? 'Connecting voice…' : 'Voice is off' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — the cards and typing still work' : 'Starting to listen…'
   const ticker = [
     { text: day?.role ?? 'Your personal work companion' },
     { text: day?.meetUrl ? 'Google Meet linked · host presence unverified' : 'Connect a Meet link in the companion' },
@@ -272,12 +272,6 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     </div>
 
     <div className="alter-below">
-    <article className="alter-says">
-      <p>{statusText}</p>
-      <p>{workedText}</p>
-      <p>{needsText}</p>
-      <p className="alter-ask">What would you like me to do next?</p>
-    </article>
     {day?.agenda.length ? <section className="day-agenda" aria-label="Your Google Calendar agenda"><p className="eyebrow">From your connected Calendar</p>{day.agenda.map((event) => <article key={event.id}><time>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time><strong>{event.title}</strong>{/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) && <a href={event.meetUrl} target="_blank" rel="noreferrer">Join Google Meet ↗</a>}</article>)}</section> : !MOCK && <p className="hint">{dayError || 'No upcoming events in your connected demo calendar.'}</p>}
 
     {asks.length > 0 && <div className="alter-needs">
