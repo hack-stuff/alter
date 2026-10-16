@@ -56,7 +56,8 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   const [dayError, setDayError] = useState('')
   const [voiceState, setVoiceState] = useState<'connecting' | 'listening' | 'speaking' | 'closed'>('closed')
   const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
-  const [opened, setOpened] = useState(() => !!sessionStorage.getItem('alter.live.greeted.' + workspaceId) || !!sessionStorage.getItem('alter.live.opened.' + workspaceId))
+  const greetedBefore = useRef(!!sessionStorage.getItem('alter.live.greeted.' + workspaceId))
+  const [opened, setOpened] = useState(() => !!sessionStorage.getItem('alter.live.opened.' + workspaceId))
   const [voiceError, setVoiceError] = useState('')
   const [openingSlow, setOpeningSlow] = useState(false)
   useEffect(() => {
@@ -259,7 +260,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       </div>
     </div>
 
-    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active && ready} greet={!sessionStorage.getItem('alter.live.greeted.' + workspaceId)} onNavigate={onOpen} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError('') }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
+    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active && ready} greet={!greetedBefore.current} onNavigate={onOpen} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
 
     <div className="fx-ticker" aria-hidden="true">
       {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}

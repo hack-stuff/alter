@@ -48,4 +48,13 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.getByRole('button', { name: 'Hear my briefing' }).click()
   await expect.poll(() => page.evaluate(() => (window as any).greetingRequests.length)).toBe(3)
+
+  await page.reload()
+  await page.getByLabel('Your name').fill('Alex')
+  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await expect(page.getByLabel('Opening your workday')).toBeVisible()
+  await page.getByRole('button', { name: 'Enable voice', exact: true }).click()
+  await expect(page.getByLabel('Opening your workday')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  expect(await page.evaluate(() => (window as any).greetingRequests.length)).toBe(0)
 })
