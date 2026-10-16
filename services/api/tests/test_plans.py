@@ -282,19 +282,27 @@ def test_publications_in_independent_demo_runs_have_distinct_provider_operations
     assert ids[0] != ids[1]
 
 
-def test_voice_can_greet_during_setup_but_plan_actions_stay_blocked(system):
+def test_voice_context_tracks_setup_and_verified_workday(system):
     from app.auth import Caller
     from app.live import LiveRelay
     from app.meeting_models import LiveStart
 
     c, e = system
-    e.workspaces.create(Caller("early-voice"), "Priya", "early-voice", demo_day=True)
+    joined = e.workspaces.create(Caller("early-voice"), "Priya", "early-voice", demo_day=True)
     ctx = e.auth.member(Caller("early-voice"))
     context = json.loads(LiveRelay(e).context(ctx, LiveStart(mode="chat")))
     assert context["owner"] == "Priya"
     assert context["setupState"] == "provisioning"
-    assert context["availableWork"] == []
+    assert context["workday"]["agenda"] == []
     assert (
         c.get("/v1/plans/login", headers={"X-Dev-Uid": "early-voice"}).status_code
         == 409
     )
+    e.workspaces.provision(joined["workspaceId"])
+    ready_context = json.loads(LiveRelay(e).context(ctx, LiveStart(mode="chat")))
+    assert ready_context["workday"]["project"] == "Login revamp"
+    assert ready_context["workday"]["pendingDrafts"] == []
+    assert [item["title"] for item in ready_context["workday"]["agenda"]] == [
+        "Review Meera's login journey",
+        "Login revamp · team sync",
+    ]

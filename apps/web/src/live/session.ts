@@ -164,7 +164,7 @@ export class LiveSession {
   mute(value: boolean) { this.muted = value; if (value) this.connection?.sendRealtimeInput({ audioStreamEnd: true }) }
   greet() {
     if (this.stopped || this.options.mode !== 'chat') return
-    this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Greet me briefly using the verified owner context. Offer the available work. Do not claim that any work is completed.' }] }], turnComplete: true })
+    this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Bring me into the work already moving. If the verified agenda has two upcoming items, link them in order; otherwise mention the next item or saved work. Ask which thread we should pick up. Only mention pending decisions if the context lists them. Do not introduce the product or list capabilities.' }] }], turnComplete: true })
   }
   correct(text: string) { if (!this.stopped && text.trim()) this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Correction to my last transcript: ${text.trim()}` }] }], turnComplete: true }) }
   stop() {

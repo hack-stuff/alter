@@ -138,6 +138,7 @@ export default function App() {
           events={data.events}
           active={screen === 'alter'}
           ready={MOCK || data.workspace?.state === 'ready'}
+          setupState={data.workspace?.state}
           onUpdate={updateApproval}
           onRefresh={refresh}
           onOpen={(s) => setScreen(s)}

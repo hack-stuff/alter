@@ -38,7 +38,7 @@ interface Offer {
   run: () => void
 }
 
-export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, ready = true, onUpdate, onRefresh, onOpen }: {
+export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, ready = true, setupState, onUpdate, onRefresh, onOpen }: {
   name: string
   workspaceId: string
   members: Member[]
@@ -47,6 +47,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   events: ProgressEvent[]
   active?: boolean
   ready?: boolean
+  setupState?: string
   onUpdate: (a: Approval) => void
   onRefresh: () => void
   onOpen: (screen: 'meet' | 'plan' | 'approvals' | 'activity') => void
@@ -54,6 +55,10 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   const [day, setDay] = useState<Day>()
   const [dayError, setDayError] = useState('')
   const [voiceState, setVoiceState] = useState<'connecting' | 'listening' | 'speaking' | 'closed'>('closed')
+  const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
+  const [opened, setOpened] = useState(() => !!sessionStorage.getItem('alter.live.greeted.' + workspaceId) || !!sessionStorage.getItem('alter.live.opened.' + workspaceId))
+  const [voiceError, setVoiceError] = useState('')
+  const [openingSlow, setOpeningSlow] = useState(false)
   useEffect(() => {
     if (MOCK || !active || !ready) return
     let stopped = false
@@ -123,9 +128,13 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
         : 'Nothing is waiting on you right now.'
   const greetingText = `${statusText} ${workedText} ${needsText} Say what you need when voice is connected, or pick a card.`
 
-  const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
-  // The agent is present by default: no tap-to-talk anywhere.
-  const autoVoice = liveVoice
+  const opening = active && liveVoice && !opened && (MOCK || day?.voiceConfigured !== false)
+  const autoVoice = liveVoice && ready
+  useEffect(() => {
+    if (!opening) return
+    const timer = window.setTimeout(() => setOpeningSlow(true), 18000)
+    return () => window.clearTimeout(timer)
+  }, [opening])
 
   function say(text: string) {
     speak(text, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) })
@@ -222,8 +231,15 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     { text: needsCount ? `${needsCount} awaiting your call` : 'Nothing waiting on you' },
   ]
 
-  return <section className="screen alter-screen fx">
+  return <section className={`screen alter-screen fx${opening ? ' is-opening' : ''}`}>
     <div className="fx-aurora" aria-hidden="true" />
+    {opening && <div className="alter-opening" aria-label="Opening your workday">
+      <div className="alter-opening-core" aria-hidden="true"><span>{(name[0] ?? 'A').toUpperCase()}</span></div>
+      <p className="alter-opening-kicker">{name}&apos;s Alter · Workday</p>
+      <h1>Your day is already in motion.</h1>
+      <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : voiceError ? 'Voice needs a moment of attention.' : voiceState === 'connecting' ? 'Connecting your Alter…' : voiceState === 'listening' ? 'Your briefing is coming together…' : 'Preparing your briefing…'}</p>
+      {(openingSlow || voiceError || setupState === 'provisioning_failed') && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
+    </div>}
     <div className="alter-content">
     <div className="alter-landing">
     <div className="alter-agent-panel">
@@ -243,7 +259,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       </div>
     </div>
 
-    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active} greet={!sessionStorage.getItem('alter.live.greeted.' + workspaceId)} onNavigate={onOpen} onState={setVoiceState} onFirstSpeech={() => sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1')} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
+    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active && ready} greet={!sessionStorage.getItem('alter.live.greeted.' + workspaceId)} onNavigate={onOpen} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError('') }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
 
     <div className="fx-ticker" aria-hidden="true">
       {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}

@@ -2,7 +2,7 @@
 
 import asyncio
 import base64
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 import re
@@ -118,19 +118,51 @@ class LiveRelay:
             return "Represented member ID: " + req.targetId
         owner = self.engine.me(ctx)
         workspace = self.store.get(f"workspaces/{ctx.workspace_id}")
+        root = f"workspaces/{ctx.workspace_id}"
+        workday = {
+            "project": workspace.get("name", ""),
+            "agenda": [],
+            "pendingDrafts": [],
+            "pendingQuestions": [],
+        }
+        if workspace["state"] == "ready":
+            plan = self.store.get(f"{root}/plans/login_{ctx.member_id}")
+            if plan and plan.get("owner") == ctx.member_id:
+                workday["savedPlan"] = {"title": plan.get("title", ""), "revision": plan.get("revision", 1)}
+            workday["pendingDrafts"] = [
+                item.get("title", "")[:120]
+                for item in self.store.list(root + "/approvals")
+                if item.get("owner") == ctx.member_id and item.get("state") == "proposed"
+            ][:2]
+            workday["pendingQuestions"] = [
+                item.get("question", "")[:160]
+                for item in self.store.list(root + "/escalations")
+                if item.get("owner") == ctx.member_id and item.get("state") == "pending"
+            ][:2]
+            try:
+                from app.day import day
+
+                def instant(value):
+                    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+                agenda = sorted(
+                    day(self.engine, ctx)["agenda"],
+                    key=lambda item: instant(item["start"]),
+                )
+                for item in agenda:
+                    if instant(item["end"]) >= now():
+                        workday["agenda"].append({"title": item["title"][:120]})
+                    if len(workday["agenda"]) == 2:
+                        break
+            except Exception:
+                pass  # A calendar outage should not prevent voice from connecting.
         return json.dumps(
             {
                 "owner": owner["name"],
                 "role": owner["role"],
                 "setupState": workspace["state"],
-                "availableWork": [
-                    "review the saved login journey",
-                    "open the meeting companion",
-                    "ask Rahul's Alter",
-                    "review pending proposals",
-                ]
-                if workspace["state"] == "ready"
-                else [],
+                "workday": workday,
             }
         )
 
@@ -258,7 +290,13 @@ class LiveRelay:
             instruction = (
                 "You are an employee's Alter, always identified as AI. Never invent facts, commitments or successful writes. "
                 "For any work request, call the supplied tool and speak only its confirmed result in 1-2 sentences. "
-                "For an introductory greeting, briefly greet the verified owner and offer the available work without claiming any completed actions. "
+                "For an introductory greeting, sound like a colleague catching the owner up in an ongoing workday. "
+                "Use the verified workday context to mention one or two concrete current threads, favoring calendar items and pending decisions. "
+                "When two agenda items are present, connect them in their listed order instead of treating recurring events as one. "
+                "The agenda is ordered; no local time zone is provided, so do not state event times. "
+                "Mention a pending decision only when pendingDrafts or pendingQuestions contains an item. Empty arrays mean none are known. "
+                "End with one short question about the next move. Keep it to two sentences and about 30 words. "
+                "Do not introduce the product, list capabilities, say 'I can help', or imply a meeting is already underway from a calendar entry. "
                 "If setupState is provisioning, explain that you are connecting their Google resources and will be ready to work shortly. If setup failed, explain that the connection needs attention. "
                 "You can explain the supplied review context. You cannot approve anything: direct the user to the on-screen control. "
                 "Reply mode only drafts dictated text for review; never claim it was sent. "

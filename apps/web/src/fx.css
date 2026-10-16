@@ -75,6 +75,54 @@
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
 }
+.alter-screen.is-opening .alter-content { visibility: hidden; }
+.alter-screen:not(.is-opening) .alter-content { animation: stage-in .45s ease-out both; }
+.alter-screen.is-opening .alter-voice-dock {
+  visibility: visible;
+  position: fixed;
+  z-index: 91;
+  left: 50%;
+  bottom: clamp(18px, 6vh, 54px);
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 36px));
+  max-height: 42vh;
+  overflow-y: auto;
+  margin: 0;
+}
+.alter-opening {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 24px 210px;
+  text-align: center;
+  color: #eef2ff;
+  background:
+    radial-gradient(600px 480px at 50% 35%, rgba(79, 101, 240, .19), transparent 70%),
+    linear-gradient(160deg, #080d21, #101a34 70%, #091126);
+}
+.alter-opening-core {
+  display: grid;
+  place-items: center;
+  width: 106px;
+  height: 106px;
+  margin-bottom: 30px;
+  border: 1px solid rgba(84, 216, 244, .46);
+  border-radius: 50%;
+  box-shadow: 0 0 0 12px rgba(68, 101, 219, .09), 0 0 75px rgba(76, 111, 239, .35);
+  background: radial-gradient(circle at 35% 30%, #7f97ff, #3c45b5 54%, #111940 82%);
+  animation: opening-breathe 3s ease-in-out infinite;
+}
+@keyframes opening-breathe { 0%, 100% { transform: scale(.98); } 50% { transform: scale(1.03); } }
+.alter-opening-core span { color: #fff; font-size: 56px; font-weight: 600; line-height: 1; }
+.alter-opening-kicker { margin: 0 0 13px; color: #86dcf4; font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.alter-opening h1 { max-width: 560px; margin: 0; font: 400 clamp(34px, 4vw, 56px)/1.07 Georgia, 'Times New Roman', serif; letter-spacing: -.04em; }
+.alter-opening-status { margin: 19px 0 0; color: #adbadc; font-size: 15px; }
+.alter-opening-skip { margin-top: 22px; color: #d8e6ff; border: 1px solid #53699c; background: #1d2e53; }
+.alter-opening-skip:hover { background: #2b426f; }
 .alter-content { max-width: 1200px; margin: 0 auto; }
 .alter-landing {
   display: grid;
@@ -562,7 +610,7 @@
   .fx::before, .alter-face .alter-core, .core-sweep,
   .alter-core.is-listening::before, .alter-core.is-listening::after,
   .offer-card::after, .offer-grid .offer-card, .offer-card.is-picked,
-  .stage-wipe, .meet-stage, .plan-canvas-screen, .alter-orb,
+  .stage-wipe, .meet-stage, .plan-canvas-screen, .alter-orb, .alter-content,
   .mtile.is-live, .eq i, .plan-canvas-screen .connection-path,
   .fx .diagram-node-card.node-status-voice, .join-core { animation: none !important; }
 }
