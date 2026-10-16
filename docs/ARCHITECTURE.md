@@ -64,7 +64,7 @@ Backup: a recorded video of the full run. Required for online submission anyway.
            │ HTTPS                     │ Firestore realtime + FCM    │ WebSocket
            ▼                           ▼                             ▼
 ┌──────── Cloud Run: Alter service (one ADK agent per employee) ────────┐   ┌── Cloud Run: live-bridge ──────┐
-│ Gemini on Vertex AI                                                         │   │ Gemini Live API session        │
+│ Gemini on Gemini Enterprise Agent Platform                                  │   │ Gemini Live API session        │
 │ tools:                                                                      │   │ in: user mic (16 kHz PCM),     │
 │  ledger_search(q)         → Firestore decisions + Vertex AI Search          │   │     doc snapshot frames @1 FPS │
 │  ask_alter(to, q)         → A2A client  ───────────────┐                    │◄──┤ out: voice                     │
@@ -90,7 +90,7 @@ Ingestion job (Cloud Run job): transcript/doc → Gemini (structured output) →
 
 | Need | Service | Notes |
 |---|---|---|
-| Reasoning | **Gemini on Vertex AI** | Pin current model IDs from release notes (names change often). Pro-class model for the Alter, Flash for extraction |
+| Reasoning | **Gemini on Gemini Enterprise Agent Platform** | Pin current model IDs from release notes (names change often). Pro-class model for the Alter, Flash for extraction |
 | Agents | **Agent Development Kit (ADK)** | One agent definition, instantiated per employee with that employee's ledger, contract and identity |
 | Agent-to-agent | **A2A protocol** (ADK supports exposing/consuming A2A agents) | Each Alter exposes an A2A endpoint with an agent card |
 | Agent identity / registry | **Agent Identity, Agent Registry** on Gemini Enterprise Agent Platform, *if available to hackathon accounts* | Fallback: a service account per Alter + a signed `asker` field in A2A metadata |

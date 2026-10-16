@@ -1,6 +1,6 @@
-"""Opt-in real Vertex/ADK acceptance. Only synthetic data; Google files stay local.
+"""Opt-in real Agent Platform (formerly Vertex AI)/ADK acceptance. Only synthetic data; Google files stay local.
 
-Run with --live-models. No fake model, Runner or Vertex transport is installed.
+Run with --live-models. No fake model, Runner or Agent Platform transport is installed.
 """
 
 import asyncio
@@ -22,7 +22,7 @@ pytestmark = pytest.mark.vertex_live
 @pytest.fixture(scope="module")
 def vertex_settings(request, tmp_path_factory):
     if not request.config.getoption("--live-models"):
-        pytest.skip("Real Vertex tests require explicit --live-models opt-in.")
+        pytest.skip("Real Agent Platform tests require explicit --live-models opt-in.")
     config_path = Path(os.environ.get("ALTER_LIVE_CONFIG", "infra/api.env.yaml"))
     values = {}
     if config_path.exists():
@@ -56,7 +56,7 @@ def vertex_settings(request, tmp_path_factory):
             pytrace=False,
         )
     print(
-        "\nREAL VERTEX: "
+        "\nREAL AGENT PLATFORM: "
         + ", ".join(f"{name}={selected[name]}" for name in (*names, "VERTEX_LOCATION"))
     )
     print(

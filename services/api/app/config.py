@@ -113,7 +113,7 @@ class Settings:
             or self.google_backend != "google"
             or self.ai_backend != "vertex"
         ):
-            missing.append("live backends (Firestore, Vertex, Google)")
+            missing.append("live backends (Firestore, Agent Platform, Google)")
         if not self.service_url.startswith(
             "https://"
         ) or not self.public_origin.startswith("https://"):

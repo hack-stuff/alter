@@ -8,7 +8,7 @@ Built by Team Cold Silicon for the Google AI Builder Cup 2026, Theme 5 (Future o
 All people, projects and data in this repository are fictional.
 
 > **Project status:** hackathon prototype. Everything runs locally with simulated AI and Google
-> resources, and the automated tests pass. The cloud setup (Firebase, Vertex AI, Google account,
+> resources, and the automated tests pass. The cloud setup (Firebase, Gemini Enterprise Agent Platform, Google account,
 > Gemini Live voice) has not been configured or deployed yet. See [Roadmap](#roadmap).
 
 ## Description
@@ -36,7 +36,7 @@ Arjun, working on a "Login revamp" project), with its own Drive folder, spreadsh
 Visitors type a name to join, and an invite link lets others join the same workspace.
 
 **How it's built:** Python 3.12, FastAPI and [Google ADK](https://google.github.io/adk-docs/)
-agents with Gemini on Vertex AI for the backend; React, TypeScript and Vite for the installable
+agents with Gemini on Gemini Enterprise Agent Platform (formerly Vertex AI) for the backend; React, TypeScript and Vite for the installable
 web app (PWA); Firestore for state; Firebase anonymous sign-in. The design is in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -120,14 +120,14 @@ All settings are listed, with comments, in [.env.example](.env.example).
 ### 3. Cloud deployment
 
 Not set up yet. The cloud version needs a billing-enabled Google Cloud project with Firebase,
-Firestore, Vertex AI, a demo Google account for the Docs/Drive/Sheets/Calendar/Gmail actions, and
+Firestore, Gemini Enterprise Agent Platform, a demo Google account for the Docs/Drive/Sheets/Calendar/Gmail actions, and
 a Gemini API key for voice. The step-by-step guides are:
 
 - [Track A setup and deployment](docs/track-a-deployment.md): the API, Firestore and Google account
 - [Track B deployment](docs/track-b-deployment.md): web hosting and Gemini Live voice
 - [Real-model testing](docs/real-model-testing.md): checking real Gemini calls before deploying
 
-Before going public, set Vertex AI quotas and a billing budget in the Google Cloud console. The
+Before going public, set Agent Platform quotas and a billing budget in the Google Cloud console. The
 app's own limits (120 model calls per member and 400 per workspace each hour) count calls, not
 cost, and apply per workspace.
 
@@ -203,11 +203,11 @@ code; it matches the server log entry.
 
 ## Roadmap
 
-- [ ] Set up the Google Cloud and Firebase project, Vertex AI models and the demo Google account
-- [ ] Run the real-model tests against Vertex AI
+- [ ] Set up the Google Cloud and Firebase project, Agent Platform models and the demo Google account
+- [ ] Run the real-model tests against Agent Platform
 - [ ] Run the Firestore security rules tests with the Firebase emulator
 - [ ] Deploy the API and voice token service to Cloud Run and the app to Firebase Hosting
-- [ ] Set Vertex AI quotas and a billing budget with alerts
+- [ ] Set Agent Platform quotas and a billing budget with alerts
 - [ ] Check real Google file changes, voice on a phone, invites and cleanup end to end
 - [ ] Record the demo video
 
@@ -230,7 +230,7 @@ secret values (see [.env.example](.env.example)).
 Team Cold Silicon: Devesh, Sahil, Priyanshu and Kanmani.
 
 Built with [Google ADK](https://google.github.io/adk-docs/), the
-[A2A protocol](https://a2a-protocol.org/), [Gemini](https://ai.google.dev/) on Vertex AI,
+[A2A protocol](https://a2a-protocol.org/), [Gemini](https://ai.google.dev/) on Gemini Enterprise Agent Platform,
 [Firebase](https://firebase.google.com/), [FastAPI](https://fastapi.tiangolo.com/),
 [React](https://react.dev/) and [Vite](https://vite.dev/).
 

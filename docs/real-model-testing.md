@@ -1,6 +1,6 @@
 # Real-model local acceptance
 
-These tests run the installed Gemini SDK and ADK Runner against real Vertex endpoints. They use SQLite and local Google app adapters; no production Firestore workspace or Google file is changed. All prompts and source data are synthetic. The suite tests both model IDs, structured output, owner retrieval/citations, the signed A2A receiver agent, document drafting/revision, and an owner agent creating a proposal without applying it.
+These tests run the installed Gemini SDK and ADK Runner against real Gemini Enterprise Agent Platform (formerly Vertex AI) endpoints. They use SQLite and local Google app adapters; no production Firestore workspace or Google file is changed. All prompts and source data are synthetic. The suite tests both model IDs, structured output, owner retrieval/citations, the signed A2A receiver agent, document drafting/revision, and an owner agent creating a proposal without applying it.
 
 Run this before rebuilding Cloud Run after an agent/model change. A simple Studio `OK` response alone does not validate tool calling, structured output, the configured region, or the deployed service account.
 
@@ -21,7 +21,7 @@ gcloud auth application-default login
 gcloud auth application-default set-quota-project alter-48b59
 ```
 
-In Cloud Shell, try the test first; its existing ADC may already work. If the suite reports missing ADC, use those same commands. Never paste access tokens or credentials into the test files, chat, or repository. In the managed Codex environment, connect the intended GCP identity through environment settings instead of falling back to another identity or reading credential files. The outbound policy must also permit the selected Vertex API and Google authentication endpoints.
+In Cloud Shell, try the test first; its existing ADC may already work. If the suite reports missing ADC, use those same commands. Never paste access tokens or credentials into the test files, chat, or repository. In the managed Codex environment, connect the intended GCP identity through environment settings instead of falling back to another identity or reading credential files. The outbound policy must also permit the selected Agent Platform API and Google authentication endpoints.
 
 ## Use the deployment configuration
 
@@ -33,7 +33,7 @@ bash services/api/scripts/test_real_models.sh
 
 `VERTEX_LOCATION` selects the model endpoint independently of `GCP_REGION` (the deployment region). If omitted, it inherits `GCP_REGION` for existing deployments. The selected Flash Lite and Flash IDs both passed the user's real Vertex access test at `global`; the Flash Lite regional access test returned 404 at `us-central1`.
 
-The script runs tests with real model calls explicitly enabled and stops at the first failure. Expect a small amount of billable Vertex usage. It does not require a new Cloud Run revision or frontend build. Provider failures report the failing stage and provider error directly using synthetic test inputs; share that output, never credential files.
+The script runs tests with real model calls explicitly enabled and stops at the first failure. Expect a small amount of billable Agent Platform usage. It does not require a new Cloud Run revision or frontend build. Provider failures report the failing stage and provider error directly using synthetic test inputs; share that output, never credential files.
 
 On a Mac without the deployment YAML, select the exact deployment values explicitly:
 
@@ -46,7 +46,7 @@ export MODEL_PRO=gemini-3.8-flash
 bash services/api/scripts/test_real_models.sh
 ```
 
-Basic access to both IDs was verified at `global`; the remaining ADK/tool/drafting acceptance stages still need to pass. A 404 means the configured model/endpoint needs investigation. A 403 requires checking Vertex access for the active identity. A 429 can indicate quota or capacity. The A2A acceptance uses the actual SDK's signed JSON-RPC exchange through a local ASGI transport; the model calls are real HTTPS requests to Vertex.
+Basic access to both IDs was verified at `global`; the remaining ADK/tool/drafting acceptance stages still need to pass. A 404 means the configured model/endpoint needs investigation. A 403 requires checking Agent Platform access for the active identity. A 429 can indicate quota or capacity. The A2A acceptance uses the actual SDK's signed JSON-RPC exchange through a local ASGI transport; the model calls are real HTTPS requests to Agent Platform.
 
 For a model-only subset or one failing stage:
 

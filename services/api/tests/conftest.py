@@ -40,5 +40,5 @@ def pytest_addoption(parser):
         "--live-models",
         action="store_true",
         default=False,
-        help="Enable paid real Vertex model tests; requires ADC and explicit project/model configuration.",
+        help="Enable paid real Agent Platform model tests; requires ADC and explicit project/model configuration.",
     )

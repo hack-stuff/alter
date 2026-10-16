@@ -65,7 +65,7 @@ export default function App() {
   return <main className="app">
     <header className="app-header"><div className="brand">Alter<span className="hint">{data.workspace?.name ?? 'Your workspace'}</span></div><button onClick={() => setConfirmReset(true)} disabled={resetting}>Reset workspace</button></header>
     {MOCK && <p className="demo-banner">Demo workspace · sample answers and changes · resets on reload</p>}
-    {data.workspace?.simulated && <p className="demo-banner">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Vertex AI and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</p>}
+    {data.workspace?.simulated && <p className="demo-banner">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Gemini on Agent Platform and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</p>}
     {data.workspace?.state === 'provisioning' && <p role="status">Setting up your team’s Google resources…</p>}
     {data.workspace?.state === 'provisioning_failed' && <p role="alert" className="error">Google setup failed. Contact the administrator or reset the workspace to try again.</p>}
     <nav className="main-nav" aria-label="Workspace">{SCREENS.map((s) => <button key={s} aria-pressed={s === screen} onClick={() => setScreen(s)}>{s}{s === 'approvals' && pending > 0 && <span className="count">{pending}</span>}{s === 'escalations' && waiting > 0 && <span className="count">{waiting}</span>}</button>)}</nav>

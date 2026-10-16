@@ -29,7 +29,7 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["vertex_live: opt-in real Vertex calls; requires ADC and explicit configuration"]
+markers = ["vertex_live: opt-in real Agent Platform calls; requires ADC and explicit configuration"]
 
 [tool.setuptools.package-data]
 app = ["alters/prompts/*.md"]
