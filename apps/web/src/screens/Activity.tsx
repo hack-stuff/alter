@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ActivityItem, Receipt, Member, Escalation, A2ATrace } from '../api/types'
-import { externalUrl } from '../api/presentation'
+import { byTime, externalUrl, localDayAndTime } from '../api/presentation'
 import { AlterBadge } from '../components/AlterBadge'
 import { TraceView } from '../components/TraceView'
 
@@ -19,9 +19,9 @@ export function Activity({ items, receipts, members, escalations, traces }: { it
   const updated = items.filter((i) => ['doc_updated', 'doc_edit', 'doc_create'].includes(i.kind)).length
   const pending = escalations.filter((e) => e.state === 'pending').length
   const days: Record<string, ActivityItem[]> = {}
-  for (const item of [...items].sort((a, b) => b.ts.localeCompare(a.ts))) (days[item.ts.slice(0, 10)] ??= []).push(item)
+  for (const item of [...items].sort((a, b) => byTime(b, a))) (days[localDayAndTime(item.ts)[0]] ??= []).push(item)
   return <section className="screen"><h2>While you were away</h2><p className="activity-summary">{answered} questions answered · {updated} docs updated · {pending} needs you</p>
-    {Object.entries(days).map(([day, rows]) => <section className="activity-group" key={day}><h3>{day}</h3>{rows?.map((item) => <button className="activity-row" key={item.id} onClick={() => setSelected(item.receiptId)}><span>{item.summary} <AlterBadge /></span><span className="hint">{item.ts.slice(11, 16)} · View receipt →</span></button>)}</section>)}
+    {Object.entries(days).map(([day, rows]) => <section className="activity-group" key={day}><h3>{day}</h3>{rows?.map((item) => <button className="activity-row" key={item.id} onClick={() => setSelected(item.receiptId)}><span>{item.summary} <AlterBadge /></span><span className="hint">{localDayAndTime(item.ts)[1]} · View receipt →</span></button>)}</section>)}
     {!items.length && <p className="empty">Your team's activity will appear here.</p>}
     {traces.length > 0 && <section><h3>Alter collaboration</h3>{traces.map((trace) => <TraceView key={trace.id} trace={trace} />)}</section>}
     {selected && <ReceiptDrawer key={selected} receipt={receipts.find((r) => r.id === selected)} members={members} close={() => setSelected(undefined)} />}

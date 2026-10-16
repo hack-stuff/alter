@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, MOCK } from '../api/client'
-import { timestamp } from '../api/presentation'
+import { byTime, timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
 import { VoiceControl } from '../components/VoiceControl'
 import type { Approval, Message, ProgressEvent } from '../api/types'
@@ -18,6 +18,8 @@ export function Home({ name, workspaceId, approvals, events, onUpdate, active = 
   const [error, setError] = useState('')
   const [mobileTab, setMobileTab] = useState<'chat' | 'work'>('chat')
   const [liveEvents, setLiveEvents] = useState<ProgressEvent[]>([])
+  // Progress events already present when a request starts belong to earlier turns.
+  const [staleEvents, setStaleEvents] = useState<Set<string>>(new Set())
   const [streamedMessages, setStreamedMessages] = useState<{ id: string; items: Message[] }>()
   useEffect(() => {
     if (MOCK || !conversationId) return
@@ -38,8 +40,12 @@ export function Home({ name, workspaceId, approvals, events, onUpdate, active = 
     if (busy || !text.trim()) return
     setBusy(true)
     setError('')
+    setStaleEvents(new Set(liveEvents.map((event) => event.id)))
     try {
-      const r = await api.chat(text.trim(), conversationId)
+      let id = conversationId
+      // Create the conversation first so its progress events stream from the first message.
+      if (!id && !MOCK) { id = (await api.startConversation()).conversationId; setConversationId(id) }
+      const r = await api.chat(text.trim(), id)
       receive(r, text.trim())
       setDraft('')
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your message. Please try again.'); setDraft(text) }
@@ -60,7 +66,7 @@ export function Home({ name, workspaceId, approvals, events, onUpdate, active = 
             {m.approvalIds.length > 0 && <button className="chip approval" onClick={() => { setMobileTab('work'); document.getElementById('work-panel')?.focus() }}>Review proposal</button>}
           </article>)}
         </div>
-        {busy && <p className="thinking" role="status">{[...(MOCK ? events : liveEvents)].sort((a, b) => a.ts.localeCompare(b.ts)).at(-1)?.label ?? 'Your Alter is working on your request…'}</p>}
+        {busy && <p className="thinking" role="status">{(MOCK ? [...events] : liveEvents.filter((event) => !staleEvents.has(event.id))).sort(byTime).at(-1)?.label ?? 'Your Alter is working on your request…'}</p>}
         {conversation.length === 0 && <div className="suggested">{SUGGESTED.map((s) => <button key={s} disabled={busy} onClick={() => void send(s)}>{s} <span aria-hidden="true">↗</span></button>)}</div>}
         <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy} /><button className="primary" disabled={busy || !draft.trim()}>Send</button></form>
         {active && <VoiceControl mode="chat" conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />}

@@ -1,14 +1,24 @@
-export function pcm16(input: Float32Array, sampleRate: number): Int16Array {
+// Downsamples a microphone stream to 16 kHz. Leftover samples and the fractional
+// position carry into the next chunk, so chunk boundaries neither drop nor skew audio.
+export function pcm16Resampler(sampleRate: number) {
   const ratio = sampleRate / 16_000
-  const output = new Int16Array(Math.floor(input.length / ratio))
-  for (let i = 0; i < output.length; i++) {
-    const from = Math.floor(i * ratio), to = Math.min(input.length, Math.floor((i + 1) * ratio))
-    let sum = 0
-    for (let j = from; j < to; j++) sum += input[j]
-    const value = Math.max(-1, Math.min(1, sum / Math.max(1, to - from)))
-    output[i] = Math.round(value * (value < 0 ? 32768 : 32767))
+  let carry = new Float32Array(0)
+  let phase = 0
+  return (chunk: Float32Array): Int16Array => {
+    const input = new Float32Array(carry.length + chunk.length)
+    input.set(carry); input.set(chunk, carry.length)
+    const output = new Int16Array(Math.max(0, Math.floor((input.length - phase) / ratio)))
+    for (let i = 0; i < output.length; i++) {
+      const from = Math.floor(phase + i * ratio), to = Math.min(input.length, Math.floor(phase + (i + 1) * ratio))
+      let sum = 0
+      for (let j = from; j < to; j++) sum += input[j]
+      const value = Math.max(-1, Math.min(1, sum / Math.max(1, to - from)))
+      output[i] = Math.round(value * (value < 0 ? 32768 : 32767))
+    }
+    const next = phase + output.length * ratio
+    carry = input.slice(Math.floor(next)); phase = next - Math.floor(next)
+    return output
   }
-  return output
 }
 export function pcmBase64(data: Int16Array) {
   const bytes = new Uint8Array(data.length * 2)

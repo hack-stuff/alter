@@ -75,9 +75,9 @@ export default function App() {
       <div hidden={screen !== 'home'}><Home active={screen === 'home'} name={session.name} workspaceId={session.join.workspaceId} approvals={approvals} events={data.events} onUpdate={updateApproval} /></div>
       {screen === 'team' && <Team members={data.members} memberId={session.join.memberId} inviteUrl={inviteUrl} workspaceId={session.join.workspaceId} />}
       {screen === 'approvals' && <Approvals approvals={approvals} onUpdate={updateApproval} />}
-      {screen === 'escalations' && <Escalations items={escalations} members={data.members} onRefresh={refresh} />}
+      {screen === 'escalations' && <Escalations items={escalations} members={data.members} />}
       {screen === 'activity' && <Activity items={data.activity} receipts={data.receipts} members={data.members} escalations={escalations} traces={data.traces} />}
-      {screen === 'settings' && <Settings memories={data.memories.filter((m) => m.owner === session.join.memberId)} rules={data.rules} me={data.members.find((m) => m.id === session.join.memberId)} onRefresh={refresh} />}
+      {screen === 'settings' && <Settings memories={data.memories.filter((m) => m.owner === session.join.memberId)} rules={data.rules} me={data.members.find((m) => m.id === session.join.memberId)} />}
       {screen === 'files' && <Files workspace={data.workspace} inbox={data.inbox} members={data.members} />}
     </div>
     <footer className="connected-apps" aria-label="Workspace apps">Docs · Drive · Sheets · Calendar · Gmail</footer>

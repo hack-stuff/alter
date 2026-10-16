@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { Memory, Rule, Member, Outcome } from '../api/types'
 import { AlterBadge } from '../components/AlterBadge'
 
-export function Settings({ memories, rules, me, onRefresh }: { memories: Memory[]; rules: Rule[]; me?: Member; onRefresh: () => void }) {
+export function Settings({ memories, rules, me }: { memories: Memory[]; rules: Rule[]; me?: Member }) {
   const [content, setContent] = useState('')
   const [editedEmail, setEmail] = useState<string | undefined>(undefined)
   const email = editedEmail ?? me?.email ?? ''
@@ -13,7 +13,7 @@ export function Settings({ memories, rules, me, onRefresh }: { memories: Memory[
   async function save(id: string, action: () => Promise<unknown>, success: string) {
     if (busy) return
     setBusy(id); setError(''); setMessage('')
-    try { await action(); setMessage(success); onRefresh() }
+    try { await action(); setMessage(success) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save. Please try again.') }
     finally { setBusy('') }
   }

@@ -13,7 +13,7 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
     'workspaces/ws_demo/approvals': [...approvals.approvals, { ...approvals.approvals[0], id: 'private', owner: 'someone_else', title: 'Another member private proposal' }],
     'workspaces/ws_demo/escalations': [activity.escalation],
     'workspaces/ws_demo/activity': [activity.activity[0]],
-    'workspaces/ws_demo/receipts/rcp_01': activity.receipt,
+    'workspaces/ws_demo/receipts': [activity.receipt],
     'workspaces/ws_demo/memories': [],
     'workspaces/ws_demo/rules/m_judge/items': [],
     'workspaces/ws_demo/inbox/m_judge/messages': [],
@@ -61,6 +61,8 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
     } else if (request.url().endsWith('/workspaces')) {
       joined = true
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(workspace.created) })
+    } else if (request.url().endsWith('/conversations')) {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ conversationId: 'conv_01' }) })
     } else if (request.url().endsWith('/chat')) {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(approvals.chat_reply) })
     } else await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })

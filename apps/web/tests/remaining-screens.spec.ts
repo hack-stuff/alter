@@ -123,9 +123,9 @@ test('voice tool router rejects approval and mismatched targets; permitted tools
 test('PCM conversion clips, resamples and writes little-endian audio', async ({ page }) => {
   await page.goto('/')
   const audio = await page.evaluate(async () => {
-    const path = '/src/live/audio.ts'; const { pcm16, pcmBase64 } = await import(path)
-    const output = pcm16(new Float32Array([-2, 2, .5]), 16_000)
-    const resampled = pcm16(new Float32Array(480).fill(.5), 48_000)
+    const path = '/src/live/audio.ts'; const { pcm16Resampler, pcmBase64 } = await import(path)
+    const output = pcm16Resampler(16_000)(new Float32Array([-2, 2, .5]))
+    const resampled = pcm16Resampler(48_000)(new Float32Array(480).fill(.5))
     return { output: [...output], length: resampled.length, sample: resampled[0], bytes: [...atob(pcmBase64(output))].map((c) => c.charCodeAt(0)) }
   })
   expect(audio.output).toEqual([-32768, 32767, 16384])

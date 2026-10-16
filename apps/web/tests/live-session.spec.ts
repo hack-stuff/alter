@@ -80,3 +80,58 @@ test('a rejected token request releases the microphone and returns to text contr
   await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeEnabled()
   expect(await page.evaluate(() => (window as any).testStream.getTracks()[0].readyState)).toBe('ended')
 })
+
+test('voice follows the typed conversation, reports a server close and releases its lock', async ({ page }) => {
+  const releases: unknown[] = []
+  await page.route('**/src/firebase-auth.ts', (route) => route.fulfill({ contentType: 'application/javascript', body: "export async function firebaseIdToken(){return 'test-firebase-token'}" }))
+  await page.route('**/v1/live/token', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ token: 'fake-ephemeral-token', model: 'test-live-model', expiresAt: new Date(Date.now() + 600_000).toISOString(), sessionId: 'a'.repeat(32) }) }))
+  await page.route('**/v1/live/release', (route) => { releases.push(route.request().postDataJSON()); return route.fulfill({ contentType: 'application/json', body: '{"released":true}' }) })
+  await page.route('**/node_modules/.vite/deps/@google_genai.js*', (route) => route.fulfill({ contentType: 'application/javascript', body: `
+    export class GoogleGenAI {
+      constructor() { this.live = { connect: async (options) => {
+        window.liveHarness = { callbacks: options.callbacks, responses: [] };
+        return { sendRealtimeInput() {}, sendToolResponse(input) { window.liveHarness.responses.push(input); }, sendClientContent() {}, close() {} };
+      } }; }
+    }` }))
+  await page.goto('/')
+  await page.getByLabel('Your name').fill('Alex')
+  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
+  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await page.evaluate(async () => {
+    const h = (window as any).liveHarness
+    h.conversations = []
+    const path = '/src/api/client.ts'
+    const { api } = await import(path)
+    const chat = api.chat
+    api.chat = (...args: unknown[]) => { h.conversations.push(args[1]); return chat(...args) }
+  })
+  await page.getByLabel('Message your Alter').fill('Why one-tap?')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(page.getByLabel('Message your Alter')).toHaveValue('')
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-1', name: 'alter_chat', args: { message: 'And the launch date?' } }] } }))
+  await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(1)
+  expect(await page.evaluate(() => (window as any).liveHarness.conversations)).toEqual([undefined, 'conv_01'])
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onclose())
+  await expect(page.getByRole('alert')).toContainText('The voice session ended')
+  await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeVisible()
+  await expect.poll(() => releases).toEqual([{ sessionId: 'a'.repeat(32) }])
+})
+
+test('microphone resampling keeps fractional samples across chunks', async ({ page }) => {
+  await page.goto('/')
+  const lengths = await page.evaluate(async () => {
+    const path = '/src/live/audio.ts'
+    const { pcm16Resampler } = await import(path)
+    const resample = pcm16Resampler(48_000)
+    let total = 0
+    for (let i = 0; i < 75; i++) total += resample(new Float32Array(2048)).length
+    const odd = pcm16Resampler(44_100)
+    let oddTotal = 0
+    for (let i = 0; i < 100; i++) oddTotal += odd(new Float32Array(2048)).length
+    return { total, oddTotal }
+  })
+  // 75 × 2048 samples at 48 kHz is exactly 51,200 samples at 16 kHz; 204,800 at 44.1 kHz is 74,303.85.
+  expect(lengths.total).toBe(51_200)
+  expect(lengths.oddTotal).toBe(74_303)
+})

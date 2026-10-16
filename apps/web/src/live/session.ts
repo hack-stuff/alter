@@ -2,7 +2,7 @@ import type { Session, LiveServerMessage } from '@google/genai'
 import type { LiveMode } from './modes'
 import { dispatchLiveTool } from './tools'
 import type { ToolContext } from './tools'
-import { pcm16, pcmBase64, decodeAudio } from './audio'
+import { pcm16Resampler, pcmBase64, decodeAudio } from './audio'
 
 export interface LiveOptions extends ToolContext {
   mode: LiveMode
@@ -30,7 +30,10 @@ export class LiveSession {
   private pending = new Set<string>()
   private handled = new Set<string>()
   private cancelled = new Set<string>()
+  private release?: () => void
   constructor(options: LiveOptions) { this.options = options }
+  // The page's conversation can change while voice is open (for example, after a typed message).
+  setConversationId(id: string | undefined) { this.options.conversationId = id }
   async start() {
     this.options.onState('connecting')
     try {
@@ -50,7 +53,8 @@ export class LiveSession {
         const body = await response.json().catch(() => undefined)
         throw new Error(body?.detail?.error?.message ?? body?.error?.message ?? 'Voice is unavailable. Please continue by text.')
       }
-      const token: { token: string; model: string; expiresAt: string } = await response.json()
+      const token: { token: string; model: string; expiresAt: string; sessionId?: string } = await response.json()
+      if (token.sessionId && base.endsWith('/token')) this.release = releaser(base.replace(/\/token$/, '/release'), token.sessionId, firebaseIdToken)
       const remaining = Date.parse(token.expiresAt) - Date.now()
       if (!token.token || !token.model || !Number.isFinite(remaining) || remaining <= 0) throw new Error('The voice session expired. Start a new session.')
       if (this.stopped) { this.stop(); return }
@@ -65,7 +69,7 @@ export class LiveSession {
         callbacks: {
           onmessage: (message) => { void this.message(message) },
           onerror: () => { if (!this.stopped) this.options.onError('Voice connection interrupted. Please try again or use text.'); this.stop() },
-          onclose: () => this.stop(),
+          onclose: () => { if (!this.stopped) this.options.onError('The voice session ended. Start again or continue by text.'); this.stop() },
         },
       })
       if (this.stopped) { connection.close(); return }
@@ -75,8 +79,9 @@ export class LiveSession {
       if (this.stopped) return
       this.microphone = new AudioWorkletNode(this.audio, 'alter-microphone')
       this.silence = this.audio.createGain(); this.silence.gain.value = 0
+      const resample = pcm16Resampler(this.audio.sampleRate)
       this.microphone.port.onmessage = (event: MessageEvent<Float32Array>) => {
-        if (!this.stopped && !this.muted && this.connection && this.audio) this.connection.sendRealtimeInput({ audio: { data: pcmBase64(pcm16(event.data, this.audio.sampleRate)), mimeType: 'audio/pcm;rate=16000' } })
+        if (!this.stopped && !this.muted && this.connection) this.connection.sendRealtimeInput({ audio: { data: pcmBase64(resample(event.data)), mimeType: 'audio/pcm;rate=16000' } })
       }
       this.source.connect(this.microphone); this.microphone.connect(this.silence); this.silence.connect(this.audio.destination)
       this.options.onState('listening')
@@ -142,6 +147,11 @@ export class LiveSession {
     this.source = undefined; this.microphone = undefined; this.silence = undefined
     if (this.audio && this.audio.state !== 'closed') void this.audio.close()
     this.audio = undefined
+    const release = this.release; this.release = undefined; release?.()
     if (!alreadyStopped) this.options.onState('closed')
   }
+}
+// Best effort: frees the per-user voice lock early. The server lock still expires on its own.
+function releaser(url: string, sessionId: string, idToken: () => Promise<string>) {
+  return () => { void idToken().then((token) => fetch(url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ sessionId }) })).catch(() => undefined) }
 }

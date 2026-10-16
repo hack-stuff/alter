@@ -23,6 +23,7 @@ export function VoiceControl(props: Props) {
   const [muted, setMuted] = useState(false)
   const [correcting, setCorrecting] = useState(false)
   useEffect(() => () => { session.current?.stop() }, [])
+  useEffect(() => { session.current?.setConversationId(props.conversationId) }, [props.conversationId])
   function start() {
     if (state !== 'closed') return
     setError(''); setInput(''); setOutput(''); setMuted(props.mode === 'reply')

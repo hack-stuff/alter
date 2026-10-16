@@ -21,6 +21,7 @@ export const mockApi: Api = {
   createWorkspace: (name) => { resetMockWorkspace(false, name); return delay(mockJoinResult()) },
   joinWorkspace: (code, name) => { if (code !== 'INV123') return Promise.reject(new Error('This invite link is not valid. Ask your teammate for a new link.')); resetMockWorkspace(true, name); return delay(mockJoinResult()) },
   resetWorkspace: () => { const name = mockSnapshot().members.find((m) => m.id === mockJoinResult().memberId)?.name ?? 'You'; resetMockWorkspace(undefined, name); return delay(mockJoinResult()) },
+  startConversation: async () => ({ conversationId: 'conv_01' }),
   chat: async (message) => {
     const generation = mockGeneration()
     setMockProgress(/why|launch|leave|confirm/i.test(message) ? "Asking Rahul's Alter…" : 'Preparing a preview for your review…')

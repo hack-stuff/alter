@@ -201,6 +201,10 @@ def create_app(settings=None, engine=None):
     def workspace(ctx=Depends(member)):
         return engine.snapshot(ctx)
 
+    @app.post("/v1/conversations")
+    def start_conversation(ctx=Depends(member)):
+        return engine.start_conversation(ctx)
+
     @app.get("/v1/conversations/{cid}")
     def conversation(cid: str, ctx=Depends(member)):
         root = f"workspaces/{ctx.workspace_id}/conversations/{identifier(cid)}"

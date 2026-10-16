@@ -32,11 +32,17 @@ class TokenRequest(BaseModel):
     mode: Literal["chat", "revise", "reply", "huddle"]
     memberId: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,128}$")
 
+class ReleaseRequest(BaseModel):
+    sessionId: str = Field(pattern=r"^[0-9a-f]{32}$")
+
+Reservation = Literal["reserved", "busy", "exhausted"]
+
 class Backend(Protocol):
     def authenticate(self, token: str) -> str: ...
     def workspace(self, uid: str, persona: str | None) -> tuple[str, str]: ...
-    def reserve(self, workspace: str, uid: str, request_id: str, now: datetime, minutes: int) -> bool: ...
+    def reserve(self, workspace: str, uid: str, request_id: str, now: datetime, minutes: int) -> Reservation: ...
     def refund(self, workspace: str, uid: str, request_id: str, now: datetime, minutes: int) -> None: ...
+    def release(self, workspace: str, uid: str, request_id: str) -> None: ...
     def mint(self, mode: str, persona: str | None, expires: datetime, new_session_expires: datetime) -> str: ...
 
 class GoogleBackend:
@@ -78,9 +84,13 @@ class GoogleBackend:
         workspace = parent.get()
         if not workspace.exists:
             raise PermissionError("This workspace no longer exists.")
-        expires_at = workspace.to_dict().get("expiresAt")
+        data = workspace.to_dict()
+        expires_at = data.get("expiresAt")
         if isinstance(expires_at, datetime) and expires_at <= datetime.now(timezone.utc):
             raise PermissionError("This workspace has expired.")
+        # Track A rejects requests while a workspace is retiring; voice should too.
+        if data.get("state") in ("deleting", "resetting"):
+            raise PermissionError("This workspace is being refreshed. Please try again.")
         if persona and not parent.collection("members").document(persona).get().exists:
             raise PermissionError("This teammate is not in your workspace.")
         return parent.id, member.id
@@ -100,13 +110,15 @@ class GoogleBackend:
             active = active_session.get(transaction=tx).to_dict() or {}
             reservations = values.get("reservations", {})
             used = values.get("minutes", 0)
-            # At most one new ten-minute reservation for this UID per ten-minute window.
-            if used + minutes > self.settings.workspace_minutes_per_hour or (active.get("expiresAt") and active["expiresAt"] > now):
-                return False
+            # At most one active ten-minute reservation per UID, until it expires or the client releases it.
+            if active.get("expiresAt") and active["expiresAt"] > now:
+                return "busy"
+            if used + minutes > self.settings.workspace_minutes_per_hour:
+                return "exhausted"
             reservations[request_id] = {"uid": uid, "minutes": minutes}
             tx.set(budget, {"minutes": used + minutes, "reservations": reservations, "expiresAt": now + timedelta(hours=2)})
             tx.set(active_session, {"requestId": request_id, "expiresAt": now + timedelta(seconds=SESSION_SECONDS)})
-            return True
+            return "reserved"
         return increment(transaction)
 
     def refund(self, workspace, uid, request_id, now, minutes):
@@ -126,6 +138,19 @@ class GoogleBackend:
             if active.get("requestId") == request_id:
                 tx.delete(active_session)
         decrement(transaction)
+
+    def release(self, workspace, uid, request_id):
+        # Clears only the per-UID lock. The minutes stay charged: a client report
+        # cannot prove the single-use token is no longer connected.
+        from google.cloud import firestore
+        active_session = self.db().collection("workspaces").document(workspace).collection("liveSessions").document(uid)
+        transaction = self.db().transaction()
+        @firestore.transactional
+        def clear(tx):
+            active = active_session.get(transaction=tx).to_dict() or {}
+            if active.get("requestId") == request_id:
+                tx.delete(active_session)
+        clear(transaction)
 
     def mint(self, mode, persona, expires, new_session_expires):
         with self._initialize:
@@ -153,16 +178,19 @@ def create_app(settings: Settings | None = None, backend: Backend | None = None)
     def health():
         return {"ok": True}
 
-    @app.post("/v1/live/token")
-    def token(req: TokenRequest, authorization: str | None = Header(default=None)):
+    def caller(authorization):
         if not authorization or not authorization.startswith("Bearer ") or len(authorization) > 8192:
             raise failure(401, "UNAUTHENTICATED", "Sign in before starting voice.")
         if not settings.project or not settings.model or not settings.api_key_secret:
             raise failure(503, "NOT_CONFIGURED", "Voice is not configured yet. You can continue by text.")
         try:
-            uid = backend.authenticate(authorization[7:])
+            return backend.authenticate(authorization[7:])
         except Exception:
             raise failure(401, "UNAUTHENTICATED", "Sign-in expired. Please sign in again.") from None
+
+    @app.post("/v1/live/token")
+    def token(req: TokenRequest, authorization: str | None = Header(default=None)):
+        uid = caller(authorization)
         if req.mode == "huddle" and not req.memberId:
             raise failure(422, "INVALID_REQUEST", "Choose a teammate for this voice room.")
         persona = req.memberId if req.mode == "huddle" else None
@@ -178,7 +206,9 @@ def create_app(settings: Settings | None = None, backend: Backend | None = None)
             reserved = backend.reserve(workspace_id, uid, request_id, now, 10)
         except Exception:
             raise failure(503, "UNAVAILABLE", "Voice usage could not be checked. Please try again.") from None
-        if not reserved:
+        if reserved == "busy":
+            raise failure(429, "VOICE_ACTIVE", "Voice is already open for you. End the other voice session, then try again.")
+        if reserved != "reserved":
             raise failure(429, "RATE_LIMITED", "Your voice budget is used for now. Please continue by text.")
         expires = now + timedelta(seconds=SESSION_SECONDS)
         try:
@@ -190,7 +220,19 @@ def create_app(settings: Settings | None = None, backend: Backend | None = None)
             except Exception:
                 LOGGER.warning("Could not refund failed voice reservation %s", request_id)
             raise failure(503, "UNAVAILABLE", "Voice could not connect. Please try again or use text.") from None
-        return {"token": minted, "model": settings.model, "expiresAt": expires.isoformat()}
+        return {"token": minted, "model": settings.model, "expiresAt": expires.isoformat(), "sessionId": request_id}
+
+    @app.post("/v1/live/release")
+    def release(req: ReleaseRequest, authorization: str | None = Header(default=None)):
+        uid = caller(authorization)
+        try:
+            workspace_id, _member_id = backend.workspace(uid, None)
+            backend.release(workspace_id, uid, req.sessionId)
+        except PermissionError as error:
+            raise failure(403, "FORBIDDEN", str(error)) from None
+        except Exception:
+            raise failure(503, "UNAVAILABLE", "Voice could not be released. It will free up within ten minutes.") from None
+        return {"released": True}
     return app
 
 app = create_app()

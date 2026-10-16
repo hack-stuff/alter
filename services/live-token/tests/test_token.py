@@ -21,6 +21,8 @@ class FakeBackend:
         self.capacity = 40
         self.fail_mint = False
         self.forbidden = False
+        self.busy = False
+        self.releases = []
 
     def authenticate(self, token):
         if token != "valid":
@@ -34,11 +36,16 @@ class FakeBackend:
 
     def reserve(self, workspace, uid, request_id, now, minutes):
         with self.lock:
+            if self.busy:
+                return "busy"
             if self.used + minutes > self.capacity:
-                return False
+                return "exhausted"
             self.used += minutes
             self.reservations.append((workspace, uid, request_id, now, minutes))
-            return True
+            return "reserved"
+
+    def release(self, *args):
+        self.releases.append(args)
 
     def refund(self, *args):
         self.refunds.append(args)
@@ -174,10 +181,61 @@ def test_durable_budget_cooldown_crosses_hour_boundary_and_refund_is_idempotent(
     backend._db = MemoryFirestore()
     before = datetime(2026, 10, 14, 18, 59, tzinfo=timezone.utc)
     after = before + timedelta(minutes=2)
-    assert backend.reserve("ws", "user", "reservation", before, 10)
-    assert not backend.reserve("ws", "user", "cross-hour", after, 10)
+    assert backend.reserve("ws", "user", "reservation", before, 10) == "reserved"
+    assert backend.reserve("ws", "user", "cross-hour", after, 10) == "busy"
     backend.refund("ws", "user", "reservation", before, 10)
     backend.refund("ws", "user", "reservation", before, 10)
-    assert backend.reserve("ws", "user", "retry", after, 10)
+    assert backend.reserve("ws", "user", "retry", after, 10) == "reserved"
     assert backend._db.values["workspaces/ws/liveBudgets/2026101418"]["minutes"] == 0
     assert backend._db.values["workspaces/ws/liveBudgets/2026101419"]["minutes"] == 10
+
+
+def test_active_session_is_reported_separately_from_budget(client, backend):
+    backend.busy = True
+    response = request(client)
+    assert response.status_code == 429
+    assert response.json()["detail"]["error"]["code"] == "VOICE_ACTIVE"
+    assert not backend.mints
+
+def test_release_requires_auth_and_a_session_id(client, backend):
+    assert client.post("/v1/live/release", json={"sessionId": "a" * 32}).status_code == 401
+    body = request(client).json()
+    assert len(body["sessionId"]) == 32
+    bad = client.post("/v1/live/release", headers={"Authorization": "Bearer valid"}, json={"sessionId": "../x"})
+    assert bad.status_code == 422
+    ok = client.post("/v1/live/release", headers={"Authorization": "Bearer valid"}, json={"sessionId": body["sessionId"]})
+    assert ok.status_code == 200
+    assert backend.releases == [("workspace", "anonymous-user", body["sessionId"])]
+
+def test_release_clears_only_the_matching_lock_and_keeps_minutes_charged(monkeypatch):
+    from google.cloud import firestore
+    from app.main import GoogleBackend
+    monkeypatch.setattr(firestore, "transactional", lambda f: f)
+    backend = GoogleBackend(SETTINGS)
+    backend._db = MemoryFirestore()
+    now = datetime(2026, 10, 14, 18, 0, tzinfo=timezone.utc)
+    assert backend.reserve("ws", "user", "first", now, 10) == "reserved"
+    backend.release("ws", "user", "someone-else")
+    assert backend.reserve("ws", "user", "second", now, 10) == "busy"
+    backend.release("ws", "user", "first")
+    assert backend.reserve("ws", "user", "second", now, 10) == "reserved"
+    assert backend._db.values["workspaces/ws/liveBudgets/2026101418"]["minutes"] == 20
+
+def test_retiring_workspace_cannot_start_voice():
+    from types import SimpleNamespace
+    from app.main import GoogleBackend
+
+    def snapshot(data, exists=True):
+        return SimpleNamespace(exists=exists, to_dict=lambda: data, get=lambda: snapshot(data, exists))
+
+    workspace_ref = SimpleNamespace(id="ws", parent=SimpleNamespace(id="workspaces"))
+    def build(state):
+        workspace_ref.get = lambda: snapshot({"expiresAt": datetime.now(timezone.utc) + timedelta(hours=1), "state": state})
+        member = SimpleNamespace(id="m", reference=SimpleNamespace(parent=SimpleNamespace(parent=workspace_ref)))
+        query = SimpleNamespace(where=lambda **_: SimpleNamespace(limit=lambda _n: SimpleNamespace(stream=lambda: [member])))
+        backend = GoogleBackend(SETTINGS)
+        backend._db = SimpleNamespace(collection_group=lambda _name: query)
+        return backend
+    assert build("ready").workspace("user", None) == ("ws", "m")
+    with pytest.raises(PermissionError, match="refreshed"):
+        build("deleting").workspace("user", None)

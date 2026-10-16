@@ -2,7 +2,8 @@ import { getFirestore, connectFirestoreEmulator, collection, doc, onSnapshot, qu
 import type { Unsubscribe, Firestore } from 'firebase/firestore'
 import { firebaseApp, firebaseIdToken } from './firebase-auth'
 import { emptyWorkspace } from './api/types'
-import type { WorkspaceData, JoinResult, Workspace, ProgressEvent, Receipt } from './api/types'
+import type { WorkspaceData, JoinResult, Workspace, ProgressEvent } from './api/types'
+import { byTime } from './api/presentation'
 
 function normalize(value: unknown): unknown {
   if (value instanceof Timestamp) return value.toDate().toISOString()
@@ -22,8 +23,6 @@ function services() {
 
 export function watchWorkspace(join: JoinResult, next: (data: WorkspaceData) => void, failed: (error: Error) => void): () => void {
   const subscriptions: Unsubscribe[] = []
-  const receiptSubscriptions = new Map<string, Unsubscribe>()
-  const receipts = new Map<string, Receipt>()
   let stopped = false
   let state: WorkspaceData = structuredClone(emptyWorkspace)
   const emit = () => { if (!stopped) next({ ...state }) }
@@ -43,6 +42,7 @@ export function watchWorkspace(join: JoinResult, next: (data: WorkspaceData) => 
       { key: 'memories', path: 'memories', filter: ['owner', '==', join.memberId] },
       { key: 'rules', path: `rules/${join.memberId}/items` },
       { key: 'inbox', path: `inbox/${join.memberId}/messages` },
+      { key: 'receipts', path: 'receipts', filter: ['visibleTo', 'array-contains', join.memberId] },
       { key: 'traces', path: 'a2aTraces' },
     ]
     for (const { key, path, filter } of collections) {
@@ -51,23 +51,11 @@ export function watchWorkspace(join: JoinResult, next: (data: WorkspaceData) => 
       subscriptions.push(onSnapshot(source, (snapshot) => {
         const rows = snapshot.docs.map((entry) => ({ ...normalize(entry.data()) as object, id: entry.id }))
         state = { ...state, [key]: rows }
-        if (key === 'activity') {
-          const ids = new Set(state.activity.map((item) => item.receiptId))
-          for (const [id, off] of receiptSubscriptions) if (!ids.has(id)) { off(); receiptSubscriptions.delete(id); receipts.delete(id) }
-          for (const id of ids) if (!receiptSubscriptions.has(id)) {
-            receiptSubscriptions.set(id, onSnapshot(doc(db, `${base}/receipts/${id}`), (receipt) => {
-              if (receipt.exists()) receipts.set(id, { ...normalize(receipt.data()) as object, id } as Receipt)
-              else receipts.delete(id)
-              state = { ...state, receipts: [...receipts.values()] }; emit()
-            }, fail))
-          }
-          state = { ...state, receipts: [...receipts.values()] }
-        }
         emit()
       }, fail))
     }
   }).catch(fail)
-  return () => { stopped = true; subscriptions.forEach((off) => off()); receiptSubscriptions.forEach((off) => off()) }
+  return () => { stopped = true; subscriptions.forEach((off) => off()) }
 }
 export function watchTrace(workspaceId: string, traceId: string, next: (trace: WorkspaceData['traces'][number] | undefined) => void, failed: (error: Error) => void) {
   const { db } = services()
@@ -82,6 +70,6 @@ export function watchMessages(workspaceId: string, conversationId: string, next:
   const { db } = services()
   return onSnapshot(collection(db, `workspaces/${workspaceId}/conversations/${conversationId}/messages`), (snapshot) => {
     const messages = snapshot.docs.map((entry) => normalize(entry.data()) as import('./api/types').Message)
-    next(messages.sort((a, b) => a.ts.localeCompare(b.ts)))
+    next(messages.sort(byTime))
   }, failed)
 }

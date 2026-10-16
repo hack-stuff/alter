@@ -1,6 +1,6 @@
 # Gemini Live token service (Track B)
 
-`POST /v1/live/token {mode, memberId?}` returns `{token, model, expiresAt}`. Modes
+`POST /v1/live/token {mode, memberId?}` returns `{token, model, expiresAt, sessionId}`. Modes
 are `chat`, `revise`, `reply`, and `huddle`; `memberId` is required only for huddle.
 Use a Firebase ID token in `Authorization: Bearer ...`. There is no development
 authentication bypass in this service.
@@ -13,8 +13,11 @@ connection for 60 seconds, and expire after 10 minutes. The installed Google SDK
 documents token expiry as rejecting further Live messages (the provider may
 close the connection early); the browser also closes on the deadline.
 
-A Firestore transaction reserves ten minutes before minting. A per-UID cooldown
-prevents overlapping sessions, including at hour boundaries. The default workspace
+A Firestore transaction reserves ten minutes before minting. A per-UID lock
+prevents overlapping sessions, including at hour boundaries. When voice ends the
+browser calls `POST /v1/live/release {sessionId}`, which clears that lock so the
+user can start again; the reserved minutes stay charged. An open session returns
+429 `VOICE_ACTIVE`; an exhausted workspace budget returns 429 `RATE_LIMITED`. The default workspace
 limit is forty minutes per hour, configurable with
 `LIVE_WORKSPACE_MINUTES_PER_HOUR`. Failed mints refund the reservation; the refund
 is idempotent. A token minted but never used still consumes its reservation. This

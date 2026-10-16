@@ -39,6 +39,7 @@ export interface Api {
   createWorkspace(name: string): Promise<JoinResult>
   joinWorkspace(inviteCode: string, name: string): Promise<JoinResult>
   resetWorkspace(): Promise<JoinResult>
+  startConversation(): Promise<{ conversationId: string }>
   chat(message: string, conversationId?: string, via?: 'text' | 'voice'): Promise<{ conversationId: string; reply: Message }>
   askAlter(memberId: string, question: string): Promise<Answer>
   revise(approvalId: string, instruction: string, via?: 'text' | 'voice'): Promise<Approval>
@@ -56,6 +57,7 @@ const httpApi: Api = {
   createWorkspace: (name) => httpCall('POST', '/workspaces', { name }),
   joinWorkspace: (inviteCode, name) => httpCall('POST', '/workspaces/join', { inviteCode, name }),
   resetWorkspace: () => httpCall('POST', '/workspaces/reset'),
+  startConversation: () => httpCall('POST', '/conversations', {}),
   chat: (message, conversationId, via = 'text') => httpCall('POST', '/chat', { message, conversationId, via }),
   askAlter: (mid, question) => httpCall('POST', `/alters/${mid}/ask`, { question }),
   revise: (id, instruction, via = 'text') => httpCall('POST', `/approvals/${id}/revise`, { instruction, via }),

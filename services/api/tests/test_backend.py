@@ -458,3 +458,33 @@ def test_adk_tool_schemas_and_readonly_surface(team):
             }
         else:
             assert "propose_doc" in names and "ask_alter" in names
+
+
+def test_started_conversation_is_owned_and_titled_by_first_message(team):
+    c, e, h, r = team
+    started = c.post("/v1/conversations", headers=h, json={})
+    assert started.status_code == 200, started.text
+    cid = started.json()["conversationId"]
+    assert c.get("/v1/conversations/" + cid, headers=h).json() == {
+        "messages": [],
+        "events": [],
+    }
+    reply = c.post(
+        "/v1/chat", headers=h, json={"message": "Why one-tap?", "conversationId": cid}
+    )
+    assert reply.status_code == 200, reply.text
+    assert reply.json()["conversationId"] == cid
+    stored = e.store.get(f"workspaces/{r['workspaceId']}/conversations/{cid}")
+    assert stored["title"] == "Why one-tap?" and stored["owner"] == r["memberId"]
+    from app.auth import Caller
+
+    code = e.store.get(f"workspaces/{r['workspaceId']}")["inviteCode"]
+    e.workspaces.join(Caller("bob"), "Bob", code)
+    other = {"X-Dev-Uid": "bob"}
+    assert c.get("/v1/conversations/" + cid, headers=other).status_code == 403
+    assert (
+        c.post(
+            "/v1/chat", headers=other, json={"message": "hi", "conversationId": cid}
+        ).status_code
+        == 403
+    )

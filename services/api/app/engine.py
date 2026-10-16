@@ -349,6 +349,21 @@ class Engine:
             {"kind": kind, "label": label, "ts": iso()},
         )
 
+    def start_conversation(self, ctx):
+        """Create an empty conversation so the client can watch progress from the first message."""
+        cid = new_id("conv_")
+
+        def create(tx):
+            take(tx, f"conversation:{ctx.workspace_id}:{ctx.member_id}", 60)
+            # No title yet: the first chat message supplies it.
+            tx.set(
+                f"workspaces/{ctx.workspace_id}/conversations/{cid}",
+                {"owner": ctx.member_id, "updatedAt": iso()},
+            )
+
+        self.store.atomic(create)
+        return {"conversationId": cid}
+
     async def chat(self, ctx, message, cid=None):
         supplied = cid is not None
         cid = cid or new_id("conv_")
