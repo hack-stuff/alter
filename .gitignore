@@ -25,3 +25,10 @@ apps/web/playwright-report/
 
 # Firebase CLI hosting cache
 .firebase/
+
+# OS and editor files
+.DS_Store
+.vscode/
+
+# Local deck working copy
+deck/.deck-story.snapshot.md
