@@ -46,6 +46,15 @@ class GoogleApps:
             end,
         )
 
+    def agenda(self, wid, member, start, end):
+        return calendar.agenda(
+            self.service("calendar", "v3"),
+            self.workspace(wid)["googleIds"]["calendar"],
+            member,
+            start,
+            end,
+        )
+
     def apply(self, wid, approval, member, caller):
         action = approval["action"]
         operation = f"{approval['id']}:{approval['revision']}"

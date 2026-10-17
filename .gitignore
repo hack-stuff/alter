@@ -19,3 +19,6 @@ video/generated/
 infra/.firebase/
 infra/api.env.yaml
 services/api/build/
+apps/web/test-results/
+apps/web/backend-test-results/
+apps/web/playwright-report/

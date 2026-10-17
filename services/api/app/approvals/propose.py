@@ -102,6 +102,13 @@ class Proposals:
                 action["fileId"] = workspace["googleIds"].get(key, key)
                 self.validate(ctx, action)
                 current = self.apps.read_doc(ctx.workspace_id, action["fileId"])
+                expected_base = action.pop("baseRevision", None)
+                if expected_base and expected_base != current["revision"]:
+                    raise error(
+                        409,
+                        "STALE_REVISION",
+                        "The document changed while preparing this update.",
+                    )
                 before = current["sections"]
                 action["requiredRevisionId"] = current["revision"]
             after = action["sections"]
@@ -273,11 +280,25 @@ class Proposals:
 
     def revise(self, ctx, aid, instruction, planner):
         current = self.owned(ctx, aid)
+        if current.get("planBinding"):
+            raise error(
+                409,
+                "EDIT_PLAN",
+                "Edit the design on its canvas, then prepare a new publication.",
+            )
         if current["state"] != "proposed":
             raise error(
                 409, "ALREADY_DECIDED", "Only pending proposals can be revised."
             )
+        if current.get("continuationGrant"):
+            raise error(
+                409,
+                "SCOPED_ACTION",
+                "Revoke this follow-up and prepare a new reviewed change to edit it.",
+            )
         payload = planner.revise(current, instruction)
+        if current["kind"] == "doc_edit":
+            payload["baseRevision"] = current["action"]["requiredRevisionId"]
         revised = self.build(
             ctx, current["kind"], payload, current["reason"], current["citations"]
         )

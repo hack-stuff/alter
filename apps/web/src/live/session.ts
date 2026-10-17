@@ -3,14 +3,22 @@ import type { LiveMode } from './modes'
 import { dispatchLiveTool } from './tools'
 import type { ToolContext } from './tools'
 import { pcm16Resampler, pcmBase64, decodeAudio } from './audio'
+import { connectRelay } from './relay'
+import { startVoiceAudio, pauseVoiceAudio } from './voiceAudio'
 
 export interface LiveOptions extends ToolContext {
   mode: LiveMode
   context?: string
+  greet?: boolean
+  inputDeviceId?: string
+  outputDeviceId?: string
   onState: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
   onTranscript: (text: string, speaker: 'user' | 'alter', final: boolean) => void
   onError: (message: string) => void
+  onLevel?: (level: number) => void
+  onFirstSpeech?: () => void
 }
+let currentSession: LiveSession | undefined
 export class LiveSession {
   private options: LiveOptions
   private connection?: Session
@@ -24,6 +32,7 @@ export class LiveSession {
   private deadline?: ReturnType<typeof setTimeout>
   private playbackTimer?: ReturnType<typeof setTimeout>
   private stopped = false
+  private abort = new AbortController()
   private muted = false
   private input = ''
   private output = ''
@@ -31,18 +40,32 @@ export class LiveSession {
   private handled = new Set<string>()
   private cancelled = new Set<string>()
   private release?: () => void
+  private firstSpeech = false
   constructor(options: LiveOptions) { this.options = options }
   // The page's conversation can change while voice is open (for example, after a typed message).
   setConversationId(id: string | undefined) { this.options.conversationId = id }
   async start() {
+    if (currentSession && currentSession !== this) currentSession.stop()
+    // oxlint-disable-next-line typescript/no-this-alias -- Own one microphone across work surfaces.
+    currentSession = this
     this.options.onState('connecting')
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Voice needs a secure browser connection and microphone access. You can continue by text.')
-      this.audio = new AudioContext()
-      await this.audio.resume()
-      if (this.stopped) return
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }, video: false })
+      this.audio = await startVoiceAudio()
+      if (this.stopped) { if (!currentSession) pauseVoiceAudio(this.audio); return }
+      if (this.options.outputDeviceId) {
+        const audio = this.audio as AudioContext & { setSinkId?: (id: string) => Promise<void> }
+        if (!audio.setSinkId) throw new Error('Choose the output device in your operating system audio routing settings.')
+        await audio.setSinkId(this.options.outputDeviceId)
+      }
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: this.options.mode !== 'huddle', noiseSuppression: this.options.mode !== 'huddle', autoGainControl: this.options.mode !== 'huddle', channelCount: 1, ...(this.options.inputDeviceId ? { deviceId: { exact: this.options.inputDeviceId } } : {}) }, video: false })
       if (this.stopped) { this.stop(); return }
+      let connection: Session
+      this.deadline = setTimeout(() => this.stop(), 10 * 60_000)
+      if (!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()) {
+        connection = await connectRelay(this.options, (message) => { void this.message(message) }, () => this.stop(), (message) => this.options.onError(message), this.abort.signal)
+      } else {
+      if (this.options.mode === 'diagram') throw new Error('Design voice editing requires the Vertex relay. Leave VITE_LIVE_TOKEN_BASE empty.')
       const { firebaseIdToken } = await import('../firebase-auth')
       const base = import.meta.env.VITE_LIVE_TOKEN_BASE?.trim() || `${import.meta.env.VITE_API_BASE?.trim() || 'http://localhost:8080/v1'}/live/token`
       const response = await fetch(base, {
@@ -62,7 +85,7 @@ export class LiveSession {
       const { GoogleGenAI } = await import('@google/genai')
       if (this.stopped) return
       const client = new GoogleGenAI({ apiKey: token.token, httpOptions: { apiVersion: 'v1alpha' } })
-      const connection = await client.live.connect({
+      connection = await client.live.connect({
         model: token.model,
         // The server locks model, tools, audio settings, and system instructions into this single-use token.
         config: {},
@@ -72,6 +95,7 @@ export class LiveSession {
           onclose: () => { if (!this.stopped) this.options.onError('The voice session ended. Start again or continue by text.'); this.stop() },
         },
       })
+      }
       if (this.stopped) { connection.close(); return }
       this.connection = connection
       this.source = this.audio.createMediaStreamSource(this.stream)
@@ -85,9 +109,10 @@ export class LiveSession {
       }
       this.source.connect(this.microphone); this.microphone.connect(this.silence); this.silence.connect(this.audio.destination)
       this.options.onState('listening')
-      if (this.options.targetId) this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Open ${this.options.mode} target ID: ${this.options.targetId}. ${this.options.context ?? ''}. ${this.options.draftOnly ? 'Read the question briefly, then draft a reply for on-screen review; do not claim it was sent.' : ''}` }] }], turnComplete: this.options.mode === 'reply' })
+      if (this.options.greet && this.options.mode === 'chat') this.greet()
+      if (this.options.targetId && !['diagram', 'huddle'].includes(this.options.mode)) this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Open ${this.options.mode} target ID: ${this.options.targetId}. ${this.options.context ?? ''}. ${this.options.draftOnly ? 'Read the question briefly, then draft a reply for on-screen review; do not claim it was sent.' : ''}` }] }], turnComplete: this.options.mode === 'reply' })
     } catch (error) {
-      if (!this.stopped) this.options.onError(error instanceof Error ? error.message : 'Could not start voice. Please use text.')
+      if (!this.stopped) this.options.onError(error instanceof Error && error.name === 'NotAllowedError' ? 'Microphone access is blocked. Allow it in your browser’s site settings, then try voice again.' : error instanceof Error && error.name === 'NotFoundError' ? 'No microphone was found. Check your input device, then try voice again.' : error instanceof Error ? error.message : 'Could not start voice. Please use text.')
       this.stop()
     }
   }
@@ -98,11 +123,11 @@ export class LiveSession {
     if (content?.interrupted) { this.clearPlayback(); this.output = ''; this.options.onState('listening') }
     if (content?.inputTranscription?.text) {
       this.input += content.inputTranscription.text
-      this.options.onTranscript(this.input, 'user', !!content.inputTranscription.finished)
+      this.options.onTranscript(this.input, 'user', false)
     }
     if (content?.outputTranscription?.text) {
       this.output += content.outputTranscription.text
-      this.options.onTranscript(this.output, 'alter', !!content.outputTranscription.finished)
+      this.options.onTranscript(this.output, 'alter', false)
     }
     for (const part of content?.modelTurn?.parts ?? []) if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/pcm')) this.play(part.inlineData.data, part.inlineData.mimeType)
     if (content?.turnComplete) {
@@ -127,25 +152,41 @@ export class LiveSession {
     if (!this.audio || this.stopped) return
     const rate = Number(mimeType.match(/rate=(\d+)/)?.[1] ?? 24000)
     const buffer = decodeAudio(data, this.audio, rate)
+    const samples = buffer.getChannelData(0)
+    let energy = 0
+    for (let i = 0; i < samples.length; i++) energy += samples[i] * samples[i]
+    this.options.onLevel?.(Math.min(1, Math.sqrt(energy / Math.max(1, samples.length)) * 5))
     const node = this.audio.createBufferSource(); node.buffer = buffer; node.connect(this.audio.destination)
     this.playAt = Math.max(this.playAt, this.audio.currentTime)
     node.start(this.playAt); this.playAt += buffer.duration; this.players.add(node)
+    if (!this.firstSpeech) { this.firstSpeech = true; this.options.onFirstSpeech?.() }
     node.onended = () => { this.players.delete(node); node.disconnect() }
     this.options.onState('speaking')
     clearTimeout(this.playbackTimer)
     this.playbackTimer = setTimeout(() => { if (!this.stopped) this.options.onState('listening') }, Math.max(0, (this.playAt - this.audio.currentTime) * 1000))
   }
-  private clearPlayback() { for (const player of this.players) { try { player.stop() } catch { /* Playback already ended. */ } }; this.players.clear(); this.playAt = 0; clearTimeout(this.playbackTimer) }
+  private clearPlayback() { for (const player of this.players) { try { player.stop() } catch { /* Playback already ended. */ } }; this.players.clear(); this.playAt = 0; clearTimeout(this.playbackTimer); this.options.onLevel?.(0) }
   mute(value: boolean) { this.muted = value; if (value) this.connection?.sendRealtimeInput({ audioStreamEnd: true }) }
+  greet() {
+    if (this.stopped || this.options.mode !== 'chat') return
+    this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Bring me into the work already moving. If the verified agenda has two upcoming items, link them in order; otherwise mention the next item or saved work. Ask which thread we should pick up. Only mention pending decisions if the context lists them. Do not introduce the product or list capabilities.' }] }], turnComplete: true })
+  }
   correct(text: string) { if (!this.stopped && text.trim()) this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Correction to my last transcript: ${text.trim()}` }] }], turnComplete: true }) }
   stop() {
+    if (currentSession === this) currentSession = undefined
     const alreadyStopped = this.stopped
+    if (!alreadyStopped) {
+      if (this.input) this.options.onTranscript(this.input, 'user', true)
+      if (this.output) this.options.onTranscript(this.output, 'alter', true)
+      this.input = ''; this.output = ''
+    }
     this.stopped = true; clearTimeout(this.deadline); clearTimeout(this.playbackTimer)
+    this.abort.abort()
     this.clearPlayback(); const connection = this.connection; this.connection = undefined; connection?.close()
     this.stream?.getTracks().forEach((track) => track.stop()); this.stream = undefined
     this.source?.disconnect(); this.microphone?.disconnect(); this.silence?.disconnect()
     this.source = undefined; this.microphone = undefined; this.silence = undefined
-    if (this.audio && this.audio.state !== 'closed') void this.audio.close()
+    if (this.audio && !currentSession) pauseVoiceAudio(this.audio)
     this.audio = undefined
     const release = this.release; this.release = undefined; release?.()
     if (!alreadyStopped) this.options.onState('closed')

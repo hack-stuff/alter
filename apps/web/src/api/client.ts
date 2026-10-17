@@ -6,6 +6,8 @@ const BASE = import.meta.env.VITE_API_BASE?.trim() || 'http://localhost:8080/v1'
 export const MOCK = import.meta.env.VITE_MOCK === '1'
 
 export async function authorizationHeaders(): Promise<Record<string, string>> {
+  const room = sessionStorage.getItem('alter.meeting.room')
+  if (room && new URLSearchParams(location.search).get('kiosk') === '1') return { 'X-Meeting-Room': room }
   if (import.meta.env.VITE_DEV_AUTH === '1') {
     let uid = localStorage.getItem('alter.dev.uid')
     if (!uid) { uid = 'dev_' + crypto.randomUUID(); localStorage.setItem('alter.dev.uid', uid) }
@@ -45,7 +47,7 @@ export interface Api {
   revise(approvalId: string, instruction: string, via?: 'text' | 'voice'): Promise<Approval>
   decide(approvalId: string, decision: 'approve' | 'reject', expectedRevision: number): Promise<Approval>
   respondEscalation(escalationId: string, text: string): Promise<{ decision: unknown; applied: string[] }>
-  teach(content: string): Promise<Memory>
+  teach(content: string, audience?: 'owner' | 'team', appliesTo?: string): Promise<Memory>
   decideMemory(memoryId: string, decision: 'approve' | 'revoke'): Promise<Pick<Memory, 'id' | 'state'>>
   setRule(ruleId: string, mode: Outcome): Promise<Pick<Rule, 'id' | 'mode'>>
   updateMe(update: { email?: string; status?: 'available' | 'away' }): Promise<Partial<Member> & { email?: string }>
@@ -63,7 +65,7 @@ const httpApi: Api = {
   revise: (id, instruction, via = 'text') => httpCall('POST', `/approvals/${id}/revise`, { instruction, via }),
   decide: (id, decision, expectedRevision) => httpCall('POST', `/approvals/${id}/decision`, { decision, expectedRevision }),
   respondEscalation: (id, text) => httpCall('POST', `/escalations/${id}/respond`, { text }),
-  teach: (content) => httpCall('POST', '/memories', { content }),
+  teach: (content, audience = 'team', appliesTo = 'Login revamp') => httpCall('POST', '/memories', { content, audience, appliesTo }),
   decideMemory: (id, decision) => httpCall('POST', `/memories/${id}/decision`, { decision }),
   setRule: (id, mode) => httpCall('PUT', `/rules/${id}`, { mode }),
   updateMe: (update) => httpCall('PUT', '/me', update),

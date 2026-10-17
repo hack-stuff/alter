@@ -5,6 +5,7 @@ import { AlterBadge } from '../components/AlterBadge'
 import { Citations } from '../components/Citations'
 import { LiveTrace } from '../components/LiveTrace'
 import { VoiceControl } from '../components/VoiceControl'
+import { Avatar } from '../components/Icon'
 
 const statusLabels = { available: 'Available', in_meetings: 'In meetings', on_leave: 'On leave', away: 'Away' }
 
@@ -48,7 +49,7 @@ export function Team({ members, memberId, inviteUrl, workspaceId }: { members: M
     {inviteMessage && <div role="status"><p>{inviteMessage}</p><input aria-label="Invite link" value={inviteUrl} readOnly onFocus={(e) => e.target.select()} /></div>}
     {members.length === 0 && <p className="empty">Team details are not available yet.</p>}
     <div className="team-grid">{members.filter((m) => m.id !== memberId).map((m) => <article className="card" key={m.id}>
-      <span className="member-status">{statusLabels[m.status]}</span><h3>{m.name}</h3><p>{m.role}</p>
+      <div className="member-heading"><Avatar name={m.name} id={m.id} /><div><h3>{m.name}</h3><span className="member-status">{statusLabels[m.status]}</span></div></div><p>{m.role}</p>
       <button className="ask-toggle" aria-expanded={selected === m.id} onClick={() => setSelected(selected === m.id ? undefined : m.id)}>Ask {m.name}'s Alter <AlterBadge /></button>
       {selected === m.id && <AskMember member={m} workspaceId={workspaceId} />}
     </article>)}</div>

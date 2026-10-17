@@ -5,13 +5,13 @@
     {
       "section": "\u00a72",
       "lines": [
-        "Use Google one-tap sign-in in place of the retired Google Sign-In button. The decision was made on October 8."
+        "Rahul chose Google one-tap sign-in for this project on October 8 to reduce sign-in friction."
       ]
     },
     {
       "section": "\u00a74",
       "lines": [
-        "Production approval was given on October 10. AUTH-112 is live in production."
+        "The sign-in infrastructure was approved for production on October 10 under AUTH-112. This approval covers infrastructure readiness; it does not set a user-facing rollout date."
       ]
     }
   ]

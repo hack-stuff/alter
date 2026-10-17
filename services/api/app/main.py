@@ -13,6 +13,9 @@ from app.config import Settings
 from app.engine import Engine, public_card
 from app.errors import error
 from app.models import *
+from app.meeting_models import *
+from app.plans import PlanEdit, PlanRevision
+from app.day import MeetLink, day, validate_meet_url
 from app.util import identifier, now
 
 
@@ -22,18 +25,39 @@ def create_app(settings=None, engine=None):
 
     @asynccontextmanager
     async def lifespan(app):
+        async def resume_work():
+            while True:
+                try:
+                    await engine.workflows.reconcile()
+                    for workspace in await run_in_threadpool(
+                        engine.store.list, "workspaces"
+                    ):
+                        await run_in_threadpool(
+                            engine.notifications.deliver, workspace["id"]
+                        )
+                except Exception:
+                    pass  # Persisted jobs remain eligible for scheduled reconciliation.
+                await asyncio.sleep(30)
+
+        if engine.injected or not settings.missing():
+            engine.schedule(resume_work())
         yield
-        for job in list(engine.jobs):
+        jobs = [
+            job for job in engine.jobs if job.get_loop() is asyncio.get_running_loop()
+        ]
+        for job in jobs:
             job.cancel()
-        await asyncio.gather(*engine.jobs, return_exceptions=True)
+        await asyncio.gather(*jobs, return_exceptions=True)
+        engine.jobs.difference_update(jobs)
 
     app = FastAPI(title="Alter API", version="1.0.0", lifespan=lifespan)
     app.state.engine = engine
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
-        allow_methods=["GET", "POST", "PUT"],
-        allow_headers=["Authorization", "Content-Type", "X-Dev-Uid"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "X-Dev-Uid", "X-Meeting-Room"]
+        + (["X-Real-IP"] if settings.dev_mode and settings.allow_forwarded_ip else []),
     )
 
     @app.middleware("http")
@@ -95,6 +119,21 @@ def create_app(settings=None, engine=None):
     def member(user=Depends(caller)):
         return engine.auth.member(user)
 
+    def capture_member(
+        authorization: str | None = Header(None),
+        x_dev_uid: str | None = Header(None),
+        x_meeting_room: str | None = Header(None),
+    ):
+        if x_meeting_room:
+            from hashlib import sha256
+
+            if len(x_meeting_room) > 200:
+                raise error(403, "ROOM_SCOPE", "Invalid meeting room access.")
+            return engine.meetings.room_context(
+                sha256(x_meeting_room.encode()).hexdigest()
+            )
+        return member(caller(authorization, x_dev_uid))
+
     async def provision(wid, mid):
         await run_in_threadpool(engine.workspaces.provision, wid)
         workspace = engine.store.get(f"workspaces/{wid}")
@@ -139,6 +178,28 @@ def create_app(settings=None, engine=None):
         )
         return result
 
+    @app.post("/v1/demo/day")
+    async def enter_day(request: Request, user=Depends(caller)):
+        # Creates only a fresh isolated demo. It cannot claim someone else's role.
+        binding = engine.store.get(f"userBindings/{user.uid}")
+        if binding:
+            ctx = engine.auth.member(user)
+            current = engine.store.get(f"workspaces/{ctx.workspace_id}")
+            if not current.get("demoDay"):
+                raise error(
+                    409,
+                    "ALREADY_JOINED",
+                    "Your current Alter is already connected. Open it rather than replacing it.",
+                )
+            return engine.workspaces.result(
+                ctx.workspace_id, ctx.member_id, "product_lead", current["inviteCode"]
+            )
+        result = await run_in_threadpool(
+            engine.workspaces.create, user, "Priya", ip(request), False, True
+        )
+        engine.schedule(provision(result["workspaceId"], result["memberId"]))
+        return result
+
     @app.get("/v1/me")
     def me(ctx=Depends(member)):
         return engine.me(ctx)
@@ -153,13 +214,54 @@ def create_app(settings=None, engine=None):
         engine.schedule(provision(result["workspaceId"], result["memberId"]))
         return result
 
+    @app.post("/v1/workspaces/retry-provision")
+    async def retry_provision(ctx=Depends(member)):
+        wid, mid = await run_in_threadpool(engine.workspaces.retry_failed_provision, ctx)
+        engine.schedule(provision(wid, mid))
+        return {"workspaceId": wid, "state": "provisioning"}
+
     @app.post("/v1/chat")
     async def chat(req: ChatRequest, ctx=Depends(member)):
         return await engine.chat(ctx, req.message, req.conversationId)
 
+    @app.get("/v1/day")
+    def current_day(ctx=Depends(member)):
+        return day(engine, ctx)
+
+    @app.put("/v1/day/meet-link")
+    def meet_link(req: MeetLink, ctx=Depends(member)):
+        url = validate_meet_url(req.url)
+        path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+
+        def save(tx):
+            tx.set(path, {**tx.get(path), "meetUrl": url})
+
+        engine.store.atomic(save)
+        return {"meetUrl": url}
+
+    @app.get("/v1/plans/{pid}")
+    def get_plan(pid: str, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.get(ctx, identifier(pid)))
+
+    @app.post("/v1/plans/{pid}/revise")
+    def edit_plan(pid: str, req: PlanEdit, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.revise(ctx, identifier(pid), req))
+
+    @app.post("/v1/plans/{pid}/undo")
+    def undo_plan(pid: str, req: PlanRevision, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.undo(ctx, identifier(pid), req))
+
+    @app.post("/v1/plans/{pid}/prepare")
+    def prepare_plan(pid: str, req: PlanRevision, ctx=Depends(member)):
+        return engine.plans.public(ctx, engine.plans.prepare(ctx, identifier(pid), req))
+
     @app.post("/v1/alters/{member_id}/ask", response_model=Answer)
     async def ask(member_id: str, req: AskRequest, ctx=Depends(member)):
-        return await engine.hop(ctx, identifier(member_id), req.question)
+        result = await engine.hop(ctx, identifier(member_id), req.question)
+        engine.schedule(
+            asyncio.to_thread(engine.notifications.deliver, ctx.workspace_id)
+        )
+        return result
 
     @app.post("/v1/approvals/{approval_id}/revise")
     def revise(approval_id: str, req: ReviseRequest, ctx=Depends(member)):
@@ -177,13 +279,322 @@ def create_app(settings=None, engine=None):
             )
         )
 
+    @app.get("/v1/artifacts/{aid}")
+    def artifact(aid: str, ctx=Depends(member)):
+        card = engine.proposals.owned(ctx, identifier(aid))
+        if card["state"] != "applied" or card["kind"] not in ("doc_edit", "doc_create"):
+            raise error(
+                409, "ARTIFACT_NOT_READY", "A confirmed document result is required."
+            )
+        workspace = engine.store.get(f"workspaces/{ctx.workspace_id}")
+        file_id = card["action"].get("fileId") or workspace["googleIds"].get(
+            "created_" + aid
+        )
+        value = engine.apps.read_doc(ctx.workspace_id, file_id)
+        from app.util import iso
+
+        return {
+            "sections": value["sections"],
+            "revision": value["revision"],
+            "refreshedAt": iso(),
+            "url": card.get("externalUrl"),
+        }
+
     @app.post("/v1/escalations/{escalation_id}/respond")
-    def respond(escalation_id: str, req: EscalationReply, ctx=Depends(member)):
-        return engine.respond(ctx, identifier(escalation_id), req.text)
+    async def respond(escalation_id: str, req: EscalationReply, ctx=Depends(member)):
+        result = await run_in_threadpool(
+            engine.respond, ctx, identifier(escalation_id), req.text
+        )
+        engine.schedule(
+            asyncio.to_thread(engine.notifications.deliver, ctx.workspace_id)
+        )
+        return result
+
+    @app.post("/v1/escalations/{eid}/preview")
+    def preview_reply(eid: str, req: EscalationReply, ctx=Depends(member)):
+        value = engine.store.get(
+            f"workspaces/{ctx.workspace_id}/escalations/{identifier(eid)}"
+        )
+        if not value or value["owner"] != ctx.member_id:
+            raise error(404, "NOT_FOUND", "No such priority question.")
+        from app.escalations import date_decision
+
+        return {
+            "decision": date_decision(req.text)
+            if value.get("effectDescription")
+            else None,
+            "effect": value.get(
+                "effectDescription", "Send your answer to the requester."
+            ),
+        }
+
+    @app.post("/v1/meetings", status_code=201)
+    def create_meeting(req: MeetingCreate, ctx=Depends(member)):
+        return engine.meetings.create(ctx, req)
+
+    @app.get("/v1/meetings")
+    def meetings(ctx=Depends(member)):
+        return [
+            m
+            for m in engine.store.list(f"workspaces/{ctx.workspace_id}/meetings")
+            if m["owner"] == ctx.member_id
+        ]
+
+    @app.get("/v1/meetings/{mid}")
+    def meeting_detail(mid: str, ctx=Depends(member)):
+        return engine.meetings.detail(ctx, identifier(mid))
+
+    @app.post("/v1/meetings/{mid}/segments")
+    def append_segments(mid: str, req: SegmentBatch, ctx=Depends(capture_member)):
+        return engine.meetings.append(ctx, identifier(mid), req.segments)
+
+    @app.post("/v1/meetings/{mid}/finalize", status_code=202)
+    async def finalize_meeting(mid: str, ctx=Depends(member)):
+        result = await run_in_threadpool(engine.meetings.finalize, ctx, identifier(mid))
+        if result.get("jobId"):
+            engine.schedule(engine.workflows.dispatch(result["jobId"]))
+        return result
+
+    @app.post("/v1/meetings/{mid}/revise")
+    def revise_meeting(mid: str, req: BundleRevision, ctx=Depends(member)):
+        return engine.meetings.revise(ctx, identifier(mid), req)
+
+    @app.post("/v1/meetings/{mid}/approve", status_code=202)
+    async def approve_meeting(mid: str, req: BundleApproval, ctx=Depends(member)):
+        result = await run_in_threadpool(
+            engine.meetings.approve, ctx, identifier(mid), req
+        )
+        engine.schedule(engine.workflows.dispatch(result["jobId"]))
+        return result
+
+    @app.post("/v1/meetings/{mid}/grant")
+    def revoke_grant(mid: str, req: GrantDecision, ctx=Depends(member)):
+        return engine.meetings.revoke(ctx, identifier(mid))
+
+    @app.post("/v1/meetings/{mid}/ask")
+    async def meeting_ask(mid: str, req: MeetingAsk, ctx=Depends(capture_member)):
+        result = await engine.meetings.ask(ctx, identifier(mid), req.question)
+        engine.schedule(
+            asyncio.to_thread(engine.notifications.deliver, ctx.workspace_id)
+        )
+        return result
+
+    @app.post("/v1/meetings/{mid}/room")
+    def create_room(mid: str, ctx=Depends(member)):
+        return engine.meetings.create_room(ctx, identifier(mid))
+
+    @app.post("/v1/meetings/{mid}/commands")
+    async def meeting_command(mid: str, req: WorkCommand, ctx=Depends(member)):
+        result = await run_in_threadpool(
+            engine.meetings.command, ctx, identifier(mid), req.command
+        )
+        if req.command in ("retry", "resume"):
+            for jid in result["jobIds"]:
+                engine.schedule(engine.workflows.dispatch(jid))
+        return result
+
+    @app.post("/v1/push/devices")
+    def register_device(req: DeviceRegistration, ctx=Depends(member)):
+        return engine.notifications.register(ctx, req.token)
+
+    @app.delete("/v1/push/devices/{did}")
+    def remove_device(did: str, ctx=Depends(member)):
+        return engine.notifications.remove(ctx, identifier(did))
+
+    @app.post("/v1/notifications/{nid}/read")
+    def read_notification(nid: str, ctx=Depends(member)):
+        return engine.notifications.read(ctx, identifier(nid))
 
     @app.post("/v1/memories")
     def teach(req: TeachMemory, ctx=Depends(member)):
-        return engine.teach(ctx, req.content)
+        return engine.teach(
+            ctx, req.content, req.audience, req.appliesTo, req.sourceIds
+        )
+
+    @app.put("/v1/memories/{mid}")
+    def edit_memory(mid: str, req: MemoryEdit, ctx=Depends(member)):
+        from app.util import iso
+
+        path = f"workspaces/{ctx.workspace_id}/memories/{identifier(mid)}"
+        fact = engine.brain.planner(ctx).atomic_memory(req.content)
+        source_versions = engine.guidance_sources(ctx, req.sourceIds, req.audience)
+
+        def save(tx):
+            current = tx.get(path)
+            if not current or current["owner"] != ctx.member_id:
+                raise error(404, "NOT_FOUND", "No such memory.")
+            if current.get("version", 1) != req.expectedVersion:
+                raise error(
+                    409,
+                    "STALE_REVISION",
+                    "This memory changed. Review the latest version.",
+                )
+            updated = {
+                **current,
+                "content": fact["content"],
+                "scope": fact["scope"],
+                "audience": "owner" if fact["scope"] == "personal" else req.audience,
+                "appliesTo": req.appliesTo,
+                "state": "proposed",
+                "source": "correction",
+                "version": req.expectedVersion + 1,
+                "updatedAt": iso(),
+                "sourceIds": req.sourceIds,
+                "sourceVersions": source_versions,
+                "evidence": {
+                    "type": "owner_correction",
+                    "by": ctx.member_id,
+                    "text": req.content,
+                },
+            }
+            tx.set(path + "/versions/" + str(req.expectedVersion), current)
+            tx.set(path, updated)
+            member_path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+            member = tx.get(member_path)
+            tx.set(
+                member_path, {**member, "memoryEpoch": member.get("memoryEpoch", 0) + 1}
+            )
+            return {**updated, "id": mid}
+
+        return engine.store.atomic(save)
+
+    @app.post("/v1/sources", status_code=201)
+    def import_source(req: SourceImport, ctx=Depends(member)):
+        from hashlib import sha256
+        from app.util import new_id, iso
+
+        sid = new_id("src_")
+        root = f"workspaces/{ctx.workspace_id}"
+
+        def save(tx):
+            if (
+                len(
+                    [
+                        s
+                        for s in tx.list(root + "/sources")
+                        if s.get("importedBy") == ctx.member_id
+                    ]
+                )
+                >= 20
+            ):
+                raise error(
+                    429,
+                    "SOURCE_LIMIT",
+                    "This prototype supports twenty imported excerpts per person.",
+                )
+            source = {
+                "logicalId": sid,
+                "title": req.title,
+                "text": req.text,
+                "locator": "Imported excerpt · v1",
+                "owner": ctx.member_id,
+                "importedBy": ctx.member_id,
+                "audience": req.audience,
+                "scope": "work",
+                "status": "active",
+                "version": 1,
+                "createdAt": iso(),
+                "contentHash": sha256(req.text.encode()).hexdigest(),
+            }
+            tx.set(root + "/sources/" + sid, source)
+            return {
+                "id": sid,
+                "title": req.title,
+                "audience": req.audience,
+                "version": 1,
+                "status": "active",
+            }
+
+        return engine.store.atomic(save)
+
+    @app.get("/v1/sources")
+    def own_sources(ctx=Depends(member)):
+        return [
+            source
+            for source in engine.store.list(f"workspaces/{ctx.workspace_id}/sources")
+            if source.get("importedBy") == ctx.member_id
+        ]
+
+    @app.put("/v1/sources/{sid}")
+    def update_source(sid: str, req: SourceUpdate, ctx=Depends(member)):
+        from hashlib import sha256
+        from app.util import iso
+
+        path = f"workspaces/{ctx.workspace_id}/sources/{identifier(sid)}"
+
+        def save(tx):
+            source = tx.get(path)
+            if not source or source.get("importedBy") != ctx.member_id:
+                raise error(404, "NOT_FOUND", "No such imported source.")
+            if source["version"] != req.expectedVersion:
+                raise error(
+                    409, "STALE_REVISION", "The source changed. Reload before editing."
+                )
+            updated = {
+                **source,
+                "text": req.text,
+                "version": req.expectedVersion + 1,
+                "contentHash": sha256(req.text.encode()).hexdigest(),
+                "updatedAt": iso(),
+            }
+            updated["locator"] = f"Imported excerpt · v{updated['version']}"
+            tx.set(path, updated)
+            workspace_path = f"workspaces/{ctx.workspace_id}"
+            workspace = tx.get(workspace_path)
+            tx.set(
+                workspace_path,
+                {**workspace, "knowledgeEpoch": workspace.get("knowledgeEpoch", 0) + 1},
+            )
+            for memory in tx.list(f"workspaces/{ctx.workspace_id}/memories"):
+                if sid in memory.get("sourceIds", []):
+                    tx.set(
+                        f"workspaces/{ctx.workspace_id}/memories/{memory['id']}",
+                        {
+                            **memory,
+                            "state": "proposed",
+                            "reason": "Source changed; review its current guidance.",
+                        },
+                    )
+            member_path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+            member = tx.get(member_path)
+            tx.set(
+                member_path, {**member, "memoryEpoch": member.get("memoryEpoch", 0) + 1}
+            )
+            return {**updated, "id": sid}
+
+        return engine.store.atomic(save)
+
+    @app.delete("/v1/sources/{sid}")
+    def revoke_source(sid: str, ctx=Depends(member)):
+        path = f"workspaces/{ctx.workspace_id}/sources/{identifier(sid)}"
+
+        def save(tx):
+            source = tx.get(path)
+            if not source or source.get("importedBy") != ctx.member_id:
+                raise error(404, "NOT_FOUND", "No such imported source.")
+            tx.set(
+                path, {**source, "status": "revoked", "version": source["version"] + 1}
+            )
+            workspace_path = f"workspaces/{ctx.workspace_id}"
+            workspace = tx.get(workspace_path)
+            tx.set(
+                workspace_path,
+                {**workspace, "knowledgeEpoch": workspace.get("knowledgeEpoch", 0) + 1},
+            )
+            for memory in tx.list(f"workspaces/{ctx.workspace_id}/memories"):
+                if sid in memory.get("sourceIds", []):
+                    tx.set(
+                        f"workspaces/{ctx.workspace_id}/memories/{memory['id']}",
+                        {**memory, "state": "revoked"},
+                    )
+            member_path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+            member = tx.get(member_path)
+            tx.set(
+                member_path, {**member, "memoryEpoch": member.get("memoryEpoch", 0) + 1}
+            )
+
+        engine.store.atomic(save)
+        return {"revoked": True}
 
     @app.post("/v1/memories/{memory_id}/decision")
     def memory_decision(memory_id: str, req: MemoryDecision, ctx=Depends(member)):
@@ -224,6 +635,17 @@ def create_app(settings=None, engine=None):
             ),
         }
 
+    @app.post("/v1/conversations", status_code=201)
+    def create_conversation(ctx=Depends(member)):
+        from app.util import new_id, iso
+
+        cid = new_id("conv_")
+        engine.store.set(
+            f"workspaces/{ctx.workspace_id}/conversations/{cid}",
+            {"owner": ctx.member_id, "title": "New work session", "updatedAt": iso()},
+        )
+        return {"conversationId": cid}
+
     @app.get("/a2a/{wid}/{mid}/.well-known/agent-card.json")
     def card(wid: str, mid: str):
         from app.a2a.server import agent_card
@@ -262,9 +684,37 @@ def create_app(settings=None, engine=None):
             raise error(403, "FORBIDDEN", "Scheduler identity is invalid.") from None
 
     @app.post("/internal/cleanup", dependencies=[Depends(scheduler)])
-    def cleanup():
-        recover_writes()
-        return engine.cleanup()
+    async def cleanup():
+        await run_in_threadpool(recover_writes)
+        await engine.workflows.reconcile()
+        return await run_in_threadpool(engine.cleanup)
+
+    def workflow_identity(authorization: str | None = Header(None)):
+        if settings.dev_mode and authorization == "Bearer local-worker":
+            return
+        try:
+            from google.oauth2 import id_token
+            from google.auth.transport.requests import Request as GoogleRequest
+
+            claims = id_token.verify_oauth2_token(
+                (authorization or "").removeprefix("Bearer "),
+                GoogleRequest(),
+                settings.service_url,
+            )
+            if (
+                not settings.task_service_account
+                or claims.get("email") != settings.task_service_account
+                or claims.get("email_verified") is not True
+            ):
+                raise ValueError()
+        except Exception:
+            raise error(
+                403, "FORBIDDEN", "A verified workflow service identity is required."
+            ) from None
+
+    @app.post("/internal/workflows/{jid}", dependencies=[Depends(workflow_identity)])
+    async def run_workflow(jid: str):
+        return await engine.workflows.run(identifier(jid))
 
     def recover_writes():
         from datetime import datetime, timedelta
@@ -319,6 +769,9 @@ def create_app(settings=None, engine=None):
                 },
             )
 
+    from app.live import install_live
+
+    install_live(app, engine, capture_member)
     return app
 
 

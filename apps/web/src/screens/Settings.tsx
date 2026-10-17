@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import type { Memory, Rule, Member, Outcome } from '../api/types'
 import { AlterBadge } from '../components/AlterBadge'
+import { MemoryEditor } from '../components/MemoryEditor'
+import { SourceSettings } from '../components/SourceSettings'
 
-export function Settings({ memories, rules, me }: { memories: Memory[]; rules: Rule[]; me?: Member }) {
+export function Settings({ memories, rules, me, onRefresh }: { memories: Memory[]; rules: Rule[]; me?: Member; onRefresh: () => void }) {
   const [content, setContent] = useState('')
+  const [audience, setAudience] = useState<'owner' | 'team'>('owner')
   const [editedEmail, setEmail] = useState<string | undefined>(undefined)
   const email = editedEmail ?? me?.email ?? ''
   const [busy, setBusy] = useState('')
@@ -13,19 +16,21 @@ export function Settings({ memories, rules, me }: { memories: Memory[]; rules: R
   async function save(id: string, action: () => Promise<unknown>, success: string) {
     if (busy) return
     setBusy(id); setError(''); setMessage('')
-    try { await action(); setMessage(success) }
+    try { await action(); setMessage(success); onRefresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save. Please try again.') }
     finally { setBusy('') }
   }
   return <section className="screen"><h2>Your Alter <AlterBadge /> · Settings</h2><div className="settings-layout">
     <section className="card"><h3>What it knows</h3><p className="hint">Starter notes and approved memories. Teaching creates a proposal for you to review.</p>
-      <form onSubmit={(e) => { e.preventDefault(); if (content.trim()) void save('teach', async () => { await api.teach(content.trim()); setContent('') }, 'Memory proposed. Review it below.') }}><label>Teach your Alter something<textarea value={content} onChange={(e) => setContent(e.target.value)} disabled={!!busy} /></label><button disabled={!!busy || !content.trim()}>Teach</button></form>
-      {memories.map((m) => <article className="memory" key={m.id}><span className="eyebrow">{m.source} · {m.state}</span><p>{m.content}</p><div className="actions">{m.state !== 'approved' && <button disabled={!!busy} onClick={() => void save(m.id, () => api.decideMemory(m.id, 'approve'), 'Memory approved.')}>Approve memory</button>}{m.state !== 'revoked' && <button disabled={!!busy} onClick={() => void save(m.id, () => api.decideMemory(m.id, 'revoke'), 'Memory revoked.')}>Revoke memory</button>}</div></article>)}
+      <form onSubmit={(e) => { e.preventDefault(); if (content.trim()) void save('teach', async () => { await api.teach(content.trim(), audience); setContent('') }, 'Memory proposed. Review it below.') }}><label>Teach your Alter something<textarea value={content} onChange={(e) => setContent(e.target.value)} disabled={!!busy} /></label><label>Use new guidance<select value={audience} onChange={(e) => setAudience(e.target.value as 'owner' | 'team')}><option value="owner">Only for my own work</option><option value="team">For permitted team requests too</option></select></label><button disabled={!!busy || !content.trim()}>Teach</button></form>
+      {memories.map((m) => <article className="memory" key={m.id}><span className="eyebrow">{m.source} · {m.state}</span><p>{m.content}</p><MemoryEditor memory={m} onSaved={onRefresh} /><div className="actions">{m.state !== 'approved' && <button disabled={!!busy} onClick={() => void save(m.id, () => api.decideMemory(m.id, 'approve'), 'Memory approved.')}>Approve memory</button>}{m.state !== 'revoked' && <button disabled={!!busy} onClick={() => void save(m.id, () => api.decideMemory(m.id, 'revoke'), 'Memory revoked.')}>Revoke memory</button>}</div></article>)}
       {!memories.length && <p className="empty">No memories yet.</p>}
     </section>
     <section className="card"><h3>What it may do</h3><p className="hint">Allow a request, ask you first, or keep it private.</p>{rules.map((rule) => <fieldset className="rule" key={rule.id} disabled={!!busy}><legend>{rule.label}</legend><div className="segmented">{(['allow', 'ask', 'deny'] as Outcome[]).map((mode) => <button type="button" key={mode} aria-pressed={rule.mode === mode} onClick={() => void save(rule.id, () => api.setRule(rule.id, mode), 'Sharing rule saved.')}>{mode[0].toUpperCase() + mode.slice(1)}</button>)}</div></fieldset>)}
-      <h3>Organization rules</h3><p className="locked-rule">🔒 External email: denied by organization</p><p className="locked-rule">🔒 Calendar attendees: workspace members only</p><p className="locked-rule">🔒 File changes: workspace folder only</p>
+      <h3>Organization rules</h3><p className="locked-rule">🔒 External email: denied by organization</p><p className="locked-rule">🔒 Calendar invites: team members only</p><p className="locked-rule">🔒 File changes: team folder only</p>
     </section>
     <section className="card"><h3>Personal preferences</h3><form onSubmit={(e) => { e.preventDefault(); void save('email', () => api.updateMe({ email: email.trim() }), 'Email preference saved.') }}><label>Email me copies<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!busy} placeholder="Optional email address" /></label><button disabled={!!busy}>Save email</button></form><button disabled={!!busy} onClick={() => void save('status', () => api.updateMe({ status: me?.status === 'away' ? 'available' : 'away' }), 'Availability saved.')}>{me?.status === 'away' ? 'Set available' : 'Set away'}</button></section>
+    <section className="card"><h3>Important updates, wherever you are.</h3><p className="hint">Get a phone notification when work is ready or your Alter needs a decision.</p><div className="actions"><button disabled={!!busy} onClick={() => void save('push', () => import('../push').then((m) => m.enablePush()), 'Push notifications enabled on this device.')}>Enable phone notifications</button><button disabled={!!busy} onClick={() => void save('push-off', () => import('../push').then((m) => m.disablePush()), 'Push notifications disabled on this device.')}>Disable phone notifications</button></div></section>
+    <SourceSettings />
   </div>{error && <p className="error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}</section>
 }

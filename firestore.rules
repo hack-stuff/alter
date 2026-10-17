@@ -15,6 +15,9 @@ service cloud.firestore {
       match /contacts/{mid} { allow read: if owner(wid, mid); }
       match /approvals/{aid} { allow read: if owner(wid, resource.data.owner); }
       match /escalations/{eid} { allow read: if owner(wid, resource.data.owner); }
+      match /meetings/{id} { allow read: if owner(wid, resource.data.owner); }
+      match /notifications/{id} { allow read: if owner(wid, resource.data.owner); }
+      match /decisions/{id} { allow read: if owner(wid, resource.data.owner); }
       match /memories/{mid} { allow read: if owner(wid, resource.data.owner); }
       match /activity/{id} { allow read: if member(wid) && binding().memberId in resource.data.visibleTo; }
       match /receipts/{id} { allow read: if member(wid) && binding().memberId in resource.data.visibleTo; }

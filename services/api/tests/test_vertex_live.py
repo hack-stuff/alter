@@ -116,6 +116,24 @@ def test_fast_structured_output(vertex_engine):
     assert fact.scope == "work" and fact.content
 
 
+def test_real_diagram_patch(vertex_engine):
+    from app.plans import PlanEdit
+
+    engine, ctx = vertex_engine
+    current = engine.plans.get(ctx)
+    updated = engine.plans.revise(
+        ctx,
+        current["id"],
+        PlanEdit(
+            expectedRevision=current["revision"],
+            instruction="Add a retry state for token verification failure, connect verification to retry and retry to the one-tap state. Keep all other states.",
+        ),
+    )
+    assert updated["revision"] == current["revision"] + 1
+    assert len(updated["nodes"]) > len(current["nodes"])
+    assert not updated.get("approvalId")
+
+
 def test_real_owner_agent_retrieves_citations(vertex_engine):
     engine, ctx = vertex_engine
     response = asyncio.run(

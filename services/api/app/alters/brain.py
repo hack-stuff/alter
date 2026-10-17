@@ -49,6 +49,7 @@ class LocalBrain:
             member["id"],
             question,
             personal=member.get("_allowPersonal", member["id"] == ctx.member_id),
+            requester=ctx.member_id,
         )
         if not sources:
             return {
@@ -63,7 +64,14 @@ class LocalBrain:
 
     async def chat(self, ctx, message):
         engine = self.engine
-        source = retrieve(engine.store, ctx.workspace_id, ctx.member_id, message)
+        source = retrieve(
+            engine.store,
+            ctx.workspace_id,
+            ctx.member_id,
+            message,
+            personal=True,
+            requester=ctx.member_id,
+        )
         refs = citations(source)
         members = engine.store.list(f"workspaces/{ctx.workspace_id}/members")
         if re.search(r"\b(email|send)\b", message, re.I):
@@ -309,6 +317,20 @@ class VertexBrain:
                 reference = citations([source])[0]
                 if reference not in refs:
                     refs.append(reference)
+        current_member = (
+            self.engine.store.get(
+                f"workspaces/{ctx.workspace_id}/members/{member['id']}"
+            )
+            or {}
+        )
+        if current_member.get("memoryEpoch", 0) != member.get("memoryEpoch", 0):
+            from app.errors import error
+
+            raise error(
+                409,
+                "MEMORY_CHANGED",
+                "Approved guidance changed during the request. Please ask again using the current memory.",
+            )
         text = " ".join(valid)
         if approvals:
             text = "I prepared a proposal for your review. " + text

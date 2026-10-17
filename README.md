@@ -7,9 +7,11 @@ when you approve.**
 Built by Team Cold Silicon for the Google AI Builder Cup 2026, Theme 5 (Future of Work).
 All people, projects and data in this repository are fictional.
 
-> **Project status:** hackathon prototype. Everything runs locally with simulated AI and Google
-> resources, and the automated tests pass. The cloud setup (Firebase, Gemini Enterprise Agent Platform, Google account,
-> Gemini Live voice) has not been configured or deployed yet. See [Roadmap](#roadmap).
+> **Project status:** hackathon prototype. Local simulation and the connected Google/voice path
+> have both been exercised; the connected build is deployed at [alter-48b59.web.app](https://alter-48b59.web.app/).
+> Some meeting and notification steps still require operator setup and verification.
+
+See [Storyboard implementation and deployment](docs/storyboard-implementation.md) for the redesigned app, meeting workflows, voice relay, push and recording setup.
 
 ## Description
 
@@ -58,7 +60,7 @@ There are three ways to run Alter. Start with the first; it needs nothing but No
 |---|---|---|
 | [1. Demo mode](#1-demo-mode-frontend-only) | The full app with sample answers. Changes reset on reload. | Node.js |
 | [2. Local backend](#2-local-backend) | The real API with saved workspaces, invites and simulated AI and Google files. | Node.js, Python 3.12 |
-| [3. Cloud](#3-cloud-deployment) | Real Gemini, real Google files, voice, public hosting. | A Google Cloud / Firebase project (not set up yet) |
+| [3. Cloud](#3-cloud-deployment) | Real Gemini, real Google files, voice, public hosting. | A configured Google Cloud / Firebase project |
 
 ### Requirements
 
@@ -119,9 +121,10 @@ All settings are listed, with comments, in [.env.example](.env.example).
 
 ### 3. Cloud deployment
 
-Not set up yet. The cloud version needs a billing-enabled Google Cloud project with Firebase,
-Firestore, Gemini Enterprise Agent Platform, a demo Google account for the Docs/Drive/Sheets/Calendar/Gmail actions, and
-a Gemini API key for voice. The step-by-step guides are:
+The team demo is deployed at [alter-48b59.web.app](https://alter-48b59.web.app/). A separate
+deployment needs a billing-enabled Google Cloud project with Firebase, Firestore, Gemini
+Enterprise Agent Platform, and a demo Google account for Docs, Drive, Sheets, Calendar and Gmail.
+The preferred native-audio relay uses Agent Platform credentials. The step-by-step guides are:
 
 - [Track A setup and deployment](docs/track-a-deployment.md): the API, Firestore and Google account
 - [Track B deployment](docs/track-b-deployment.md): web hosting and Gemini Live voice
@@ -133,8 +136,8 @@ cost, and apply per workspace.
 
 ## Usage
 
-After joining, you're one member of the seeded team. Try these on the **Home** screen; they're
-also offered as suggestions in an empty chat:
+After joining, you're one member of the seeded team. Open the workday on your Alter screen and
+try these in the conversation:
 
 | Try | What happens |
 |---|---|

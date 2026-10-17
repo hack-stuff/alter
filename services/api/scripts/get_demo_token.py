@@ -1,6 +1,8 @@
-"""One-time demo-account OAuth. Writes a Secret Manager version, never prints tokens."""
+"""One-time demo-account OAuth. Writes to Secret Manager or a local dev file; never prints tokens."""
 
 import argparse, json
+from pathlib import Path
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.cloud import secretmanager
 from app.google.creds import SCOPES
@@ -13,10 +15,15 @@ def main():
         required=True,
         help="Local OAuth desktop-client JSON (gitignored).",
     )
-    parser.add_argument(
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument(
         "--secret",
-        required=True,
-        help="Existing projects/PROJECT/secrets/NAME resource.",
+        help="Existing projects/PROJECT/secrets/NAME resource (production).",
+    )
+    target.add_argument(
+        "--out-file",
+        help="Local JSON path for the development backend "
+        "(ALTER_SECRET_DIR/NAME.json is what the API reads in dev).",
     )
     parser.add_argument(
         "--account-email",
@@ -41,6 +48,13 @@ def main():
         "refresh_token": credentials.refresh_token,
         "account_email": args.account_email,
     }
+    if args.out_file:
+        path = Path(args.out_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, indent=2))
+        path.chmod(0o600)
+        print("Stored OAuth credentials for " + args.account_email + " at " + str(path))
+        return
     version = secretmanager.SecretManagerServiceClient().add_secret_version(
         request={
             "parent": args.secret,

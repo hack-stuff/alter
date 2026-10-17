@@ -63,7 +63,11 @@ class A2ATransport:
         # Loopback test/dev requests are local. Internet requests retain the inherited proxy and CA.
         trust = urlparse(url).hostname not in ("localhost", "127.0.0.1", "::1")
         async with httpx.AsyncClient(
-            timeout=30, trust_env=trust, transport=self.transport
+            timeout=httpx.Timeout(
+                self.engine.settings.model_timeout_ms / 1000 * 2 + 10, connect=10
+            ),
+            trust_env=trust,
+            transport=self.transport,
         ) as http:
             client = A2AClient(http, url=url)
             request = SendMessageRequest(

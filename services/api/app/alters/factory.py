@@ -18,6 +18,7 @@ def plain(sections):
 class ProjectGemini(Gemini):
     project: str
     location: str
+    timeout_ms: int = 60000
 
     @cached_property
     def api_client(self):
@@ -27,7 +28,15 @@ class ProjectGemini(Gemini):
             vertexai=True,
             project=self.project,
             location=self.location,
-            http_options={"timeout": 30000},
+            http_options={
+                "timeout": self.timeout_ms,
+                "retry_options": {
+                    "attempts": 2,
+                    "initial_delay": 1,
+                    "max_delay": 2,
+                    "http_status_codes": [429, 500, 502, 503, 504],
+                },
+            },
         )
 
 
@@ -71,6 +80,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             6,
             member.get("_allowPersonal", not serving),
             engine.settings.search_serving_config,
+            requester=ctx.member_id,
         )
         observed.extend(records)
         return {"passages": records}
@@ -280,6 +290,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             model=engine.settings.model_fast,
             project=engine.settings.project,
             location=engine.settings.model_location,
+            timeout_ms=engine.settings.model_timeout_ms,
         ),
         instruction=f"{base}\n{role}\n{mode}\nIdentity: {member['name']}, status: {member['status']}. Workspace member ID: {member['id']}. Return exact source sentences as claims with sourceId and locator. Never place ungrounded factual text outside claims.",
         tools=tools,

@@ -63,7 +63,7 @@ class LocalApps:
                         )
                         events.append(
                             {
-                                "id": block["member"] + str(offset),
+                                "id": block.get("key", block["member"]) + str(offset),
                                 "title": block["title"],
                                 "attendees": [block["member"]],
                                 "start": start.isoformat(),
@@ -125,6 +125,26 @@ class LocalApps:
             "rows": value["rows"],
             "url": self.url(file_id),
         }
+
+    def agenda(self, wid, member, start, end):
+        workspace = self.store.get(f"workspaces/{wid}")
+        calendar = self.store.get(
+            "localResources/" + workspace["googleIds"]["calendar"]
+        )
+        return [
+            {
+                "id": e["id"],
+                "title": e["title"],
+                "start": e["start"],
+                "end": e["end"],
+                "meetUrl": "",
+                "url": "",
+            }
+            for e in calendar["events"]
+            if (not e.get("attendees") or member in e["attendees"])
+            and e["start"] < end
+            and e["end"] > start
+        ][:20]
 
     def availability(self, wid, members, start, end):
         workspace = self.store.get(f"workspaces/{wid}")

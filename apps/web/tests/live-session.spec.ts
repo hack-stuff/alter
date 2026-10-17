@@ -20,11 +20,12 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
     const Native = window.AudioContext
     window.AudioContext = class extends Native { constructor(options?: AudioContextOptions) { super(options); state.testAudio.push(this) } }
   })
-  await page.goto('/')
+  await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.audio)).toBeGreaterThan(0)
   await page.evaluate(async () => {
     const h = (window as any).liveHarness
@@ -62,7 +63,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   const cleaned = await page.evaluate(() => ({ closed: (window as any).liveHarness.closed, tracks: (window as any).testStreams.flatMap((s: MediaStream) => s.getTracks().map((t) => t.readyState)), contexts: (window as any).testAudio.map((a: AudioContext) => a.state) }))
   expect(cleaned.closed).toBe(1)
   expect(cleaned.tracks).toEqual(['ended'])
-  expect(cleaned.contexts).toEqual(['closed'])
+  await expect.poll(() => page.evaluate(() => (window as any).testAudio.map((a: AudioContext) => a.state))).toEqual(['suspended'])
 })
 
 test('a rejected token request releases the microphone and returns to text controls', async ({ page }) => {
@@ -72,10 +73,10 @@ test('a rejected token request releases the microphone and returns to text contr
     const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
     navigator.mediaDevices.getUserMedia = async (constraints) => { const stream = await original(constraints); (window as any).testStream = stream; return stream }
   })
-  await page.goto('/')
+  await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
+  await page.getByRole('button', { name: 'Enter without voice' }).click()
   await expect(page.getByRole('alert')).toContainText('Your voice budget is used for now')
   await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeEnabled()
   expect(await page.evaluate(() => (window as any).testStream.getTracks()[0].readyState)).toBe('ended')
@@ -96,8 +97,9 @@ test('voice follows the typed conversation, reports a server close and releases 
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Talk to your Alter' }).click()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.evaluate(async () => {
     const h = (window as any).liveHarness
     h.conversations = []

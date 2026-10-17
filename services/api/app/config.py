@@ -43,6 +43,12 @@ class Settings:
     # allowance, and per workspace as the overall cost cap.
     model_calls_per_member: int = 120
     model_calls_per_workspace: int = 400
+    task_queue: str = ""
+    task_service_account: str = ""
+    live_model: str = ""
+    live_location: str = ""
+    meet_url: str = ""
+    model_timeout_ms: int = 60000
 
     @property
     def model_location(self):
@@ -93,6 +99,14 @@ class Settings:
             ),
             model_calls_per_workspace=int(
                 os.getenv("MODEL_CALLS_PER_WORKSPACE_PER_HOUR", "400")
+            ),
+            task_queue=os.getenv("WORKFLOW_QUEUE", ""),
+            task_service_account=os.getenv("WORKFLOW_SERVICE_ACCOUNT", ""),
+            live_model=os.getenv("LIVE_MODEL", ""),
+            live_location=os.getenv("LIVE_LOCATION", ""),
+            meet_url=os.getenv("MEET_URL", ""),
+            model_timeout_ms=max(
+                10000, min(120000, int(os.getenv("MODEL_TIMEOUT_MS", "60000")))
             ),
         )
 
