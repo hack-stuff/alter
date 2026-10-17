@@ -17,10 +17,15 @@ export async function authorizationHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${await firebaseIdToken()}` }
 }
 
+// The API answers "today" and event times on the caller's clock.
+function timeZone(): Record<string, string> {
+  try { return { 'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone } } catch { return {} }
+}
+
 export async function httpCall<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json', ...await authorizationHeaders() },
+    headers: { 'Content-Type': 'application/json', ...timeZone(), ...await authorizationHeaders() },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (!res.ok) {

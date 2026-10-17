@@ -1,10 +1,11 @@
 """The user's actual agenda and explicitly configured meeting link."""
 
-from datetime import timedelta
+from datetime import timedelta, timezone
 import re
 from app.models import Input
 from pydantic import Field
 from app.errors import error
+from app.schedule import local_zone
 from app.util import now
 
 
@@ -34,14 +35,15 @@ def validate_meet_url(url):
 def day(engine, ctx):
     workspace, _, _ = engine.proposals.context(ctx)
     member = engine.me(ctx)
-    start = now().replace(hour=0, minute=0, second=0, microsecond=0)
+    local = local_zone(engine, ctx)
+    start = now().astimezone(local).replace(hour=0, minute=0, second=0, microsecond=0)
     agenda, agenda_error = [], ""
     try:
         agenda = engine.apps.agenda(
             ctx.workspace_id,
             ctx.member_id,
-            start.isoformat(),
-            (start + timedelta(days=7)).isoformat(),
+            start.astimezone(timezone.utc).isoformat(),
+            (start + timedelta(days=7)).astimezone(timezone.utc).isoformat(),
         )
     except Exception:
         agenda_error = (
@@ -64,5 +66,5 @@ def day(engine, ctx):
         "meetingPresence": "unverified",
         "simulated": workspace.get("simulated", False),
         "voiceConfigured": bool(engine.settings.live_model),
-        "timeZone": "UTC",
+        "timeZone": local.key,
     }

@@ -2,6 +2,7 @@ from hashlib import sha256
 import json
 from app.google.creds import DemoCredentials
 from app.google import drive, docs, sheets, calendar, gmail, meet
+from app.workspaces.seed import calendar_keys
 from app.errors import error
 
 
@@ -38,19 +39,22 @@ class GoogleApps:
         return sheets.read(self.service("sheets", "v4"), file_id)
 
     def availability(self, wid, members, start, end):
-        return calendar.availability(
-            self.service("calendar", "v3"),
-            self.workspace(wid)["googleIds"]["calendar"],
-            members,
-            start,
-            end,
-        )
+        return {
+            **calendar.availability(
+                self.service("calendar", "v3"),
+                self.workspace(wid)["googleIds"]["calendar"],
+                sorted(calendar_keys(self.store, wid, members)),
+                start,
+                end,
+            ),
+            "members": members,
+        }
 
     def agenda(self, wid, member, start, end):
         return calendar.agenda(
             self.service("calendar", "v3"),
             self.workspace(wid)["googleIds"]["calendar"],
-            member,
+            calendar_keys(self.store, wid, [member]),
             start,
             end,
         )

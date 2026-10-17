@@ -1,7 +1,28 @@
 [
-  {"member":"siddhi","title":"Siddhi · on leave","hour":9,"hours":8,"days":7},
-  {"member":"sahil","title":"Sahil · engineering meetings","hour":10,"hours":2,"days":5},
-  {"member":"kani","title":"Kani · design review","hour":13,"hours":1,"days":5},
-  {"key":"dev-review","member":"dev","title":"Review Kani's login journey","hour":13,"hours":1,"days":5},
-  {"key":"dev-sync","member":"dev","title":"Login revamp · team sync","hour":14,"hours":1,"days":5}
+  {"key": "siddhi-leave", "members": ["siddhi"], "title": "Out of office · on leave", "day": 0, "days": 5, "start": "09:00", "minutes": 480},
+
+  {"key": "sahil-standup", "members": ["sahil"], "title": "Backend standup", "day": 0, "start": "10:00", "minutes": 30},
+  {"key": "kani-critique", "members": ["kani"], "title": "Design critique · login screens", "day": 0, "start": "11:00", "minutes": 60},
+  {"key": "qa-triage", "members": ["slot:qa_lead"], "title": "QA triage · iOS sign-in crash", "day": 0, "start": "11:30", "minutes": 30},
+  {"key": "dev-review", "members": ["dev"], "title": "Review Kani's login journey", "day": 0, "start": "13:00", "minutes": 60},
+  {"key": "team-sync", "members": ["dev", "kani", "sahil", "slot:qa_lead"], "title": "Login revamp · team sync", "day": 0, "start": "14:00", "minutes": 60},
+  {"key": "security-threat-model", "members": ["slot:security_engineer"], "title": "Threat model · one-tap sign-in", "day": 0, "start": "15:30", "minutes": 45},
+  {"key": "analyst-funnel", "members": ["slot:data_analyst"], "title": "Sign-in funnel check-in", "day": 0, "start": "16:00", "minutes": 30},
+
+  {"key": "dev-sahil-1on1", "members": ["dev", "sahil"], "title": "1:1 · Dev and Sahil", "day": 1, "start": "10:00", "minutes": 30},
+  {"key": "qa-test-plan", "members": ["slot:qa_lead"], "title": "Test plan review", "day": 1, "start": "11:00", "minutes": 45},
+  {"key": "sahil-rollout", "members": ["sahil"], "title": "AUTH-112 rollout prep", "day": 1, "start": "13:00", "minutes": 60},
+  {"key": "analyst-conversion", "members": ["slot:data_analyst"], "title": "Conversion dashboard review", "day": 1, "start": "14:00", "minutes": 30},
+  {"key": "launch-readiness", "members": ["dev", "kani", "slot:qa_lead", "slot:security_engineer"], "title": "Launch readiness review", "day": 1, "start": "15:00", "minutes": 60},
+
+  {"key": "security-auth-review", "members": ["slot:security_engineer"], "title": "AUTH-112 security review", "day": 2, "start": "10:00", "minutes": 60},
+  {"key": "design-signoff", "members": ["dev", "kani"], "title": "Design sign-off · login flow", "day": 2, "start": "11:00", "minutes": 45},
+  {"key": "kani-usability", "members": ["kani"], "title": "Usability test · one-tap", "day": 2, "start": "13:30", "minutes": 60},
+  {"key": "qa-regression", "members": ["slot:qa_lead"], "title": "Regression run · Android 12+", "day": 2, "start": "14:00", "minutes": 60},
+  {"key": "sahil-handover", "members": ["sahil"], "title": "On-call handover", "day": 2, "start": "16:30", "minutes": 30},
+
+  {"key": "standup", "members": ["dev", "kani", "sahil", "slot:qa_lead", "slot:security_engineer", "slot:data_analyst"], "title": "Login revamp standup", "day": 3, "start": "10:00", "minutes": 15},
+  {"key": "dev-status", "members": ["dev"], "title": "Write the weekly status update", "day": 3, "start": "16:00", "minutes": 30},
+
+  {"key": "sprint-planning", "members": ["dev", "kani", "sahil", "slot:qa_lead", "slot:security_engineer", "slot:data_analyst"], "title": "Sprint planning", "day": 4, "start": "14:00", "minutes": 60}
 ]

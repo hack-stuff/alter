@@ -21,7 +21,7 @@ TOOLS = {
         "revise_diagram",
         {"instruction": "Requested design edit to the already open private plan"},
     ),
-    "chat": ("alter_chat", {"message": "Work request"}),
+    "chat": ("alter_chat", {"message": "Work request or question, including schedule and calendar questions"}),
     "revise": (
         "revise_approval",
         {"approvalId": "Open proposal ID", "instruction": "Requested edit"},
@@ -168,6 +168,8 @@ class LiveRelay:
                         409, "CAPTURE_CLOSED", "Start a matching meeting capture first."
                     )
             return "Represented member ID: " + req.targetId
+        from app.schedule import today_line
+
         owner = self.engine.me(ctx)
         workspace = self.store.get(f"workspaces/{ctx.workspace_id}")
         root = f"workspaces/{ctx.workspace_id}"
@@ -193,6 +195,16 @@ class LiveRelay:
             ][:2]
             try:
                 from app.day import day
+                from app.schedule import clock, local_zone
+
+                local = local_zone(self.engine, ctx)
+                today = now().astimezone(local).date()
+
+                def when(value):
+                    moment = instant(value).astimezone(local)
+                    offset = (moment.date() - today).days
+                    named = {0: "today", 1: "tomorrow"}.get(offset, moment.strftime("%A"))
+                    return f"{named} at {clock(moment)}"
 
                 def instant(value):
                     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -204,7 +216,9 @@ class LiveRelay:
                 )
                 for item in agenda:
                     if instant(item["end"]) >= now():
-                        workday["agenda"].append({"title": item["title"][:120]})
+                        workday["agenda"].append(
+                            {"title": item["title"][:120], "when": when(item["start"])}
+                        )
                     if len(workday["agenda"]) == 2:
                         break
             except Exception:
@@ -213,6 +227,7 @@ class LiveRelay:
             {
                 "owner": owner["name"],
                 "role": owner["role"],
+                "today": today_line(self.engine, ctx),
                 "setupState": workspace["state"],
                 "workday": workday,
             }
@@ -347,7 +362,10 @@ class LiveRelay:
                 "For an introductory greeting, open with a warm hello that uses the owner's first name and a brief welcome, then catch them up like a colleague in an ongoing workday. "
                 "Use the verified workday context to mention one or two concrete current threads, favoring calendar items and pending decisions. "
                 "When two agenda items are present, connect them in their listed order instead of treating recurring events as one. "
-                "The agenda is ordered; no local time zone is provided, so do not state event times. "
+                "Agenda 'when' values are already in the owner's local time; say a time only as given. "
+                "The context holds only the next two agenda items. For any question about a schedule, meetings, free or busy time, "
+                "on any day and for the owner or a teammate, call the supplied tool and speak its answer; the tool can read teammates' busy times. "
+                "Pass days to the tool as the owner said them (today, tomorrow, Wednesday); never convert them to dates. "
                 "Mention a pending decision only when pendingDrafts or pendingQuestions contains an item. Empty arrays mean none are known. "
                 "End with one short question about the next move. Keep it to three sentences and about 45 words. "
                 "Do not introduce the product, list capabilities, say 'I can help', or imply a meeting is already underway from a calendar entry. "

@@ -20,7 +20,9 @@ class Workspaces:
             "inviteUrl": f"{self.settings.public_origin.rstrip('/')}/join/{invite}",
         }
 
-    def create(self, caller: Caller, name, ip, director=False, demo_day=False):
+    def create(
+        self, caller: Caller, name, ip, director=False, demo_day=False, time_zone="UTC"
+    ):
         wid, mid, code = new_id("ws_"), new_id("m_"), secrets.token_urlsafe(18)
         slot = "product_lead" if demo_day else SLOTS[0]
         if demo_day:
@@ -45,6 +47,7 @@ class Workspaces:
                     "creatorUid": caller.uid,
                     "director": director,
                     "demoDay": demo_day,
+                    "timeZone": time_zone,
                     "humanCount": 1,
                     "state": "provisioning",
                     "generation": new_id(),

@@ -1,6 +1,7 @@
 from dataclasses import replace
 from types import SimpleNamespace
 import json
+import re
 
 
 def plan(client, headers):
@@ -323,9 +324,10 @@ def test_voice_context_tracks_setup_and_verified_workday(system):
     ready_context = json.loads(LiveRelay(e).context(ctx, LiveStart(mode="chat")))
     assert ready_context["workday"]["project"] == "Login revamp"
     assert ready_context["workday"]["pendingDrafts"] == []
-    upcoming = [item["title"] for item in ready_context["workday"]["agenda"]]
+    from app.workspaces.seed import load
+
+    upcoming = ready_context["workday"]["agenda"]
     assert 1 <= len(upcoming) <= 2
-    assert set(upcoming) <= {
-        "Review Kani's login journey",
-        "Login revamp · team sync",
-    }
+    devs = {b["title"] for b in load("calendar/blocks.json") if "dev" in b["members"]}
+    assert {item["title"] for item in upcoming} <= devs
+    assert all(re.search(r" at \d{1,2}:\d{2} [AP]M$", item["when"]) for item in upcoming)

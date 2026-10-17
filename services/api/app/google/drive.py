@@ -109,7 +109,9 @@ def provision(apps, wid, workspace):
     ids["sheet"] = resource["id"]
     if created and not apps.settings.template_ids.get("sheet"):
         sheets.seed(apps.service("sheets", "v4"), resource["id"])
-    ids["calendar"] = calendar.provision(apps.service("calendar", "v3"), wid)
+    ids["calendar"] = calendar.provision(
+        apps.service("calendar", "v3"), wid, workspace.get("timeZone", "UTC")
+    )
     return {
         "googleIds": ids,
         "google": {

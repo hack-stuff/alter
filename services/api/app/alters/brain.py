@@ -8,6 +8,7 @@ from app.knowledge.retrieve import retrieve, citations
 from app.policy.intents import PERSONAL
 from app.util import now, new_id
 from app.alters.schemas import DocumentContent, REVISION_SCHEMAS
+from app.schedule import asks_schedule, schedule
 
 
 class MemoryFact(BaseModel):
@@ -93,6 +94,26 @@ class LocalBrain:
                 message,
                 refs,
             )
+        elif asks_schedule(message):
+            # A named teammate (and no "I"/"my") asks about them: busy times only.
+            teammate = None
+            if not re.search(r"\b(i|i'm|me|my)\b", message, re.I):
+                teammate = next(
+                    (
+                        m["id"]
+                        for m in members
+                        if m["id"] != ctx.member_id
+                        and m["name"].lower() in message.lower()
+                    ),
+                    None,
+                )
+            value = schedule(engine, ctx, message, teammate, details=not teammate)
+            return {
+                "text": " ".join(value["sentences"]),
+                "citations": citations([value["source"]]),
+                "approvalIds": [],
+                "traceIds": [],
+            }
         elif re.search(r"\b(book|schedule|meeting)\b", message, re.I):
             requested = [
                 m["id"]
@@ -306,16 +327,22 @@ class VertexBrain:
         except Exception:
             result = AgentResult()
         for claim in result.claims:
+            quote = claim.quote.strip()
+            # The quote must appear verbatim in an observed source. A mislabelled locator is
+            # corrected to the source the quote actually came from, never trusted as given.
             source = next(
                 (
                     s
                     for s in sources
                     if s["sourceId"] == claim.sourceId and s["locator"] == claim.locator
+                    and quote in s["text"]
                 ),
                 None,
+            ) or next(
+                (s for s in sources if s["sourceId"] == claim.sourceId and quote in s["text"]),
+                None,
             )
-            quote = claim.quote.strip()
-            if source and quote and quote in source["text"]:
+            if source and quote:
                 valid.append(quote)
                 reference = citations([source])[0]
                 if reference not in refs:

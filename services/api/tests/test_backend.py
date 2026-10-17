@@ -454,10 +454,11 @@ def test_adk_tool_schemas_and_readonly_surface(team):
                 "read_doc",
                 "read_sheet",
                 "get_availability",
+                "get_schedule",
                 "escalate_to_owner",
             }
         else:
-            assert "propose_doc" in names and "ask_alter" in names
+            assert {"propose_doc", "ask_alter", "get_schedule"} <= set(names)
 
 
 def test_started_conversation_is_owned_and_titled_by_first_message(team):

@@ -55,6 +55,7 @@ class AgentResult(BaseModel):
 def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
     from google.adk.agents import LlmAgent
     from app.knowledge.retrieve import retrieve
+    from app.schedule import today_line
 
     def progress(label, kind="tool"):
         if ctx.conversation_id:
@@ -151,6 +152,43 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             }
         )
         return value
+
+    async def get_schedule(day: str = "today", teammate: str = "") -> dict:
+        """Read a calendar in the owner's time zone for today, tomorrow, a weekday, this week or YYYY-MM-DD.
+
+        Leave teammate empty for this Alter's own member. A teammate (member ID or name) shows busy times only.
+        Quote the returned sentences with the returned sourceId and locator.
+        """
+        import asyncio
+        from app.schedule import schedule
+
+        wanted = teammate.strip().lower()
+        target = member["id"] if not wanted else next(
+            (
+                m["id"]
+                for m in engine.store.list(f"workspaces/{ctx.workspace_id}/members")
+                if wanted in (m["id"].lower(), m.get("name", "").lower())
+            ),
+            None,
+        )
+        if not target:
+            return {"error": "Choose a workspace member ID or name."}
+        progress("Checking the calendar…")
+        value = await asyncio.to_thread(
+            schedule,
+            engine,
+            ctx,
+            day,
+            target,
+            not serving and target == ctx.member_id,
+        )
+        observed.append(value["source"])
+        return {
+            "sourceId": value["source"]["sourceId"],
+            "locator": value["source"]["locator"],
+            "sentences": value["sentences"],
+            "timeZone": value["timeZone"],
+        }
 
     async def ask_alter(member: str, question: str) -> dict:
         """Ask another workspace Alter through the signed A2A hop, at depth one."""
@@ -265,7 +303,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
 
         await asyncio.to_thread(engine.charge, ctx.workspace_id, ctx.member_id)
 
-    tools = [search_knowledge, read_doc, read_sheet, get_availability]
+    tools = [search_knowledge, read_doc, read_sheet, get_availability, get_schedule]
     tools += (
         [escalate_to_owner]
         if serving
@@ -297,7 +335,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             location=engine.settings.model_location,
             timeout_ms=engine.settings.model_timeout_ms,
         ),
-        instruction=f"{base}\n{role}\n{mode}\nIdentity: {member['name']}, status: {member['status']}. Workspace member ID: {member['id']}. Return exact source sentences as claims with sourceId and locator. Never place ungrounded factual text outside claims.",
+        instruction=f"{base}\n{role}\n{mode}\n{today_line(engine, ctx)}\nIdentity: {member['name']}, status: {member['status']}. Workspace member ID: {member['id']}. Return exact source sentences as claims with sourceId and locator. Never place ungrounded factual text outside claims.",
         tools=tools,
         output_schema=AgentResult,
         disallow_transfer_to_parent=True,

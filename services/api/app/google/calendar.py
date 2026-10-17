@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 from app.google.drive import run
@@ -15,7 +14,7 @@ def calendars(service):
             return result
 
 
-def provision(service, wid):
+def provision(service, wid, time_zone="UTC"):
     marker = f"Alter workspace {wid}"
     candidates = [
         entry for entry in calendars(service) if entry.get("description") == marker
@@ -30,7 +29,7 @@ def provision(service, wid):
                 body={
                     "summary": "Login revamp team",
                     "description": marker,
-                    "timeZone": "UTC",
+                    "timeZone": time_zone,
                 }
             )
         )
@@ -46,45 +45,35 @@ def provision(service, wid):
                 calendarId=cid, body={"scope": {"type": "default"}, "role": "reader"}
             )
         )
-    start = datetime.now(timezone.utc).replace(
-        hour=9, minute=0, second=0, microsecond=0
-    )
-    from app.workspaces.seed import load
+    from app.workspaces.seed import calendar_events
 
-    for block in load("calendar/blocks.json"):
-        for offset in range(block["days"]):
-            day = (start + timedelta(days=offset)).replace(hour=block["hour"])
-            eid = sha256(
-                f"{wid}:{block.get('key', block['member'])}:{offset}".encode()
-            ).hexdigest()
-            try:
-                run(service.events().get(calendarId=cid, eventId=eid))
-            except Exception as exc:
-                if getattr(getattr(exc, "resp", None), "status", None) != 404:
-                    raise
-                run(
-                    service.events().insert(
-                        calendarId=cid,
-                        body={
-                            "id": eid,
-                            "summary": block["title"],
-                            "start": {"dateTime": day.isoformat()},
-                            "end": {
-                                "dateTime": (
-                                    day + timedelta(hours=block["hours"])
-                                ).isoformat()
-                            },
-                            "extendedProperties": {
-                                "private": {"memberIds": json.dumps([block["member"]])}
-                            },
+    for event in calendar_events(time_zone):
+        eid = sha256(f"{wid}:{event['key']}".encode()).hexdigest()
+        try:
+            run(service.events().get(calendarId=cid, eventId=eid))
+        except Exception as exc:
+            if getattr(getattr(exc, "resp", None), "status", None) != 404:
+                raise
+            run(
+                service.events().insert(
+                    calendarId=cid,
+                    body={
+                        "id": eid,
+                        "summary": event["title"],
+                        "start": {"dateTime": event["start"]},
+                        "end": {"dateTime": event["end"]},
+                        "extendedProperties": {
+                            "private": {"memberIds": json.dumps(event["attendees"])}
                         },
-                        sendUpdates="none",
-                    )
+                    },
+                    sendUpdates="none",
                 )
+            )
     return cid
 
 
-def agenda(service, cid, member, start, end):
+def agenda(service, cid, keys, start, end):
+    """Events for one member; keys are their ID and role slot (see seed.calendar_keys)."""
     result = []
     token = None
     while len(result) < 20:
@@ -105,7 +94,7 @@ def agenda(service, cid, member, start, end):
                 .get("private", {})
                 .get("memberIds", "[]")
             )
-            if event.get("status") == "cancelled" or (ids and member not in ids):
+            if event.get("status") == "cancelled" or (ids and not set(keys).intersection(ids)):
                 continue
             result.append(
                 {

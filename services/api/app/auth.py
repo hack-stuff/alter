@@ -24,6 +24,9 @@ class MemberContext:
     conversation_id: str | None = None
     room_meeting_id: str | None = None
     room_key: str | None = None
+    # The caller's IANA zone from X-Time-Zone, so "today" and times match their clock.
+    # Empty when unknown (service calls, A2A); the workspace's zone applies then.
+    time_zone: str = ""
 
 
 class Authentication:

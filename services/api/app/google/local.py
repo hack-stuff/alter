@@ -1,10 +1,9 @@
 """Persistent development adapter. It simulates Google files; it never calls Google."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from hashlib import sha256
 from app.errors import error
-from app.util import now
-from app.workspaces.seed import load
+from app.workspaces.seed import load, calendar_events, calendar_keys
 
 
 class LocalApps:
@@ -58,23 +57,10 @@ class LocalApps:
                     },
                 )
             if not tx.get(f"localResources/{ids['calendar']}"):
-                events = []
-                for block in load("calendar/blocks.json"):
-                    for offset in range(block["days"]):
-                        start = (now() + timedelta(days=offset)).replace(
-                            hour=block["hour"], minute=0, second=0, microsecond=0
-                        )
-                        events.append(
-                            {
-                                "id": block.get("key", block["member"]) + str(offset),
-                                "title": block["title"],
-                                "attendees": [block["member"]],
-                                "start": start.isoformat(),
-                                "end": (
-                                    start + timedelta(hours=block["hours"])
-                                ).isoformat(),
-                            }
-                        )
+                events = [
+                    {"id": event.pop("key"), **event}
+                    for event in calendar_events(workspace.get("timeZone", "UTC"))
+                ]
                 tx.set(
                     f"localResources/{ids['calendar']}",
                     {
@@ -134,6 +120,15 @@ class LocalApps:
         calendar = self.store.get(
             "localResources/" + workspace["googleIds"]["calendar"]
         )
+        keys = calendar_keys(self.store, wid, [member])
+        begin, finish = datetime.fromisoformat(start), datetime.fromisoformat(end)
+        events = [
+            e
+            for e in calendar["events"]
+            if (not e.get("attendees") or keys.intersection(e["attendees"]))
+            and datetime.fromisoformat(e["start"]) < finish
+            and datetime.fromisoformat(e["end"]) > begin
+        ]
         return [
             {
                 "id": e["id"],
@@ -143,10 +138,7 @@ class LocalApps:
                 "meetUrl": "",
                 "url": "",
             }
-            for e in calendar["events"]
-            if (not e.get("attendees") or member in e["attendees"])
-            and e["start"] < end
-            and e["end"] > start
+            for e in sorted(events, key=lambda e: datetime.fromisoformat(e["start"]))
         ][:20]
 
     def availability(self, wid, members, start, end):
@@ -154,10 +146,11 @@ class LocalApps:
         calendar = self.store.get(
             "localResources/" + workspace["googleIds"]["calendar"]
         )
+        keys = calendar_keys(self.store, wid, members)
         busy = [
             {"start": event["start"], "end": event["end"]}
             for event in calendar["events"]
-            if set(event["attendees"]).intersection(members)
+            if keys.intersection(event["attendees"])
             and datetime.fromisoformat(event["start"]) < datetime.fromisoformat(end)
             and datetime.fromisoformat(event["end"]) > datetime.fromisoformat(start)
         ]

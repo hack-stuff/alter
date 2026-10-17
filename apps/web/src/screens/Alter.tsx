@@ -308,7 +308,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const micLine = liveVoice ? voiceState === 'listening' ? 'Listening' : voiceState === 'speaking' ? 'Speaking' : voiceState === 'connecting' ? 'Connecting voice…' : 'Voice is off' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — typing still works' : 'Starting to listen…'
 
   const me = members.find((m) => m.id === meId)
-  const agendaTarget = (title: string): 'plan' | 'meet' | undefined => /review|design|journey|canvas|plan/i.test(title) ? 'plan' : /sync|meeting|stand-?up|call/i.test(title) ? 'meet' : undefined
+  const agendaTarget = (title: string): 'plan' | 'meet' | undefined => /login (journey|flow|screens)/i.test(title) ? 'plan' : /team sync/i.test(title) ? 'meet' : undefined
   const calendarDays = Array.from({ length: 7 }, (_, offset) => {
     const date = new Date()
     date.setHours(12, 0, 0, 0)

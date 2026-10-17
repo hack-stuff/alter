@@ -2,6 +2,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from html import escape
 
 from fastapi import Depends, FastAPI, Header, Request, HTTPException
@@ -19,7 +20,7 @@ from app.day import MeetLink, day, validate_meet_url
 from app.google import meet_join
 from app.rate_limits import take
 from app.rooms import RoomCreate, RoomJoin, RoomLeave, RoomPoll, RoomSignal
-from app.util import identifier, now
+from app.util import identifier, now, zone
 
 
 def create_app(settings=None, engine=None):
@@ -59,7 +60,7 @@ def create_app(settings=None, engine=None):
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
         allow_methods=["GET", "POST", "PUT", "DELETE"],
-        allow_headers=["Authorization", "Content-Type", "X-Dev-Uid", "X-Meeting-Room"]
+        allow_headers=["Authorization", "Content-Type", "X-Dev-Uid", "X-Meeting-Room", "X-Time-Zone"]
         + (["X-Real-IP"] if settings.dev_mode and settings.allow_forwarded_ip else []),
     )
 
@@ -121,13 +122,20 @@ def create_app(settings=None, engine=None):
         engine.require_ready()
         return engine.auth.authenticate(authorization, x_dev_uid)
 
-    def member(user=Depends(caller)):
-        return engine.auth.member(user)
+    def time_zone(value):
+        return zone(value).key
+
+    def member(user=Depends(caller), x_time_zone: str | None = Header(None)):
+        return replace(
+            engine.auth.member(user),
+            time_zone=time_zone(x_time_zone) if x_time_zone else "",
+        )
 
     def capture_member(
         authorization: str | None = Header(None),
         x_dev_uid: str | None = Header(None),
         x_meeting_room: str | None = Header(None),
+        x_time_zone: str | None = Header(None),
     ):
         if x_meeting_room:
             from hashlib import sha256
@@ -137,7 +145,7 @@ def create_app(settings=None, engine=None):
             return engine.meetings.room_context(
                 sha256(x_meeting_room.encode()).hexdigest()
             )
-        return member(caller(authorization, x_dev_uid))
+        return member(caller(authorization, x_dev_uid), x_time_zone)
 
     async def provision(wid, mid):
         await run_in_threadpool(engine.workspaces.provision, wid)
@@ -163,9 +171,16 @@ def create_app(settings=None, engine=None):
         return {"ok": True, "simulated": settings.dev_mode}
 
     @app.post("/v1/workspaces")
-    async def create(req: CreateWorkspace, request: Request, user=Depends(caller)):
+    async def create(
+        req: CreateWorkspace,
+        request: Request,
+        user=Depends(caller),
+        x_time_zone: str | None = Header(None),
+    ):
         result = await run_in_threadpool(
-            engine.workspaces.create, user, req.name, ip(request)
+            lambda: engine.workspaces.create(
+                user, req.name, ip(request), time_zone=time_zone(x_time_zone)
+            )
         )
         engine.schedule(provision(result["workspaceId"], result["memberId"]))
         return result
@@ -184,7 +199,9 @@ def create_app(settings=None, engine=None):
         return result
 
     @app.post("/v1/demo/day")
-    async def enter_day(request: Request, user=Depends(caller)):
+    async def enter_day(
+        request: Request, user=Depends(caller), x_time_zone: str | None = Header(None)
+    ):
         # Creates only a fresh isolated demo. It cannot claim someone else's role.
         binding = engine.store.get(f"userBindings/{user.uid}")
         if binding:
@@ -200,7 +217,9 @@ def create_app(settings=None, engine=None):
                 ctx.workspace_id, ctx.member_id, "product_lead", current["inviteCode"]
             )
         result = await run_in_threadpool(
-            engine.workspaces.create, user, "Dev", ip(request), False, True
+            lambda: engine.workspaces.create(
+                user, "Dev", ip(request), demo_day=True, time_zone=time_zone(x_time_zone)
+            )
         )
         engine.schedule(provision(result["workspaceId"], result["memberId"]))
         return result

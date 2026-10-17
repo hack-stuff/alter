@@ -1,12 +1,50 @@
+from datetime import datetime, time, timedelta, timezone
 import json
 from app.config import SEED_DIR
-from app.util import iso
+from app.util import iso, now, zone
 
 SLOTS = ("qa_lead", "security_engineer", "data_analyst", "qa_lead")
 
 
 def load(relative):
     return json.loads((SEED_DIR / relative).read_text())
+
+
+def calendar_events(time_zone="UTC", today=None):
+    """The team's demo calendar for the next five days, at local hours in the workspace's zone.
+
+    Attendees are member IDs, or "slot:<role>" for people who join with their own name.
+    Times are stored in UTC.
+    """
+    local = zone(time_zone)
+    first = (today or now()).astimezone(local).date()
+    events = []
+    for block in load("calendar/blocks.json"):
+        hour, minute = (int(part) for part in block["start"].split(":"))
+        for offset in range(block["day"], block["day"] + block.get("days", 1)):
+            start = datetime.combine(first + timedelta(days=offset), time(hour, minute), local)
+            events.append(
+                {
+                    "key": f"{block['key']}-{offset}",
+                    "title": block["title"],
+                    "attendees": block["members"],
+                    "start": start.astimezone(timezone.utc).isoformat(),
+                    "end": (start + timedelta(minutes=block["minutes"]))
+                    .astimezone(timezone.utc)
+                    .isoformat(),
+                }
+            )
+    return events
+
+
+def calendar_keys(store, wid, member_ids):
+    """Everything a member answers to on the calendar: their ID and their role slot."""
+    keys = set(member_ids)
+    for mid in member_ids:
+        slot = (store.get(f"workspaces/{wid}/members/{mid}") or {}).get("slot")
+        if slot:
+            keys.add("slot:" + slot)
+    return keys
 
 
 def seed_workspace(tx, wid, human_id, name, uid, slot="qa_lead"):
