@@ -13,7 +13,7 @@ function ReceiptDrawer({ receipt, close, members }: { receipt?: Receipt; close: 
   return <dialog ref={dialog} className="receipt-drawer" onCancel={close} aria-labelledby="receipt-title">
     <div className="drawer-head"><h2 id="receipt-title">Action receipt</h2><button className="drawer-close" onClick={close} autoFocus>Close receipt</button></div>
     {receipt ? <>
-      <p className="receipt-actor"><AlterMark size="small" />{name} Alter <AlterBadge /> <span className="mono hint">{receipt.id}</span></p>
+      <div className="receipt-actor"><AlterMark size="small" />{name} Alter <AlterBadge /> <span className="mono hint">{receipt.id}</span></div>
       <dl>
         <dt>Action</dt><dd>{receipt.action.replaceAll('_', ' ')}</dd>
         <dt>Sharing rule</dt><dd><span className={`policy-chip policy-${receipt.policy.outcome}`}>{receipt.policy.outcome}</span> {receipt.policy.rule}</dd>
