@@ -33,11 +33,16 @@ export function Activity({ items: allItems, receipts, members, escalations, trac
   const answered = items.filter((i) => i.kind === 'answered').length
   const updated = items.filter((i) => ['doc_updated', 'doc_edit', 'doc_create'].includes(i.kind)).length
   const pending = escalations.filter((e) => e.state === 'pending').length
+  const summary = [
+    answered && `${answered} ${answered === 1 ? 'question' : 'questions'} answered`,
+    updated && `${updated} ${updated === 1 ? 'doc' : 'docs'} updated`,
+    pending && `${pending} ${pending === 1 ? 'needs' : 'need'} you`,
+  ].filter(Boolean).join(' · ')
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? id
   const days: Record<string, ActivityItem[]> = {}
   for (const item of [...items].sort((a, b) => byTime(b, a))) (days[localDayAndTime(item.ts)[0]] ??= []).push(item)
   return <section className="screen">
-    <header className="page-head"><h1>Work log</h1><p className="activity-summary">{answered} questions answered · {updated} docs updated · {pending} needs you</p></header>
+    <header className="page-head"><h1>Work log</h1>{summary && <p className="activity-summary">{summary}</p>}</header>
     {Object.entries(days).map(([day, rows]) => <section className="timeline" key={day} aria-label={day}>
       <h2 className="timeline-day mono">{day}</h2>
       <ol>{rows?.map((item) => {

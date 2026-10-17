@@ -12,7 +12,7 @@ test('Dev edits a persisted design, publishes its reviewed specification, and pr
     page.getByRole('heading', { name: "Dev's Alter" }),
   ).toBeVisible()
   await expect(
-    page.getByText('Local development · simulated AI', { exact: false }),
+    page.getByTitle('Local development · simulated AI', { exact: false }),
   ).toBeVisible()
   await expect(
     page.getByRole('region', { name: 'Your Google Calendar agenda' }),
@@ -74,13 +74,11 @@ test('Dev edits a persisted design, publishes its reviewed specification, and pr
   await page.getByRole('button', { name: 'Meeting', exact: true }).click()
   await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Dev (you)')
   await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Siddhi’s Alter')
-  await expect(
-    page.getByText('No transcript has been recorded here yet.'),
-  ).toBeVisible()
+  await expect(page.getByText('Conversation record', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Join meeting' }).click()
   await page.getByRole('main', { name: 'Team sync meeting' }).getByRole('button', { name: 'Leave' }).click()
   await expect(
-    page.getByRole('button', { name: 'Meeting finished — prepare my review' }),
+    page.getByRole('button', { name: 'Finish and prepare review' }),
   ).toBeVisible()
   await page.getByText("Ask Siddhi's Alter about the work").click()
   await page
@@ -106,7 +104,7 @@ test('Dev edits a persisted design, publishes its reviewed specification, and pr
     .click()
   await expect(page.getByText('0 waiting to upload')).toHaveCount(0)
   await page
-    .getByRole('button', { name: 'Meeting finished — prepare my review' })
+    .getByRole('button', { name: 'Finish and prepare review' })
     .click()
   await expect(page.getByRole('tab', { name: 'Status doc' })).toBeVisible()
   await expect(

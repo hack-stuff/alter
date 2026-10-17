@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-test('logging out switches local identity without deleting saved work', async ({ page }) => {
+test('logging out switches local identity without deleting saved work', async ({ page }, info) => {
+  // Its own address keeps this spec clear of the per-address join limit the earlier specs use up.
+  await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.9' : '127.0.0.8' })
   await page.goto('/')
   await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
   const account = page.getByRole('button', { name: /^Account:/ })

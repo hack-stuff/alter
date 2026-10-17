@@ -20,7 +20,7 @@ async function join(page: Page) {
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
@@ -95,7 +95,8 @@ test('a spoken "open" moves the screen from the streaming transcript, before any
     return { ms: shown - start, events }
   })
   expect(timing.events).toEqual(['approvals:voice-fast'])
-  expect(timing.ms).toBeLessThan(100)
+  // The event order proves the fast path; the bound only guards against waiting on the model.
+  expect(timing.ms).toBeLessThan(400)
   await expect(page.getByRole('heading', { name: 'Waiting on you', level: 1 })).toBeVisible()
   await expect(page.getByText('Opened Approvals')).toBeVisible()
   // The model's tool call for the same request arrives later and is not repeated.

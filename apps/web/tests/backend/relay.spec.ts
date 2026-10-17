@@ -28,14 +28,14 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   await page.getByRole('button', { name: 'Continue' }).click()
   // This connected build starts voice automatically. Clicking the temporary
   // start control races its transition to the active session.
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
   await expect.poll(() => audio, { timeout: 20_000 }).toBeGreaterThan(0)
   send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'relay-call', name: 'alter_chat', args: { message: 'Why did we switch to one-tap?' } }] } }))
   await expect(page.getByRole('log').getByText('one-tap', { exact: false }).first()).toBeVisible()
   await expect.poll(() => tools, { timeout: 20_000 }).toBe(1)
   await page.getByRole('button', { name: 'End voice' }).click()
   await page.getByRole('button', { name: 'Resume voice' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
   expect(mintCount).toBe(2)
   await page.getByRole('button', { name: 'End voice' }).click()
 })

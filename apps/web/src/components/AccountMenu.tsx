@@ -20,7 +20,7 @@ export function AccountMenu({ name, onLogout }: { name: string; onLogout: () => 
       <Avatar name={name} size="small" /><span className="rail-account-label">{name}</span>
     </button>
     {open && <section className="account-menu" aria-label="Account">
-      <p className="account-name"><Avatar name={name} size="small" /><strong>{name}</strong></p>
+      <div className="account-name"><Avatar name={name} size="small" /><strong>{name}</strong></div>
       <ThemeToggle labelled className="account-item" />
       <button type="button" className="account-item" onClick={() => { setOpen(false); onLogout() }}><Icon name="logout" size={17} /><span>Log out</span></button>
     </section>}

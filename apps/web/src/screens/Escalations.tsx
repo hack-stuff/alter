@@ -55,7 +55,7 @@ export function Question({ item, members, meName = 'You', onRefresh }: { item: E
 export function Escalations({ items, members, meName, onRefresh }: { items: Escalation[]; members: Member[]; meName?: string; onRefresh: () => void }) {
   return <section className="screen">
     <header className="page-head"><h1>Decisions only you can make</h1><p className="hint">Your Alter asks when a request needs your judgment, such as committing to a date.</p></header>
-    <div className="stack">{items.map((item) => <Question key={item.id} item={item} members={members} meName={meName} onRefresh={onRefresh} />)}</div>
-    {!items.length && <p className="empty">Nothing needs your decision right now.</p>}
+    {items.length ? <div className="stack">{items.map((item) => <Question key={item.id} item={item} members={members} meName={meName} onRefresh={onRefresh} />)}</div>
+      : <p className="empty">Nothing needs your decision right now.</p>}
   </section>
 }

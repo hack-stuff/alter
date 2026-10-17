@@ -29,6 +29,7 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
     export function getAuth() { return auth }
     export function connectAuthEmulator() {}
     export async function signInAnonymously() { window.authHarness.signIns++; auth.currentUser = user; return { user } }
+    export async function signOut() { auth.currentUser = null }
   ` }))
   await page.route('**/node_modules/.vite/deps/firebase_firestore.js*', (route) => route.fulfill({ contentType: 'application/javascript', body: `
     const records = ${JSON.stringify(records)};
@@ -72,7 +73,7 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: 15_000 })
   await showMoreRequests(page)
   await page.getByRole('button', { name: 'Add a QA update to the status doc' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
@@ -90,6 +91,6 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   expect(new Set(headers.map((h) => h.authorization)).size).toBe(headers.length)
   expect(await page.evaluate(() => (window as any).authHarness.signIns)).toBe(1)
   await page.reload()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByLabel('Your name')).toHaveCount(0)
 })

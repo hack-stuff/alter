@@ -145,9 +145,10 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const decideRef = useRef(decide)
   useEffect(() => { decideRef.current = decide })
 
-  async function send(text: string) {
-    if (busy || !text.trim()) return
-    if (startMeetingIntent(text)) { onStartMeeting(); setDraft(''); return }
+  /** Returns false when the message could not be sent, so the typed text can be kept. */
+  async function send(text: string): Promise<boolean> {
+    if (busy || !text.trim()) return false
+    if (startMeetingIntent(text)) { onStartMeeting(); setDraft(''); return true }
     const decision = parseDecision(text)
     if (decision && pickApproval(approvals, decision)) {
       setBusy(true); setError('')
@@ -155,13 +156,13 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
         setMessages((m) => [...m, { from: 'human', text: text.trim(), citations: [], approvalIds: [], traceIds: [], ts: timestamp() }])
         await decide(decision)
         setDraft('')
-      } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete that. Please try again.'); setDraft(text) }
+        return true
+      } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete that. Please try again.'); setDraft(text); return false }
       finally { setBusy(false) }
-      return
     }
     // Fast path: a clear "open X" never waits on the model.
     const intent = parseNavigation(text)
-    if (intent?.confidence === 'high') { onNavigate(intent.action, 'text'); setDraft(''); return }
+    if (intent?.confidence === 'high') { onNavigate(intent.action, 'text'); setDraft(''); return true }
     setBusy(true); setError('')
     try {
       let cid = conversationId
@@ -169,7 +170,8 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
       const r = await api.chat(text.trim(), cid)
       receive(r, text.trim())
       setDraft('')
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your message. Please try again.'); setDraft(text) }
+      return true
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your message. Please try again.'); setDraft(text); return false }
     finally { setBusy(false) }
   }
 
@@ -405,11 +407,12 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
         </article>)}
       </div>
       {busy && <p className="thinking" role="status"><span className="alter-glyph" aria-hidden="true">✦</span>{latest ?? 'Your Alter is working on your request…'}</p>}
-      <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); void send(draft) }}>
+      {/* With voice available, the voice bar's text field is the one place to type. */}
+      {!liveVoice && <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); void send(draft) }}>
         <label className="sr-only" htmlFor="message">Message your Alter</label>
         <input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy || !ready} />
         <button className="primary" disabled={busy || !ready || !draft.trim()}>Send</button>
-      </form>
+      </form>}
       <div className="chip-row">{QUICK.map((chip) => <button key={chip.label} type="button" className="chip" disabled={busy || !ready} onClick={chip.run}>{chip.label}</button>)}</div>
       {conversation.length === 0 && <details className="more-requests"><summary>More things to ask</summary><div className="chip-row">{DIRECTIVES.map((d) => <button key={d.text} type="button" className="chip" disabled={busy} onClick={() => d.open ? onOpen(d.open) : void send(d.text)}>{d.text}</button>)}</div></details>}
       {waitingDrafts.length > 0 && <button type="button" className="ghost small" onClick={() => onOpen('approvals')}>{waitingDrafts.length} draft{waitingDrafts.length === 1 ? '' : 's'} waiting — open approvals</button>}
@@ -417,6 +420,6 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     </section>
 
     {/* The Voice Bar lives on the page, not on Home, so the Alter keeps talking while it moves between screens. */}
-    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={(text) => void send(text)} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
+    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
   </section>
 }

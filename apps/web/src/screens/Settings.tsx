@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api/client'
 import type { Memory, Rule, Member, Outcome } from '../api/types'
-import { AlterBadge } from '../components/AlterBadge'
 import { MemoryEditor } from '../components/MemoryEditor'
 import { SourceSettings } from '../components/SourceSettings'
 import { Icon } from '../components/Icon'
@@ -16,6 +15,7 @@ export function Settings({ memories, rules, me, onRefresh }: { memories: Memory[
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [pushOn, setPushOn] = useState(() => { try { return !!localStorage.getItem('alter.push.device') } catch { return false } })
   async function save(id: string, action: () => Promise<unknown>, success: string) {
     if (busy) return
     setBusy(id); setError(''); setMessage('')
@@ -24,7 +24,7 @@ export function Settings({ memories, rules, me, onRefresh }: { memories: Memory[
     finally { setBusy('') }
   }
   return <section className="screen">
-    <header className="page-head"><h1>Rules &amp; memory</h1><p className="hint">What your Alter <AlterBadge /> may share, with whom, and what it remembers.</p></header>
+    <header className="page-head"><h1>Rules &amp; memory</h1><p className="hint">What your Alter may share, with whom, and what it remembers.</p></header>
     {error && <p className="error" role="alert">{error}</p>}{message && <p role="status" className="notice">{message}</p>}
     <div className="settings-layout">
       <section className="sheet">
@@ -55,9 +55,11 @@ export function Settings({ memories, rules, me, onRefresh }: { memories: Memory[
       <section className="sheet">
         <h2>Personal preferences</h2>
         <form className="inline-form" onSubmit={(e) => { e.preventDefault(); void save('email', () => api.updateMe({ email: email.trim() }), 'Email preference saved.') }}><label>Email me copies<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!busy} placeholder="Optional email address" /></label><button disabled={!!busy}>Save email</button></form>
-        <div className="actions"><button disabled={!!busy} onClick={() => void save('status', () => api.updateMe({ status: me?.status === 'away' ? 'available' : 'away' }), 'Availability saved.')}>{me?.status === 'away' ? 'Set available' : 'Set away'}</button></div>
+        <div className="actions"><button disabled={!!busy} onClick={() => void save('status', () => api.updateMe({ status: me?.status === 'away' ? 'available' : 'away' }), 'Availability saved.')}>{me?.status === 'away' ? 'Mark me available' : 'Mark me away'}</button></div>
         <h3>Phone notifications</h3><p className="hint">Get a phone notification when work is ready or your Alter needs a decision.</p>
-        <div className="actions"><button disabled={!!busy} onClick={() => void save('push', () => import('../push').then((m) => m.enablePush()), 'Push notifications enabled on this device.')}>Enable phone notifications</button><button disabled={!!busy} onClick={() => void save('push-off', () => import('../push').then((m) => m.disablePush()), 'Push notifications disabled on this device.')}>Disable phone notifications</button></div>
+        <div className="actions">{pushOn
+          ? <button disabled={!!busy} onClick={() => void save('push-off', () => import('../push').then((m) => m.disablePush()).then(() => setPushOn(false)), 'Phone notifications turned off on this device.')}>Turn off phone notifications</button>
+          : <button disabled={!!busy} onClick={() => void save('push', () => import('../push').then((m) => m.enablePush()).then(() => setPushOn(true)), 'Phone notifications turned on for this device.')}>Turn on phone notifications</button>}</div>
       </section>
     </div>
   </section>

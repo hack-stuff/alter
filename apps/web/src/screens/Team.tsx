@@ -25,7 +25,7 @@ function AskMember({ member, workspaceId }: { member: Member; workspaceId: strin
     finally { setBusy(false) }
   }
   return <div className="ask-panel">
-    <form onSubmit={ask}><label>Question for {member.name}'s Alter <AlterBadge /><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about their work…" disabled={busy} required /></label><button className="primary" disabled={busy || !question.trim()}>{busy ? 'Asking…' : 'Send question'}</button></form>
+    <form onSubmit={ask}><label>Question for {member.name}'s Alter<textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about their work…" disabled={busy} required /></label><button className="primary" disabled={busy || !question.trim()}>{busy ? 'Asking…' : 'Send question'}</button></form>
     <VoiceControl mode="huddle" targetId={member.id} onResult={(result) => setAnswer(result as Answer)} />
     {busy && <p role="status" className="thinking"><span className="alter-glyph" aria-hidden="true">✦</span>Waiting for {member.name}'s Alter <AlterBadge />…</p>}
     {error && <p className="error" role="alert">{error}</p>}

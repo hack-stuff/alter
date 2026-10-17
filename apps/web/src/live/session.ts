@@ -207,6 +207,18 @@ export class LiveSession {
     if (this.stopped || this.options.mode !== 'chat') return
     this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Start by saying hello to me by my first name and welcoming me to the day, in one short warm sentence. Then bring me into the work already moving. If the verified agenda has two upcoming items, link them in order; otherwise mention the next item or saved work. Ask which thread we should pick up. Only mention pending decisions if the context lists them. Do not introduce the product or list capabilities.' }] }], turnComplete: true })
   }
+  /** Typed text takes the same path as speech: fast navigation, the transcript, the model's tools and the unrouted fallback. */
+  type(text: string) {
+    const value = text.trim()
+    if (this.stopped || !value || !this.connection) return false
+    this.clearPlayback()
+    this.input = value
+    this.toolCalled = false
+    this.options.onTranscript(value, 'user', false)
+    this.fastNavigate(value)
+    this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true })
+    return true
+  }
   correct(text: string) { if (!this.stopped && text.trim()) this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Correction to my last transcript: ${text.trim()}` }] }], turnComplete: true }) }
   stop() {
     if (currentSession === this) currentSession = undefined

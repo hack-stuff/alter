@@ -178,7 +178,7 @@ export default function App() {
 
     <main className="workspace">
       <div className="notices">
-        {data.workspace?.simulated && <p className="demo-banner"><span className="badge-simulated">Simulated</span><span className="demo-detail">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Gemini on Agent Platform and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</span></p>}
+        {data.workspace?.simulated && <p className="demo-banner"><span className="badge-simulated" title={`Local development · ${data.workspace.aiBackend === 'vertex' ? 'real Gemini, simulated Google resources' : 'simulated AI and Google resources'}`}>Simulated</span></p>}
         {screen !== 'home' && data.workspace?.state === 'provisioning' && <p role="status" className="notice">Your Alter is connecting to your team’s Google resources…</p>}
         {screen !== 'home' && data.workspace?.state === 'provisioning_failed' && <div role="alert" className="notice is-error setup-retry"><span>Google setup didn’t finish. Your workspace and work are saved.</span><button type="button" disabled={retryingSetup} onClick={() => void retrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>{setupRetryError && <span>{setupRetryError}</span>}</div>}
         {streamError && <div role="alert" className="notice is-error"><p>{streamError}</p><button onClick={refresh}>Retry updates</button></div>}

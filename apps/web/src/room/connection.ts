@@ -83,7 +83,8 @@ export class RoomConnection {
       }
       await this.sync(value.peers)
     } catch (error) {
-      this.handlers.onError?.(error instanceof Error ? error.message : 'Lost touch with the meeting. Retrying…')
+      // A poll still in flight when you leave fails harmlessly; only report while connected.
+      if (!this.stopped) this.handlers.onError?.(error instanceof Error ? error.message : 'Lost touch with the meeting. Retrying…')
     }
     this.schedule()
   }

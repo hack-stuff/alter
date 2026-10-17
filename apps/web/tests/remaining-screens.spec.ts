@@ -64,7 +64,7 @@ test('sheet and email previews work; approved demo email reaches the inbox', asy
   await page.getByRole('button', { name: 'Add a tracker row for the iOS crash' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
   await expect(page.getByRole('table')).toContainText('iOS sign-in crash')
-  await page.getByLabel('Message your Alter').fill('Email the team a QA summary')
+  await page.getByLabel('Type to your Alter').fill('Email the team a QA summary')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Review proposal' })).toHaveCount(2)
   await navigate(page, 'Approvals')
@@ -114,7 +114,7 @@ test('voice tool router rejects approval and mismatched targets; permitted tools
     const storePath = '/src/api/mock/workspace.ts'; const { mockSnapshot } = await import(storePath)
     return { rejects, revision: revised.revision, draft, state: mockSnapshot().escalations[0].state }
   })
-  expect(result.rejects[0]).toContain('Approval requires the on-screen button')
+  expect(result.rejects[0]).toContain('This voice session cannot perform that action')
   expect(result.rejects[1]).toContain('Only the open proposal')
   expect(result.revision).toBe(2)
   expect(result.draft.sent).toBe(false)

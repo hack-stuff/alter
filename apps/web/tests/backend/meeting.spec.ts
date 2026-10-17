@@ -13,7 +13,7 @@ test('meeting review: transcript, mobile cards, edit, approved work and backgrou
   await page.getByRole('button', { name: 'New meeting' }).click()
   await page.getByRole('checkbox', { name: 'The participants consent', exact: false }).check()
   await page.getByRole('button', { name: 'Start capture', exact: true }).click()
-  const transcript = "Siddhi switched to Google one-tap on October 8.\nWhen are we launching this?\nMeera, update the mock-ups.\nPriya will update the status doc."
+  const transcript = "Siddhi switched to Google one-tap on October 8.\nWhen are we launching this?\nKani, update the mock-ups.\nSahil will update the status doc."
   await page.getByLabel('Add meeting transcript').fill(transcript)
   await page.getByRole('button', { name: 'Save transcript', exact: true }).click()
   await expect(page.getByText('4 saved segments', { exact: false })).toBeVisible()

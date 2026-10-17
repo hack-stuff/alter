@@ -44,6 +44,20 @@ export function PlanCanvas({
     refreshedAt: string
   }>()
   const canvas = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(1)
+  const drawn = !!plan && !outline
+  useEffect(() => {
+    const viewport = canvas.current
+    if (!drawn || !viewport) return
+    // Laptop widths shrink the whole journey into view; phones keep full size and scroll.
+    // The outer width ignores scrollbars, so zooming can't feed back into the measurement.
+    const observer = new ResizeObserver(() => {
+      const width = viewport.offsetWidth - 16
+      setFit(width >= 600 && width < 960 ? Math.floor(width / 9.6) / 100 : 1)
+    })
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [drawn])
   useEffect(() => {
     const node = plan?.nodes.find((item) => item.id === selected)
     const viewport = canvas.current
@@ -119,7 +133,7 @@ export function PlanCanvas({
                 {item.connections.length > 0 && <p className="hint">Leads to: {item.connections.map(labelOf).join(', ')}</p>}
               </li>)}
             </ol> : <div className="diagram-scroll" ref={canvas} role="region" aria-label="Login journey canvas">
-              <div className="diagram-canvas" style={{ height, minWidth: 960 }}>
+              <div className="diagram-canvas" style={{ height, minWidth: 960, zoom: fit }}>
                 <svg className="diagram-svg" viewBox={`0 0 960 ${height}`} preserveAspectRatio="xMinYMin meet" aria-label="Login journey connections">
                   <defs><marker id="plan-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" className="arrow-head" /></marker></defs>
                   {plan.nodes.flatMap((from) => from.connections.map((id) => {

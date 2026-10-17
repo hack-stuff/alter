@@ -425,6 +425,19 @@ class Meetings:
                 )
             )
         self.engine.workflows.check(jid, lease)
+        # Ask the represented member before the meeting reads as ready, so the
+        # question is attached the moment anyone sees the review.
+        escalation_id = self.owned(ctx, mid).get("escalationId")
+        if launch and not escalation_id:
+            escalation_id = self.engine.escalate(
+                ctx.workspace_id,
+                meeting["representedMember"],
+                ctx.member_id,
+                "Confirm the launch date for the login revamp?",
+                "Asked in " + meeting["title"],
+                commitment=True,
+                event_key=mid,
+            )["id"]
 
         def finish(tx):
             self.engine.workflows.fence(tx, jid, lease)
@@ -439,6 +452,7 @@ class Meetings:
                     "tasks": tasks,
                     "approvalIds": [c["id"] for c in cards],
                     "needsLaunchDecision": launch,
+                    **({"escalationId": escalation_id} if escalation_id else {}),
                 },
             )
             for fact in facts:
@@ -468,17 +482,6 @@ class Meetings:
                 )
 
         self.store.atomic(finish)
-        if launch and not self.owned(ctx, mid).get("escalationId"):
-            escalation = self.engine.escalate(
-                ctx.workspace_id,
-                meeting["representedMember"],
-                ctx.member_id,
-                "Confirm the launch date for the login revamp?",
-                "Asked in " + meeting["title"],
-                commitment=True,
-                event_key=mid,
-            )
-            self._patch(ctx, mid, {"escalationId": escalation["id"]})
         self.event(
             ctx,
             mid,

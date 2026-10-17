@@ -23,7 +23,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.audio)).toBeGreaterThan(0)
@@ -50,14 +50,14 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'unsafe', name: 'approve', args: {} }] } }))
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(3)
   const unsafe = await page.evaluate(() => (window as any).liveHarness.responses[2].functionResponses[0].response.error)
-  expect(unsafe).toContain('Approval requires the on-screen button')
+  expect(unsafe).toContain('This voice session cannot perform that action')
   await page.evaluate(() => {
     const h = (window as any).liveHarness
     h.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(48_000)), mimeType: 'audio/pcm;rate=24000' } }] } } })
   })
-  await expect(page.getByText('Your Alter is speaking… · up to 10 minutes')).toBeVisible()
+  await expect(page.getByText('Your Alter is speaking…', { exact: true })).toBeVisible()
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { interrupted: true } }))
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'End voice' }).click()
   await expect(page.getByRole('button', { name: 'Resume voice' })).toBeVisible()
   const cleaned = await page.evaluate(() => ({ closed: (window as any).liveHarness.closed, tracks: (window as any).testStreams.flatMap((s: MediaStream) => s.getTracks().map((t) => t.readyState)), contexts: (window as any).testAudio.map((a: AudioContext) => a.state) }))
@@ -96,7 +96,7 @@ test('voice follows the typed conversation, reports a server close and releases 
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.evaluate(async () => {
@@ -107,9 +107,9 @@ test('voice follows the typed conversation, reports a server close and releases 
     const chat = api.chat
     api.chat = (...args: unknown[]) => { h.conversations.push(args[1]); return chat(...args) }
   })
-  await page.getByLabel('Message your Alter').fill('Why one-tap?')
-  await page.getByRole('button', { name: 'Send' }).click()
-  await expect(page.getByLabel('Message your Alter')).toHaveValue('')
+  // A suggestion chip starts a text conversation; the voice tool call then continues it.
+  await page.getByRole('button', { name: "Ask Siddhi's Alter why we switched to one-tap sign-in" }).click()
+  await expect(page.getByRole('log').getByText("Ask Siddhi's Alter why we switched to one-tap sign-in")).toBeVisible()
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-1', name: 'alter_chat', args: { message: 'And the launch date?' } }] } }))
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(1)
   expect(await page.evaluate(() => (window as any).liveHarness.conversations)).toEqual([undefined, 'conv_01'])

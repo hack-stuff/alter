@@ -36,7 +36,7 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
   await expect(page.getByRole('alert')).toContainText('allow sound')
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith('alter.live.greeted.')))).toEqual([])
   await enable.click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).greetingRequests.length)).toBe(1)
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith('alter.live.greeted.')))).toEqual([])
   await page.evaluate(() => (window as any).startupHarness.callbacks.onclose())
@@ -54,7 +54,7 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
   await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.getByRole('button', { name: 'Enable voice', exact: true }).click({ timeout: 15_000 })
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => (window as any).greetingRequests?.length ?? 0)).toBe(0)
 })
 

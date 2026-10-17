@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { LiveSession } from '../live/session'
 import type { LiveMode } from '../live/modes'
 import { Icon } from './Icon'
@@ -22,8 +22,8 @@ interface Props {
   dock?: boolean
   /** Increment to replay the spoken briefing (chat mode). */
   briefing?: number
-  /** When voice fails in the dock, typed text goes here instead. */
-  onTextFallback?: (text: string) => void
+  /** With voice off, typed text goes here instead; resolving false keeps the text in the field. */
+  onTextFallback?: (text: string) => unknown
   onTranscript?: (text: string) => void
   onUserUtterance?: (text: string) => void
   onResult: (result: unknown, tool: string, input: string) => void
@@ -66,7 +66,7 @@ export function VoiceControl(props: Props) {
   const [level, setLevel] = useState(0)
   const [ended, setEnded] = useState(false)
   const [fallback, setFallback] = useState('')
-  const [typing, setTyping] = useState(false)
+  const queued = useRef('')
   const [lastSpeaker, setLastSpeaker] = useState<'user' | 'alter'>('user')
   const stateRef = useRef(state)
   // The Voice Bar narrates navigation so the user sees where the Alter took them.
@@ -94,7 +94,7 @@ export function VoiceControl(props: Props) {
     const instance = new LiveSession({
       ...props,
       onResult: (result, tool, text) => { if (tool === 'respond_escalation' && props.draftOnly) callbacks.current.onTranscript?.(text); callbacks.current.onResult(result, tool, text) },
-      onState: (value) => { stateRef.current = value; setState(value); if (value === 'closed') setEnded(true); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
+      onState: (value) => { stateRef.current = value; setState(value); if (value === 'listening' && queued.current) { const text = queued.current; queued.current = ''; session.current?.type(text) } if (value === 'closed') queued.current = ''; if (value === 'closed') setEnded(true); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
       onFirstSpeech: () => callbacks.current.onFirstSpeech?.(),
       onUnroutedUtterance: (text) => callbacks.current.onUnroutedUtterance?.(text),
       onTranscript: (text, speaker, final) => { setLastSpeaker(speaker === 'user' ? 'user' : 'alter'); if (speaker === 'user') { setInput(text); if (final) { callbacks.current.onUserUtterance?.(text); if (props.draftOnly) callbacks.current.onTranscript?.(text) } } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
@@ -140,9 +140,28 @@ export function VoiceControl(props: Props) {
     onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') { setMuted(true); session.current?.mute(true) } }}>Hold to talk</button>
   const controls = state === 'closed' ? startButton : <>
     {props.mode === 'chat' && !props.dock && state !== 'connecting' && <button type="button" className="ghost" onClick={() => { unlockVoiceAudio(); session.current?.greet() }}>Hear my briefing</button>}
-    {props.mode === 'reply' ? holdToTalk : <button type="button" className="ghost" aria-pressed={muted} onClick={() => { const value = !muted; setMuted(value); session.current?.mute(value) }}><Icon name={muted ? 'mic' : 'micOff'} size={16} />{muted ? 'Unmute' : 'Mute mic'}</button>}
-    <button type="button" className="ghost voice-end" onClick={() => { setError(''); session.current?.stop() }}><Icon name="stop" size={14} />End voice</button>
+    {props.mode === 'reply' ? holdToTalk : <button type="button" className="ghost" aria-pressed={muted} onClick={() => { const value = !muted; setMuted(value); session.current?.mute(value) }}><Icon name={muted ? 'mic' : 'micOff'} size={16} /><span className="voice-btn-label">{muted ? 'Unmute' : 'Mute mic'}</span></button>}
+    <button type="button" className="ghost voice-end" aria-label="End voice" onClick={() => { setError(''); session.current?.stop() }}><Icon name="stop" size={14} /><span className="voice-btn-label">End voice</span></button>
   </>
+  /** Typed text goes to the running voice session exactly like speech; with voice off it uses the text path or starts voice. */
+  function sendTyped(text: string) {
+    const value = text.trim()
+    if (!value) return
+    setFallback('')
+    if (stateRef.current !== 'closed' && stateRef.current !== 'connecting' && session.current?.type(value)) return
+    if (stateRef.current === 'connecting') { queued.current = value; return }
+    if (props.onTextFallback) { void Promise.resolve(props.onTextFallback(value)).then((sent) => { if (sent === false) setFallback((current) => current || value) }); return }
+    queued.current = value
+    unlockVoiceAudio(); setEnded(false); start()
+  }
+  // Only the dock takes typing: every inline host already has its own text field.
+  const placeholder = state === 'closed' ? 'Type to your Alter…' : 'Speak or type…'
+  const textField = <>
+    <label className="sr-only" htmlFor={`voice-text-${props.mode}-${props.targetId ?? 'chat'}`}>Type to your Alter</label>
+    <input id={`voice-text-${props.mode}-${props.targetId ?? 'chat'}`} className="voice-input" value={fallback} onChange={(e) => setFallback(e.target.value)} placeholder={placeholder} autoComplete="off" />
+    {fallback.trim() && <button className="voice-send" aria-label="Send">Send</button>}
+  </>
+  const submitTyped = (e: FormEvent) => { e.preventDefault(); sendTyped(fallback) }
   const transcript = (input || output) && <div className="voice-transcript">
     {input && <div className="transcript"><span className="eyebrow">You said</span>{correcting ? <form onSubmit={(e) => { e.preventDefault(); session.current?.correct(input); callbacks.current.onTranscript?.(input); setCorrecting(false) }}><label className="sr-only" htmlFor={`transcript-${props.mode}-${props.targetId ?? 'chat'}`}>Correct transcript</label><textarea id={`transcript-${props.mode}-${props.targetId ?? 'chat'}`} value={input} onChange={(e) => setInput(e.target.value)} /><button disabled={state === 'closed'}>Send correction</button></form> : <button type="button" className="transcript-text" onClick={() => setCorrecting(true)}>{input} <span className="hint">· Tap to correct</span></button>}</div>}
     {output && <div className="transcript is-alter"><span className="eyebrow">Alter said</span><p>{output}</p></div>}
@@ -150,25 +169,20 @@ export function VoiceControl(props: Props) {
 
   if (props.dock) {
     const caption = (state === 'speaking' || lastSpeaker === 'alter') && output ? output : input
-    return <div className={`voice-dock voice-${state}${state === 'closed' && !error ? ' is-collapsed' : ''}`} aria-label={`${props.mode} voice controls`}>
+    return <div className={`voice-dock voice-${state}`} aria-label={`${props.mode} voice controls`}>
       {correcting && input && <div className="voice-transcript"><div className="transcript"><span className="eyebrow">You said</span><form onSubmit={(e) => { e.preventDefault(); session.current?.correct(input); callbacks.current.onTranscript?.(input); setCorrecting(false) }}><label className="sr-only" htmlFor={`transcript-${props.mode}-${props.targetId ?? 'chat'}`}>Correct transcript</label><textarea id={`transcript-${props.mode}-${props.targetId ?? 'chat'}`} value={input} onChange={(e) => setInput(e.target.value)} /><div className="actions"><button disabled={state === 'closed'}>Send correction</button><button type="button" className="ghost" onClick={() => setCorrecting(false)}>Cancel</button></div></form></div></div>}
-      <div className="voice-dock-bar">
-        {indicator}
-        <div className="voice-caption">
-          {(state !== 'closed' || needsEnable || !error) && <p role="status" className="voice-status">{state !== 'closed' ? <span>{status} · up to 10 minutes</span>
-            : needsEnable ? <span>Your browser needs a tap to play sound</span> : <span>Voice is off</span>}</p>}
-          {state === 'closed' && error && <p className="voice-failed" role="alert" title={error}>{error}</p>}
-          {moved ? <p className="voice-line is-alter voice-moved"><span aria-hidden="true">✦ </span>{moved.text}</p> : state !== 'closed' && caption && (caption === output
-            ? <p className="voice-line is-alter" title={output}><span className="sr-only">Alter said: </span><span>{output}</span></p>
-            : <button type="button" className="voice-line" title="Tap to correct" onClick={() => setCorrecting(true)}><span className="sr-only">You said: </span><span>{input}</span><span className="hint"> · Tap to correct</span></button>)}
-        </div>
-        <div className="voice-dock-actions">{failed && props.onTextFallback && <button type="button" className="ghost" aria-expanded={typing} onClick={() => setTyping(!typing)}>Type instead</button>}{controls}</div>
-      </div>
-      {failed && typing && props.onTextFallback && <form className="voice-fallback" onSubmit={(e) => { e.preventDefault(); if (fallback.trim()) { props.onTextFallback?.(fallback.trim()); setFallback('') } }}>
-        <label className="sr-only" htmlFor={`voice-fallback-${props.mode}`}>Continue without voice</label>
-        <input id={`voice-fallback-${props.mode}`} value={fallback} onChange={(e) => setFallback(e.target.value)} placeholder="Continue without voice — type here" autoFocus />
-        <button disabled={!fallback.trim()}>Send text</button>
-      </form>}
+      {(state !== 'closed' || error || moved) && <div className="voice-caption">
+        {(state !== 'closed' || needsEnable) && <p role="status" className="voice-status">{state !== 'closed' ? <span>{status}</span> : <span>Your browser needs a tap to play sound</span>}</p>}
+        {state === 'closed' && error && <p className="voice-failed" role="alert" title={error}>{error}</p>}
+        {moved ? <p className="voice-line is-alter voice-moved"><span aria-hidden="true">✦ </span>{moved.text}</p> : state !== 'closed' && caption && (caption === output
+          ? <p className="voice-line is-alter" title={output}><span className="sr-only">Alter said: </span><span>{output}</span></p>
+          : <button type="button" className="voice-line" title="Tap to correct" onClick={() => setCorrecting(true)}><span className="sr-only">You said: </span><span>{input}</span><span className="hint"> · Tap to correct</span></button>)}
+      </div>}
+      <form className="voice-dock-bar" onSubmit={submitTyped}>
+        {state !== 'closed' && indicator}
+        {textField}
+        <div className="voice-dock-actions">{controls}</div>
+      </form>
     </div>
   }
 
@@ -177,7 +191,7 @@ export function VoiceControl(props: Props) {
       {state !== 'closed' && indicator}
       <div className="actions">{controls}</div>
     </div>
-    {state !== 'closed' && <p role="status" className="hint">{status} · up to 10 minutes</p>}
+    {state !== 'closed' && <p role="status" className="hint">{status}</p>}
     {transcript}
     {error && <p className="error" role="alert">{error}</p>}
   </div>

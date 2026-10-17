@@ -300,34 +300,23 @@ export function MeetCompanion({
       </section>
       {error && <p role="alert" className="notice is-error">{error}</p>}
       {busy && <p role="status" className="thinking"><span className="alter-glyph" aria-hidden="true">✦</span>{busy}</p>}
-      <div className="meeting-grid">
+      {meeting && <div className="meeting-grid">
         <div className="meeting-main">
-          <section className="sheet meeting-review-panel" aria-label="Meeting review status">
-            <p className="eyebrow">Your review</p>
-            <h2>{!meeting ? 'The review begins after your call.' : capturing ? 'Your meeting is being captured.' : 'Your follow-up is ready to review.'}</h2>
-            <p className="hint">{!meeting ? 'Join the meeting to record it. Your Alter will prepare the status doc, team summary, and tasks.' : capturing ? `${meeting.segmentCount} transcript segments saved. Finish the meeting to prepare a review.` : 'Inspect the proposed changes and approve them before anything is shared.'}</p>
-            {capturing && <span className="badge-consent"><span className="rec-dot" aria-hidden="true" />Recording transcript</span>}
-            {meeting && !capturing && <button className="primary" onClick={() => onReview(meeting.id)}>Open prepared review <Icon name="arrow" size={16} /></button>}
-          </section>
-          <details key={meeting?.id ?? 'new'} className="sheet transcript-sheet" aria-label="Meeting transcript" open={!meeting}>
-            <summary className="sheet-head"><strong>Conversation record</strong><span className="source-pill is-quiet">{meeting?.segmentCount ?? 0} saved</span></summary>
-            {meeting && <>
-              <p className="eyebrow mono">{meeting.state} · {meeting.segmentCount} saved transcript segments{unsaved ? ` · ${unsaved} waiting to upload` : ''}</p>
-              <ol className="transcript-feed">
-                {meeting.segments.map((segment) => <li key={segment.id} className={segment.kind === 'alter' ? 'is-alter' : undefined}>
-                  <strong>{segment.kind === 'alter' ? 'Alter' : 'Meeting audio / entered transcript'}</strong> {segment.text}
-                </li>)}
-              </ol>
-              {capturing && <>
-                <label>Add actual meeting transcript<textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} /></label>
-                <div className="actions">
-                  <button disabled={!transcript.trim() || !!busy} onClick={() => { capture(transcript, 'human'); setTranscript('') }}>Save transcript</button>
-                  {unsaved > 0 && <button onClick={() => void action('Uploading transcript…', flush)}>Retry transcript upload</button>}
-                </div>
-                <p className="hint">This page captures its selected microphone. To capture Google Meet audio, route the room audio into it.</p>
-              </>}
+          <details key={meeting.id} className="sheet transcript-sheet" aria-label="Meeting transcript">
+            <summary className="sheet-head"><strong>Conversation record</strong><span className="meeting-badges">{capturing && <span className="badge-consent"><span className="rec-dot" aria-hidden="true" />Recording</span>}<span className="source-pill is-quiet">{meeting.segmentCount} saved</span></span></summary>
+            {unsaved > 0 && <p className="hint">{unsaved} waiting to upload</p>}
+            {meeting.segments.length > 0 && <ol className="transcript-feed">
+              {meeting.segments.map((segment) => <li key={segment.id} className={segment.kind === 'alter' ? 'is-alter' : undefined}>
+                <strong>{segment.kind === 'alter' ? 'Alter' : 'Meeting audio / entered transcript'}</strong> {segment.text}
+              </li>)}
+            </ol>}
+            {capturing && <>
+              <label>Add actual meeting transcript<textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} /></label>
+              <div className="actions">
+                <button disabled={!transcript.trim() || !!busy} onClick={() => { capture(transcript, 'human'); setTranscript('') }}>Save transcript</button>
+                {unsaved > 0 && <button onClick={() => void action('Uploading transcript…', flush)}>Retry transcript upload</button>}
+              </div>
             </>}
-            {!meeting && <p className="hint">No transcript has been recorded here yet.</p>}
           </details>
         </div>
         <aside className="followup-tray" aria-label="Meeting tools">
@@ -335,17 +324,16 @@ export function MeetCompanion({
             <h3>Prepared for your review</h3>
             <p className="hint">Nothing is shared until you approve the completed review.</p>
             <ul className="tray-list">
-              <li><AppIcon app="docs" /><span>Status doc changes</span><small>{meeting && !capturing ? 'Drafted' : 'After the call'}</small></li>
-              <li><AppIcon app="gmail" /><span>Team summary</span><small>{meeting && !capturing ? 'Drafted' : 'After the call'}</small></li>
-              <li><AppIcon app="sheets" /><span>Tracker rows</span><small>{meeting && !capturing ? 'Drafted' : 'After the call'}</small></li>
+              <li><AppIcon app="docs" /><span>Status doc changes</span><small>{capturing ? 'After the call' : 'Drafted'}</small></li>
+              <li><AppIcon app="gmail" /><span>Team summary</span><small>{capturing ? 'After the call' : 'Drafted'}</small></li>
+              <li><AppIcon app="sheets" /><span>Tracker rows</span><small>{capturing ? 'After the call' : 'Drafted'}</small></li>
             </ul>
-            {meeting && (capturing
-              ? <button className="primary" disabled={!!busy} onClick={() => void action('Preparing the meeting follow-up…', finish)}>Meeting finished — prepare my review</button>
-              : <button className="primary" onClick={() => onReview(meeting.id)}>Open meeting follow-up</button>)}
+            {capturing
+              ? <button className="primary" disabled={!!busy} onClick={() => void action('Preparing the meeting follow-up…', finish)}>Finish and prepare review</button>
+              : <button className="primary" onClick={() => onReview(meeting.id)}>Open prepared review <Icon name="arrow" size={16} /></button>}
           </section>
-          <button type="button" className="ghost" onClick={onBack}><Icon name="back" size={16} />Back to your Alter</button>
         </aside>
-      </div>
+      </div>}
       <details className="sheet meeting-ask-details" onToggle={(event) => setAskOpen(event.currentTarget.open)}>
         <summary>Ask Siddhi's Alter about the work</summary>
         <div className="alter-tile" aria-label="Siddhi's Alter" data-nav-id="siddhi" data-nav-label="Siddhi's Alter">
@@ -363,7 +351,7 @@ export function MeetCompanion({
             <input id="meeting-question" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={!!busy} placeholder="Ask Siddhi’s Alter…" />
             <button className="primary" disabled={!!busy || !question.trim()}>Ask</button>
           </form>
-          {!MOCK && capturing && meeting && <VoiceControl mode="huddle" targetId="siddhi" meetingId={meeting.id} autoStart active={voiceEnabled && active && askOpen} onTextFallback={ask} onState={setVoice} onCapture={capture} onResult={(res) => setLatest(res as Answer)} />}
+          {!MOCK && capturing && meeting && <VoiceControl mode="huddle" targetId="siddhi" meetingId={meeting.id} autoStart active={voiceEnabled && active && askOpen} onState={setVoice} onCapture={capture} onResult={(res) => setLatest(res as Answer)} />}
           {latest && <article className={`answer answer-${latest.outcome}`} aria-label="Siddhi’s actual answer">
             <p className="eyebrow">{latest.outcome === 'ask' ? '⚑ Owner decision needed' : latest.outcome === 'deny' ? '× Not shared' : '✓ Answer from Siddhi’s Alter'}</p>
             <p>{latest.answer}</p>
