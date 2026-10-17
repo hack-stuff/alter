@@ -1,4 +1,4 @@
-# Alter — Architecture & Build Plan
+# Alter — Architecture
 
 **Team Cold Silicon** · Google AI Builder Cup 2026 · **Theme 5: Future of Work & Enterprise Productivity**
 
@@ -37,25 +37,7 @@ Pitch line for Google judges: **"We built the per-employee layer on Google's age
 
 ---
 
-## 2. Demo script (about 3 minutes, also recorded as a video for online judging)
-
-Personas (fictional): **Priya** (product lead, asker) · **Rahul** (payments engineer, offline, 9 h ahead) · **Meera** (finance, optional third Alter).
-
-| # | Step | Proves |
-|---|---|---|
-| 1 | Priya, on her phone: *"Can we commit to the Nov 3 payments launch?"* | Ask from mobile |
-| 2 | Priya's Alter sees the answer depends on Rahul. Rahul's status is **away**, so it sends an A2A request to **Rahul's Alter** | Alter to Alter, away mode |
-| 3 | Rahul's Alter checks both contracts, then answers from his **decision ledger**: "Approach B chosen Oct 8 (architecture sync); depends on vendor API v2 GA, expected Oct 28", with sources | Decision ledger + provenance |
-| 4 | It **declines to commit** to Nov 3, because Rahul's contract says `never: commit_dates`. It queues an approval request for Rahul | Bounded authority |
-| 5 | Priya's Alter drafts an update to the **real "Payments status" Google Doc**: cited decision + "Nov 3: awaiting Rahul" | Real workflow (Docs API) |
-| 6 | Priya opens a **live voice review**. She sees the doc diff on screen, asks "why not committed?", hears the answer, and says "approve" | Gemini Live API, human-in-the-loop |
-| 7 | Rahul comes online and gets **"While you were out: 3 answered, 1 needs you"**. He approves Nov 3, and the doc updates and Priya is notified | Catch-up, full loop |
-
-Backup: a recorded video of the full run. Required for online submission anyway.
-
----
-
-## 3. System architecture
+## 2. System architecture
 
 ```
 ┌──────────────────────── Mobile PWA (Firebase Hosting + Auth) ────────────────────────┐
@@ -104,9 +86,9 @@ Ingestion job (Cloud Run job): transcript/doc → Gemini (structured output) →
 
 ---
 
-## 4. Key designs
+## 3. Key designs
 
-### 4.1 Decision ledger
+### 3.1 Decision ledger
 Extraction prompt (Gemini, structured output) over each meeting transcript/doc:
 ```json
 {"decisions": [{
@@ -122,7 +104,7 @@ Extraction prompt (Gemini, structured output) over each meeting transcript/doc:
 - **Staleness:** if a later source contradicts a decision, mark it `superseded_by`. Answers must say so.
 - **Answer rule:** every claim cites a decision or doc. Unsupported claims are dropped.
 
-### 4.2 Delegation contract
+### 3.2 Delegation contract
 `contracts/{uid}` (editable in the app, shown as YAML on the slide):
 ```yaml
 owner: rahul
@@ -142,30 +124,30 @@ away_mode: answer_within_contract
 
 **Rule-based enforcement in code. The LLM only classifies intent.** This keeps the trust story honest.
 
-### 4.3 Alter to Alter (A2A)
+### 3.3 Alter to Alter (A2A)
 - Each Alter publishes an agent card at `/a2a/{employee}/.well-known/agent.json`, with the skills `answer_question` and `request_commitment`.
 - Message metadata: `asker_uid`, `asker_alter`, `intent`, `on_behalf_of`, `trace_id`.
 - The response includes `{answer, citations[], contract_outcome, pending_approval_id?}`.
 - Timeout 15 s. On timeout or `escalate`, the asker's Alter tells its human what's pending.
 
-### 4.4 Away mode + catch-up
+### 3.4 Away mode + catch-up
 - `presence/{uid}`: `available | in_meeting | away (until)`. In the demo it's set manually in the app. Later it comes from Calendar.
 - While away, inbound A2A requests are handled within the contract. Escalations go into `approvals` with `notify_on_return: true`.
 - On return: "While you were out" digest = answered requests (with what was shared) + pending approvals.
 
-### 4.5 Real workflow: Google Doc update
+### 3.5 Real workflow: Google Doc update
 - Target: a "Payments status" Google Doc created before the demo.
 - `update_doc` prepares a `batchUpdate` (insert text + named range for "Decisions" and "Dates").
 - **Never applied without approval.** The approval card shows a rendered before/after diff.
 
-### 4.6 Live voice review
+### 3.6 Live voice review
 - live-bridge opens a Gemini Live session whose system prompt holds the pending approval, the diff and the citations.
 - Video input is the diff rendered as an image (768×768), resent when it changes.
 - Tools: `get_pending()`, `explain(claim_id)`, `approve(id)`, `reject(id, reason)`.
 
 ---
 
-## 5. Data model (Firestore)
+## 4. Data model (Firestore)
 
 ```
 users/{uid}               name, role, team, timezone
@@ -179,36 +161,7 @@ audit_log/{id}            actor(Alter|human), uid, action, contract_outcome, tra
 
 ---
 
-## 6. Repo layout
-
-```
-/apps/pwa                 React (Vite) PWA: Ask, Needs you, Live review, While you were out, Contract editor
-/services/Alter     FastAPI + ADK agent, A2A server/client, contract_check, tools
-/services/live-bridge     WebSocket ↔ Gemini Live API
-/ingest                   transcript/doc → decisions (Gemini structured output) → Firestore + Vertex AI Search
-/data/sample              fictional: 3 meeting transcripts, design doc, status doc template, contracts/*.yaml
-/infra                    gcloud run deploy / firebase deploy scripts
-ARCHITECTURE.md  sources.md
-```
-
----
-
-## 7. Build plan (3 days, 4 people)
-
-Suggested split. Swap freely.
-
-| Track | Owner (suggested) | Day 1 | Day 2 | Day 3 |
-|---|---|---|---|---|
-| **A. Decision ledger + knowledge** | Sahil | Sample transcripts/docs, extraction → `decisions`, Search index | `ledger_search` with citations, staleness check | Prompt tuning, citation-coverage measurement |
-| **B. A2A + contracts** | Kanmani | ADK Alter ×3, A2A endpoints + agent cards | `contract_check` (rule engine + intent classifier), away mode, audit log | Edge cases (deny/redact/escalate), latency measurement |
-| **C. Live voice review** | Priyanshu | Live API hello-world (voice in/out) | Diff-as-image frames, approve/explain tools | Polish, record backup clip |
-| **D. App + Docs workflow** | Devesh | Firebase setup, 3 demo users, Ask screen, Docs API auth | Needs you cards (FCM), Docs `batchUpdate` after approval, catch-up screen | End-to-end rehearsals, **record demo video**, screenshots into the deck |
-
-Checkpoints: end of Day 1, Priya's Alter gets a cited answer from Rahul's over A2A. End of Day 2, the full 7-step demo runs once. Day 3: feature freeze at midday, then record the video.
-
----
-
-## 8. Numbers to capture for the deck
+## 5. Numbers to capture for the deck
 
 | Metric | Target (deck shows until measured) | How |
 |---|---|---|
@@ -219,7 +172,7 @@ Checkpoints: end of Day 1, Priya's Alter gets a cited answer from Rahul's over A
 
 ---
 
-## 9. Risks and fallbacks
+## 6. Risks and fallbacks
 
 | Risk | Fallback |
 |---|---|
@@ -229,7 +182,7 @@ Checkpoints: end of Day 1, Priya's Alter gets a cited answer from Rahul's over A
 | Intent classifier lets a commitment through | Rule engine defaults to `escalate`. Add the adversarial tests above |
 | Product and model names change (Vertex AI → Gemini Enterprise Agent Platform) | Keep model IDs and endpoints in config |
 
-## 10. Responsible AI
+## 7. Responsible AI
 - Alters have their own identity and never pose as the human. Messages say "Rahul's Alter".
 - Meeting ingestion is opt-in. Personal notes are never shared by default.
 - Escalation is the default for anything the contract doesn't cover.

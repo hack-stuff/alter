@@ -19,7 +19,7 @@ The application now connects meeting capture, review, Google writes, A2A continu
 
 ## Run locally
 
-Use the existing commands in [Track A deployment](track-a-deployment.md). Start the API with `DEV_MODE=1` and the web app with `VITE_MOCK=0 VITE_DEV_AUTH=1`. This exercises persistence, workflows, real A2A HTTP and simulated Google adapters without provider charges. The app identifies local AI/Google simulation.
+Use the existing commands in [Setup and deployment](deployment.md). Start the API with `DEV_MODE=1` and the web app with `VITE_MOCK=0 VITE_DEV_AUTH=1`. This exercises persistence, workflows, real A2A HTTP and simulated Google adapters without provider charges. The app identifies local AI/Google simulation.
 
 Open **More → Meetings → New meeting**, choose participants, confirm capture consent, then add an actual transcript or start the meeting audio. End voice and choose **Prepare my review**. Edit the prepared work, inspect all cards, optionally authorize the specific production-readiness follow-up, and approve the displayed changes. A team summary is delivered to Alter inboxes; arbitrary external Gmail delivery remains prohibited.
 
@@ -98,7 +98,6 @@ Local validation recorded for this implementation:
 | Production PWA/offline check | Passed |
 | TypeScript/Vite build, web lint, Python undefined/import checks, shell syntax and diff whitespace | Passed |
 
-Rendered [desktop](screenshots/storyboard-review-desktop.png) and [mobile](screenshots/storyboard-review-mobile.png) previews are actual captures of the local adapter run and retain its simulation label.
 
 Local tests cover the connected workflow, revision/authority failures, restart and pause, room access boundaries, relay framing/release, memory privacy and desktop/mobile behavior. The actual project still needs real Live audio, FCM phone delivery, Search indexing, Cloud Tasks IAM/restart behavior, Firestore rules/index deployment and Google mutation rehearsal after redeployment. The managed coding environment has no GCP identity or recording devices, so those checks cannot be performed here.
 

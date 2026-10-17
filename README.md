@@ -55,18 +55,6 @@ agents with Gemini on Gemini Enterprise Agent Platform (formerly Vertex AI) for 
 web app (PWA); Firestore for state; Firebase anonymous sign-in. The design is in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Visuals
-
-Priya's Alter screen, with the day's calendar, a spoken greeting and suggested next steps:
-
-![Alter screen: Priya's Alter with her calendar, an ask box and cards for the team sync, the design canvas, pending work and the launch question](docs/screenshots/connected-day-desktop.png)
-
-The design canvas after a voice edit added a retry state, ready to review before publishing:
-
-![Design canvas: a login journey diagram with changed nodes highlighted and Undo and Review publication buttons](docs/screenshots/connected-plan-desktop.png)
-
-These screenshots come from the local backend, which is why they show the simulation banner.
-
 ## Installation
 
 There are three ways to run Alter. Start with the first; it needs nothing but Node.js.
@@ -152,8 +140,7 @@ Voice runs through the API's native-audio relay, which uses the service's own Go
 credentials, so no Gemini API key is needed. Leave `VITE_LIVE_TOKEN_BASE` empty to use it; the
 separate `services/live-token` service is an older alternative. The step-by-step guides are:
 
-- [Track A setup and deployment](docs/track-a-deployment.md): the API, Firestore and Google account
-- [Track B deployment](docs/track-b-deployment.md): web hosting and Firebase settings
+- [Setup and deployment](docs/deployment.md): the API, Firestore, the Google account and web settings
 - [Connected workday](docs/connected-workday.md): the current deploy commands, voice model and
   Meet link settings, and an end-to-end acceptance checklist
 - [Storyboard implementation](docs/storyboard-implementation.md): meeting workflows (Cloud Tasks
@@ -238,25 +225,24 @@ services/api/scripts/  Helper scripts: demo tokens, voice and model smoke tests,
 services/live-token/   Older alternative voice transport: single-use Gemini Live tokens
 contracts/             Shared sample data used by both the app and the API
 infra/                 Deployment script, Cloud Build config, Firestore rules tests
-docs/                  Architecture, shared contract, track plans, deployment guides
+docs/                  Architecture, API contract, setup, deployment and design brief
 video/                 Demo video script, captions and recording kit
 firestore.rules        Who may read what in Firestore (all writes go through the API)
 ```
 
 ### Documentation
 
-| Doc                                                                   | What it covers                                                                                      |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| [docs/connected-workday.md](docs/connected-workday.md)                 | **Start here:** the current workday experience, local setup, deployment and acceptance checks |
-| [docs/storyboard-implementation.md](docs/storyboard-implementation.md) | Meeting workflows, voice relay, phone notifications, Search and the Meet recording rig              |
-| [docs/workday-experience-plan.md](docs/workday-experience-plan.md)     | Product plan for the workday experience (some items are still proposals)                            |
-| [LOCAL_CODEX_HANDOFF.md](LOCAL_CODEX_HANDOFF.md)                       | Current project state, local Mac setup and credential troubleshooting                               |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Positioning, design decisions and the build plan                                                    |
-| [docs/00-shared-contract.md](docs/00-shared-contract.md)               | API endpoints, Firestore layout, seed data, limits                                                  |
-| [docs/track-a-agent-backend.md](docs/track-a-agent-backend.md)         | Backend plan: workspaces, ADK Alters, A2A, policy checks, Google actions                            |
-| [docs/track-b-voice-and-app.md](docs/track-b-voice-and-app.md)         | App plan: screens, Gemini Live voice, demo video                                                    |
-| [docs/storyboard.md](docs/storyboard.md)                               | The 3-minute demo video script                                                                      |
-| [video/README.md](video/README.md)                                     | Recording the demo with Google Meet and OBS                                                         |
+| Doc                                                                    | What it covers                                                                    |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [docs/connected-workday.md](docs/connected-workday.md)                 | **Start here:** the current workday experience, local setup and acceptance checks |
+| [docs/deployment.md](docs/deployment.md)                               | Cloud prerequisites, deploying the API and Hosting, operating limits              |
+| [docs/storyboard-implementation.md](docs/storyboard-implementation.md) | Meeting workflows, voice relay, phone notifications, Search and the Meet rig      |
+| [docs/real-model-testing.md](docs/real-model-testing.md)               | Checking real Gemini calls before deploying                                       |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Positioning and design decisions                                                  |
+| [docs/api-contract.md](docs/api-contract.md)                           | API endpoints, Firestore layout, seed data, limits                                |
+| [docs/design-brief.md](docs/design-brief.md)                           | Visual design brief for the web app                                               |
+| [docs/storyboard.md](docs/storyboard.md)                               | The 3-minute demo video script                                                    |
+| [video/README.md](video/README.md)                                     | Recording the demo with Google Meet and OBS                                       |
 
 ## Support
 
