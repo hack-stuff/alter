@@ -32,26 +32,30 @@ export function Avatar({
       size={SIZE_MAP[size] || 'md'}
       variant="human-only"
       onLeave={away}
-      className={`avatar avatar-${size}`}
+      className="avatar"
     />
   )
 }
 
 export function AlterMark({
+  name = 'Alter',
   size = 'medium',
   lit = true,
   label,
 }: {
+  /** The owner's name, so the keycap carries their monogram. */
+  name?: string
   size?: Size
   lit?: boolean
   label?: string
 }) {
+  // Inline marks sit beside text, so "small" uses the compact keycap.
   return (
     <AlterAvatar
-      name="Alter"
-      size={SIZE_MAP[size] || 'md'}
+      name={name}
+      size={size === 'small' ? 'xs' : SIZE_MAP[size] || 'md'}
       variant="alter-only"
-      className={`alter-mark alter-mark-${size}${lit ? '' : ' is-dim'}`}
+      className={`alter-mark${lit ? '' : ' is-dim'}`}
       aria-label={label}
     />
   )
@@ -74,7 +78,7 @@ export function PersonWithAlter({
       size={SIZE_MAP[size] || 'md'}
       variant="paired-offset"
       onLeave={away}
-      className={`person-pair person-pair-${size}`}
+      className="person-pair"
     />
   )
 }

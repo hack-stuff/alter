@@ -127,7 +127,7 @@ export function VoiceControl(props: Props) {
     {visual === 'connecting' && <span className="voice-orbit" />}
     {visual === 'listening' && <span className="voice-meter">{[.45, .8, 1, .7, .4].map((factor, i) => <i key={i} style={{ height: 4 + Math.min(1, level * 1.4) * factor * 18 }} />)}</span>}
     {visual === 'speaking' && <span className="voice-wave">{[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} style={{ animationDelay: `${i * 90}ms` }} />)}</span>}
-    {visual === 'muted' && <Icon name="micOff" size={18} />}
+    {(visual === 'muted' || visual === 'failed') && <Icon name="micOff" size={18} />}
   </span>
   const holdToTalk = <button type="button" disabled={state === 'connecting'}
     onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setMuted(false); session.current?.mute(false) }}

@@ -22,21 +22,7 @@ button.icon-only { width: 44px; padding: 0; }
 .alter-glyph, .alter-text { color: var(--alter); font-weight: 600; }
 .alter-glyph { margin-right: 6px; }
 
-/* Humans are circles, Alters are squircles. */
-.avatar { display: inline-grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--sheet); font-weight: 650; font-size: 14px; letter-spacing: .02em; }
-.avatar-small { width: 28px; height: 28px; font-size: 11px; }
-.avatar-large { width: 56px; height: 56px; font-size: 19px; }
-.avatar.is-away { background: var(--line-strong); color: var(--muted); }
-.alter-mark { display: inline-grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: var(--squircle); background: var(--alter); color: #fff; font-size: 15px; line-height: 1; }
-.alter-mark-small { width: 22px; height: 22px; font-size: 11px; }
-.alter-mark-large { width: 48px; height: 48px; font-size: 22px; }
-.alter-mark.is-dim { background: var(--line-strong); color: var(--muted); }
-.person-pair { position: relative; display: inline-flex; flex-shrink: 0; }
-.person-pair .alter-mark { position: absolute; right: -6px; bottom: -3px; width: 18px; height: 18px; font-size: 9px; box-shadow: 0 0 0 2px var(--sheet); }
-.person-pair-large { margin-right: 8px; }
-.person-pair-large .alter-mark { width: 24px; height: 24px; font-size: 12px; right: -7px; bottom: -2px; }
-.person-pair-small { margin-right: 6px; }
-.person-pair-small .alter-mark { right: -5px; bottom: -2px; width: 14px; height: 14px; font-size: 7px; }
+/* Humans are circles, Alters are keycap squircles: see components/avatar/AlterAvatar.css. */
 .ai-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; background: var(--alter-soft); color: var(--alter-ink); border: 1px solid var(--alter-line); font-size: 11px; font-weight: 700; letter-spacing: .03em; vertical-align: middle; white-space: nowrap; }
 h1 .ai-badge, h2 .ai-badge { vertical-align: 4px; margin-left: 4px; }
 .badge-simulated { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 6px; background: var(--slate-soft); color: var(--slate); font-size: 12px; font-weight: 650; border: 1px solid color-mix(in srgb, var(--slate) 25%, transparent); }
@@ -174,7 +160,8 @@ html { scroll-padding-bottom: 96px; }
 .offer-kicker { font-size: 11.5px; color: var(--muted); font-weight: 550; }
 .offer-card.is-hot, .offer-card.is-picked { border-color: var(--alter); box-shadow: 0 0 0 3px var(--alter-soft); }
 .offer-list.is-clearing .offer-card:not(.is-picked) { opacity: .45; }
-.pick-echo { min-height: 20px; color: var(--alter-ink); font-size: 13.5px; }
+.pick-echo { color: var(--alter-ink); font-size: 13.5px; }
+.pick-echo:empty { display: none; }
 .alter-needs { display: grid; gap: 12px; }
 .conversation { display: grid; gap: 14px; }
 .messages { display: grid; gap: 14px; }
@@ -210,13 +197,14 @@ html { scroll-padding-bottom: 96px; }
 .voice-line:hover:not(:disabled) { background: transparent; text-decoration: underline; }
 .voice-error { padding: 6px 12px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line); }
 .voice-failed { color: var(--reject); font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.voice-dock-actions { display: flex; gap: 2px; align-items: center; }
+.voice-dock-actions { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
+.voice-dock-actions button { white-space: nowrap; }
 .voice-dock-actions button { min-height: 44px; border-radius: 999px; padding: 0 12px; font-size: 13px; }
 .voice-dock-actions .voice-start, .voice-inline-bar .voice-start { background: var(--ink); border-color: var(--ink); color: var(--sheet); border-radius: 999px; }
 .voice-start.is-enable { background: var(--alter); border-color: var(--alter); color: #fff; }
 .voice-indicator { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; color: var(--muted); }
 .voice-indicator.is-off { display: none; }
-.voice-indicator.is-failed { background: var(--reject-soft); }
+.voice-indicator.is-failed { color: var(--reject); }
 .voice-orbit { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--alter); animation: orbit .9s linear infinite; }
 .voice-meter, .voice-wave { display: flex; align-items: center; gap: 2px; height: 24px; }
 .voice-meter i { width: 3px; border-radius: 2px; background: var(--ink); transition: height .08s; }
@@ -334,7 +322,7 @@ html { scroll-padding-bottom: 96px; }
 .meet-launch { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; border-radius: 10px; background: var(--ink); color: var(--sheet); text-decoration: none; font-size: 13.5px; font-weight: 650; }
 .meeting-preflight { min-height: min(70vh, 620px); display: grid; place-items: center; text-align: center; }
 .meeting-setup-card { width: min(100%, 460px); display: grid; justify-items: center; gap: 12px; padding: 36px; }
-.meeting-setup-card h1 { margin: 0; }
+.meeting-setup-card h1 { margin: 0; font-size: 24px; line-height: 1.25; }
 .meeting-setup-card .hint { margin: 0 0 8px; }
 .meet-launch:hover { background: var(--ink-2); color: var(--sheet); }
 .meeting-review-steps { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -571,10 +559,11 @@ html { scroll-padding-bottom: 96px; }
   .workspace { margin-left: 0; padding: 60px 16px calc(240px + env(safe-area-inset-bottom)); }
   .voice-dock { left: 12px; right: 12px; transform: none; width: auto; bottom: calc(72px + env(safe-area-inset-bottom)); }
   .voice-dock-bar { padding-left: 10px; }
-  .voice-dock-bar { flex-wrap: wrap; border-radius: 22px; padding: 6px 8px; }
-  .voice-caption { flex: 1 1 120px; }
+  .voice-dock-bar { padding: 4px 4px 4px 8px; gap: 6px; }
+  .voice-caption { flex: 1 1 0; }
+  .voice-dock-actions button { padding: 0 10px; }
   .voice-dock.voice-closed .voice-indicator { display: none; }
-  .voice-dock-actions { flex: 1; justify-content: flex-end; flex-wrap: wrap; }
+  .voice-dock-actions { flex-shrink: 0; }
   .notice-menu { left: 12px; right: 12px; top: 60px; bottom: auto; width: auto; }
   .identity-strip { flex-wrap: wrap; }
   .identity-name { font-size: 22px; }
@@ -591,6 +580,7 @@ html { scroll-padding-bottom: 96px; }
   .ask-bar { flex-wrap: nowrap; }
   .page-head h1 { font-size: 24px; }
   .rule legend { float: none; max-width: none; }
+  .demo-detail { display: none; }
   .offer-kicker { display: none; }
   .offer-card { grid-template-columns: auto minmax(0, 1fr) auto; }
 }

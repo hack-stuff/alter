@@ -5,7 +5,7 @@ import { meetingApi, type MeetingDetail } from '../api/meetings'
 import { AlterBadge } from '../components/AlterBadge'
 import { AppIcon } from '../components/AppIcon'
 import { Icon } from '../components/Icon'
-import { AlterMark, Avatar } from '../components/People'
+import { AlterMark, PersonWithAlter } from '../components/People'
 import { OnScreenTips } from '../components/OnScreenTips'
 import { VoiceControl } from '../components/VoiceControl'
 import { Citations } from '../components/Citations'
@@ -241,7 +241,7 @@ export function MeetCompanion({
       <div className="meeting-review-steps" aria-label="Meeting workflow"><span><strong>1</strong> Meet in Google Meet</span><span><strong>2</strong> Capture with consent</span><span><strong>3</strong> Review before sharing</span></div>
       <section className="sheet meeting-alter-lineup" aria-label="Alters ready for the demo">
         <div><p className="eyebrow">Ready in Alter</p><h2>Your meeting team</h2><p className="hint">These Alters are available here. Google Meet participants are separate; connect the room audio below to bring an Alter into the call.</p></div>
-        <div className="meeting-alter-list">{meetingAlters.map((item) => <div className="meeting-alter-person" key={item.id}><AlterMark size="small" /><span><strong>{item.name}'s Alter</strong><small>{item.note}</small></span></div>)}</div>
+        <div className="meeting-alter-list">{meetingAlters.map((item) => <div className="meeting-alter-person" key={item.id}><AlterMark name={item.name} size="small" /><span><strong>{item.name}'s Alter</strong><small>{item.note}</small></span></div>)}</div>
       </section>
       {error && <p role="alert" className="notice is-error">{error}</p>}
       {busy && <p role="status" className="thinking"><span className="alter-glyph" aria-hidden="true">✦</span>{busy}</p>}
@@ -307,7 +307,7 @@ export function MeetCompanion({
         <summary>Ask Siddhi's Alter about the work</summary>
         <div className="alter-tile" aria-label="Siddhi's Alter" data-nav-id="siddhi" data-nav-label="Siddhi's Alter">
           <div className="alter-tile-head">
-            <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Siddhi" size="large" away={siddhi?.status === 'on_leave' || !siddhi} /><AlterMark size="medium" /></span>
+            <PersonWithAlter name="Siddhi" size="large" status={siddhi?.status ?? 'on_leave'} />
             <div><h2>Siddhi’s Alter <AlterBadge /></h2><p className="hint">{siddhi?.status === 'on_leave' || !siddhi ? 'Siddhi is on leave · ' : ''}answers from Siddhi’s permitted notes, and asks Siddhi about commitments</p></div>
           </div>
           <OnScreenTips title="Ask Siddhi’s Alter" tips={[

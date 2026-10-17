@@ -385,7 +385,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     <section className="sheet conversation" aria-label="Ask and delegate">
       <div className="messages" role="log" aria-label="Conversation">
         {conversation.map((m, i) => <article key={i} className={`msg ${m.from}`}>
-          {m.from === 'alter' ? <div className="message-author"><AlterMark size="small" />Your Alter <AlterBadge /></div> : <div className="message-author"><Avatar name={name} size="small" />You</div>}
+          {m.from === 'alter' ? <div className="message-author"><AlterMark name={name} size="small" />Your Alter <AlterBadge /></div> : <div className="message-author"><Avatar name={name} size="small" />You</div>}
           <p>{m.text}</p><Citations sources={m.citations} />
           {m.traceIds.map((id) => <LiveTrace key={id} workspaceId={workspaceId} traceId={id} />)}
           {m.approvalIds.length > 0 && <button className="chip" onClick={() => { const target = document.getElementById(`proposal-${m.approvalIds[0]}`); target?.scrollIntoView({ block: 'center' }); target?.focus() }}>Review proposal</button>}

@@ -54,7 +54,7 @@ export function Team({ members, memberId, inviteUrl, workspaceId }: { members: M
       return <article className={`sheet member-card${away ? ' is-away' : ''}`} key={m.id} tabIndex={-1} data-nav-id={m.id} data-nav-label={m.name}>
         <div className="member-pair">
           <div className="member-human"><Avatar name={m.name} id={m.id} away={away} /><div><h3>{m.name}</h3><p className="hint">{m.role}</p><span className={`member-status status-${m.status}`}>{statusLabels[m.status]}</span></div></div>
-          <div className="member-alter"><AlterMark size="medium" /><div><strong>{m.name}'s Alter</strong><p className="hint">{away ? 'Answering while they’re away' : 'Ready to answer'}</p></div></div>
+          <div className="member-alter"><AlterMark name={m.name} size="medium" /><div><strong>{m.name}'s Alter</strong><p className="hint">{away ? 'Answering while they’re away' : 'Ready to answer'}</p></div></div>
         </div>
         <button className="ask-toggle" aria-expanded={selected === m.id} onClick={() => setSelected(selected === m.id ? undefined : m.id)}>Ask {m.name}'s Alter <AlterBadge /></button>
         {selected === m.id && <AskMember member={m} workspaceId={workspaceId} />}

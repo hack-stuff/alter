@@ -33,7 +33,7 @@ export function Files({ workspace, inbox, members }: { workspace?: Workspace; in
         <h2><AppIcon app="gmail" size={20} />Team inbox{inbox.length > 0 && <span className="count-pill">{inbox.length}</span>}</h2>
         {inbox.map((mail) => <article className="inbox-message" key={mail.id}>
           <h3>{mail.subject}</h3>
-          <div className="hint from-line"><AlterMark size="small" />From {members.find((m) => m.id === mail.from)?.name ?? 'Your teammate'}'s Alter <AlterBadge /> · <span className="mono">{new Date(mail.ts).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span></div>
+          <div className="hint from-line"><AlterMark name={members.find((m) => m.id === mail.from)?.name} size="small" />From {members.find((m) => m.id === mail.from)?.name ?? 'Your teammate'}'s Alter <AlterBadge /> · <span className="mono">{new Date(mail.ts).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span></div>
           <p className="mail-body">{mail.body}</p>
           {externalUrl(mail.gmailMessageUrl) && <a className="source-pill" href={externalUrl(mail.gmailMessageUrl)} target="_blank" rel="noreferrer"><AppIcon app="gmail" />Open in Gmail ↗</a>}
         </article>)}

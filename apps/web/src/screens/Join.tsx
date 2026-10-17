@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, MOCK, httpCall } from '../api/client'
 import type { JoinResult } from '../api/types'
 import { Icon } from '../components/Icon'
-import { AlterMark, Avatar } from '../components/People'
+import { PersonWithAlter } from '../components/People'
 import { AlterAvatarPreview } from '../components/avatar/AlterAvatarPreview'
 
 // The seeded scenario team, shown so a first-time visitor knows who they will meet.
@@ -38,17 +38,17 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
     <div className="join-intro">
       <p className="brand-line"><span className="brand-mark" aria-hidden="true">A</span>Alter</p>
       <h1>A little more room to get things done.</h1>
-      <p className="lede">Everyone on the team gets their own Alter: an AI representative that answers within the limits you set, and acts in Google Docs, Sheets, Calendar and Gmail only when you approve.</p>
+      <p className="lede">Everyone on the team gets their own Alter: an AI representative that answers within the limits you set and does the work in Google Docs, Sheets and Calendar. Emails go out only when you say so.</p>
     </div>
 
     {demo && <section className="sheet id-card" aria-label="Dev's workday">
       <div className="id-card-head">
-        <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Dev" size="large" /><AlterMark size="medium" /></span>
+        <PersonWithAlter name="Dev" size="large" />
         <div><p className="eyebrow">You’ll be</p><h2>Dev</h2><p className="hint">Product lead · Login revamp</p></div>
       </div>
       <ul className="team-row" aria-label="Your teammates">
         {TEAM.map((member) => <li key={member.name} className={member.away ? 'is-away' : undefined}>
-          <span className="person-pair person-pair-small" aria-hidden="true"><Avatar name={member.name} size="small" away={member.away} /><AlterMark size="small" lit /></span>
+          <PersonWithAlter name={member.name} size="small" status={member.away ? 'on_leave' : 'available'} />
           <span><strong>{member.name}</strong><small>{member.role}{member.away && <> · <span className="alter-text">Alter active</span></>}</small></span>
         </li>)}
       </ul>

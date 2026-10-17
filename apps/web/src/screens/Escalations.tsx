@@ -34,7 +34,7 @@ export function Question({ item, members, meName = 'You', onRefresh }: { item: E
   return <article className="sheet decision-card" tabIndex={-1} data-nav-id={item.id} data-nav-label={`${item.question} ${asker} ${name}`}>
     <ol className="escalation-path" aria-label="How this question reached you">
       <li><Avatar name={asker} size="small" /><span>{asker}</span></li>
-      <li className="is-alter"><AlterMark size="small" /><span>{name}’s Alter · needs owner</span></li>
+      <li className="is-alter"><AlterMark name={name} size="small" /><span>{name}’s Alter · needs owner</span></li>
       <li><Avatar name={meName} size="small" /><span>You</span></li>
     </ol>
     <p className="eyebrow">{item.state === 'pending' ? 'Needs your decision' : item.state === 'answered' ? 'Answered' : 'Expired'}</p>

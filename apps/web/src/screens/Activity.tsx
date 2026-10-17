@@ -13,7 +13,7 @@ function ReceiptDrawer({ receipt, close, members }: { receipt?: Receipt; close: 
   return <dialog ref={dialog} className="receipt-drawer" onCancel={close} aria-labelledby="receipt-title">
     <div className="drawer-head"><h2 id="receipt-title">Action receipt</h2><button className="drawer-close" onClick={close} autoFocus>Close receipt</button></div>
     {receipt ? <>
-      <div className="receipt-actor"><AlterMark size="small" />{name} Alter <AlterBadge /> <span className="mono hint">{receipt.id}</span></div>
+      <div className="receipt-actor"><AlterMark name={members.find((m) => m.id === receipt.actor.alter)?.name} size="small" />{name} Alter <AlterBadge /> <span className="mono hint">{receipt.id}</span></div>
       <dl>
         <dt>Action</dt><dd>{receipt.action.replaceAll('_', ' ')}</dd>
         <dt>Sharing rule</dt><dd><span className={`policy-chip policy-${receipt.policy.outcome}`}>{receipt.policy.outcome}</span> {receipt.policy.rule}</dd>
@@ -45,7 +45,7 @@ export function Activity({ items: allItems, receipts, members, escalations, trac
         return <li key={item.id}>
           <button className="activity-row" onClick={() => setSelected(item.receiptId)}>
             <time className="mono">{localDayAndTime(item.ts)[1]}</time>
-            <span className="timeline-node" aria-hidden="true"><AlterMark size="small" /></span>
+            <span className="timeline-node" aria-hidden="true"><AlterMark name={name(item.actor)} size="small" /></span>
             <span className="activity-text"><span>{item.summary} <AlterBadge /></span><small className="hint">{name(item.actor)}’s Alter · {item.kind.replaceAll('_', ' ')}</small></span>
             <span className={`receipt-badge${receipt?.result.ok ? ' is-verified' : ''}`}>{receipt?.result.ok ? '✓ Receipt' : 'Receipt'} · View receipt →</span>
           </button>
