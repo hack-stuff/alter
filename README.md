@@ -11,7 +11,10 @@ All people, projects and data in this repository are fictional.
 > have both been exercised; the connected build is deployed at [alter-48b59.web.app](https://alter-48b59.web.app/).
 > Some meeting and notification steps still require operator setup and verification.
 
-See [Storyboard implementation and deployment](docs/storyboard-implementation.md) for the redesigned app, meeting workflows, voice relay, push and recording setup.
+What's new: the app now opens on a guided **workday**. You step into Priya's day as product lead,
+hear a spoken briefing from your Alter, edit a login-flow design by voice, join a team meeting with
+Rahul's Alter and approve the follow-up work. [docs/connected-workday.md](docs/connected-workday.md)
+describes how this works and how to set it up.
 
 ## Description
 
@@ -29,13 +32,23 @@ rules they set.
 - **Alters talk to each other.** One Alter asks another over the
   [A2A protocol](https://a2a-protocol.org/) before interrupting a human. Every request is signed,
   checked against the owner's rules, and recorded with a receipt.
-- **Voice.** Talk to your Alter, revise a proposal or dictate a reply with
-  [Gemini Live](https://ai.google.dev/gemini-api/docs/live). Approving always needs the on-screen
+- **Voice.** Your Alter greets you with a spoken briefing of your day. Talk to it, revise a
+  proposal or dictate a reply with [Gemini Live](https://ai.google.dev/gemini-api/docs/live),
+  relayed through the API, so no Gemini API key is needed. Approving always needs the on-screen
   button.
+- **Design by voice.** A saved design canvas (a login-flow diagram) that you edit by voice or text,
+  with numbered revisions and undo. After you review it, it's published as a Google Docs
+  specification.
+- **Meetings.** A meeting companion asks a teammate's Alter questions during a call and records the
+  conversation, with everyone's consent. When the meeting ends, your Alter drafts the follow-up:
+  status doc changes, a team summary and task board items, ready for you to review together.
+- **Notifications.** Questions that need a person show up in an in-app inbox, and optionally as
+  phone notifications.
 
 Every new visitor gets a private workspace: a copy of a seeded team (Priya, Rahul, Meera and
 Arjun, working on a "Login revamp" project), with its own Drive folder, spreadsheet and calendar.
-Visitors type a name to join, and an invite link lets others join the same workspace.
+Select **Step into Priya's day** to start the guided workday as Priya, or type a name to join as a
+new member. An invite link lets others join the same workspace.
 
 **How it's built:** Python 3.12, FastAPI and [Google ADK](https://google.github.io/adk-docs/)
 agents with Gemini on Gemini Enterprise Agent Platform (formerly Vertex AI) for the backend; React, TypeScript and Vite for the installable
@@ -44,23 +57,25 @@ web app (PWA); Firestore for state; Firebase anonymous sign-in. The design is in
 
 ## Visuals
 
-Asking another person's Alter, and reviewing a drafted change before it's applied:
+Priya's Alter screen, with the day's calendar, a spoken greeting and suggested next steps:
 
-![Home screen: a chat with your Alter beside a proposed status-doc update awaiting approval](docs/images/home.png)
+![Alter screen: Priya's Alter with her calendar, an ask box and cards for the team sync, the design canvas, pending work and the launch question](docs/screenshots/connected-day-desktop.png)
 
-What happened while you were away, with a receipt for every action:
+The design canvas after a voice edit added a retry state, ready to review before publishing:
 
-![Activity screen: answered questions, a document update and a pending decision](docs/images/activity.png)
+![Design canvas: a login journey diagram with changed nodes highlighted and Undo and Review publication buttons](docs/screenshots/connected-plan-desktop.png)
+
+These screenshots come from the local backend, which is why they show the simulation banner.
 
 ## Installation
 
 There are three ways to run Alter. Start with the first; it needs nothing but Node.js.
 
-| Mode | What you get | Needs |
-|---|---|---|
-| [1. Demo mode](#1-demo-mode-frontend-only) | The full app with sample answers. Changes reset on reload. | Node.js |
-| [2. Local backend](#2-local-backend) | The real API with saved workspaces, invites and simulated AI and Google files. | Node.js, Python 3.12 |
-| [3. Cloud](#3-cloud-deployment) | Real Gemini, real Google files, voice, public hosting. | A configured Google Cloud / Firebase project |
+| Mode                                      | What you get                                                                   | Needs                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------- |
+| [1. Demo mode](#1-demo-mode-frontend-only) | The full app with sample answers. Changes reset on reload.                     | Node.js                                      |
+| [2. Local backend](#2-local-backend)       | The real API with saved workspaces, invites and simulated AI and Google files. | Node.js, Python 3.12                         |
+| [3. Cloud](#3-cloud-deployment)            | Real Gemini, real Google files, voice, public hosting.                         | A configured Google Cloud / Firebase project |
 
 ### Requirements
 
@@ -83,8 +98,9 @@ npm ci
 VITE_MOCK=1 npm run dev
 ```
 
-Open <http://localhost:5173>, type a name and select **Get my Alter**. Demo mode uses built-in
-sample data, never contacts a server and never writes to Google.
+Open [http://localhost:5173](http://localhost:5173), type a name and select **Get my Alter**. Demo mode uses built-in
+sample data, never contacts a server and never writes to Google. The guided workday, the design
+canvas and meeting recording need a backend, so they're available only in modes 2 and 3.
 
 ### 2. Local backend
 
@@ -113,22 +129,40 @@ VITE_MOCK=0 VITE_DEV_AUTH=1 VITE_API_BASE=http://127.0.0.1:8080/v1 \
   npm --prefix apps/web run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Open <http://127.0.0.1:5173>. Workspaces are saved in `/tmp/alter.sqlite3` (change it with
-`DATABASE_PATH`). Each browser profile acts as a separate person, so use a second profile or a
-private window to try an invite link.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) and select **Step into Priya's day**. Workspaces are saved in
+`/tmp/alter.sqlite3` (change it with `DATABASE_PATH`). Each browser profile acts as a separate
+person, so use a second profile or a private window to try an invite link or a fresh workday.
 
-All settings are listed, with comments, in [.env.example](.env.example).
+All settings are listed, with comments, in [.env.example](.env.example). You can keep API
+settings in an ignored root `.env.local` and pass `--env-file .env.local` to uvicorn.
+
+To use real Gemini models, Google files and voice from your machine (with Google Cloud application
+default credentials), see the "Run on the Mac" section of
+[docs/connected-workday.md](docs/connected-workday.md). Settings in that mode include
+`AI_BACKEND=vertex`, `GOOGLE_BACKEND=google`, `LIVE_MODEL` and `LIVE_LOCATION`. With
+`DEV_MODE=1`, secrets can be read from local files in `~/.config/alter/secrets/` instead of
+Secret Manager.
 
 ### 3. Cloud deployment
 
 The team demo is deployed at [alter-48b59.web.app](https://alter-48b59.web.app/). A separate
 deployment needs a billing-enabled Google Cloud project with Firebase, Firestore, Gemini
 Enterprise Agent Platform, and a demo Google account for Docs, Drive, Sheets, Calendar and Gmail.
-The preferred native-audio relay uses Agent Platform credentials. The step-by-step guides are:
+Voice runs through the API's native-audio relay, which uses the service's own Google Cloud
+credentials, so no Gemini API key is needed. Leave `VITE_LIVE_TOKEN_BASE` empty to use it; the
+separate `services/live-token` service is an older alternative. The step-by-step guides are:
 
 - [Track A setup and deployment](docs/track-a-deployment.md): the API, Firestore and Google account
-- [Track B deployment](docs/track-b-deployment.md): web hosting and Gemini Live voice
+- [Track B deployment](docs/track-b-deployment.md): web hosting and Firebase settings
+- [Connected workday](docs/connected-workday.md): the current deploy commands, voice model and
+  Meet link settings, and an end-to-end acceptance checklist
+- [Storyboard implementation](docs/storyboard-implementation.md): meeting workflows (Cloud Tasks
+  queue), phone notifications (Web Push key), optional Vertex AI Search, and the Meet recording rig
 - [Real-model testing](docs/real-model-testing.md): checking real Gemini calls before deploying
+
+`infra/deploy-api.sh` also sets up the Cloud Tasks queue and messaging permissions. Deploy the
+Firestore rules and indexes together with Hosting
+(`npx firebase-tools deploy --only firestore,hosting`).
 
 Before going public, set Agent Platform quotas and a billing budget in the Google Cloud console. The
 app's own limits (120 model calls per member and 400 per workspace each hour) count calls, not
@@ -136,50 +170,72 @@ cost, and apply per workspace.
 
 ## Usage
 
-After joining, you're one member of the seeded team. Open the workday on your Alter screen and
-try these in the conversation:
+After joining, you're one member of the seeded team. If you chose **Step into Priya's day**,
+your Alter greets you by voice with your calendar and any pending work (allow microphone access, or
+select **Enable voice** if the browser blocks sound). The Alter screen offers four starting points:
+join the team sync, shape the login plan on the canvas, see what needs you, and ask about the
+launch. You can also type or say these:
 
-| Try | What happens |
-|---|---|
-| "Why did we switch to one-tap sign-in?" | Your Alter answers with links to its sources. |
-| "Ask Rahul's Alter to confirm the launch date" | Rahul is on leave and committing to a date is his call, so his Alter asks him instead of answering. |
-| "Add a QA update to the status doc" | A document change appears in the work panel with a before/after preview. Approve, reject, or ask for a revision. |
-| "Book 30 min with Meera on Thursday" | A calendar proposal. It's refused if either of you is already busy then. |
-| "Email the team a QA summary" | An email draft to teammates' inboxes. External addresses are always blocked. |
+| Try                                            | What happens                                                                                                     |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| "Why did we switch to one-tap sign-in?"        | Your Alter answers with links to its sources.                                                                    |
+| "Ask Rahul's Alter to confirm the launch date" | Rahul is on leave and committing to a date is his call, so his Alter asks him instead of answering.              |
+| "Add a QA update to the status doc"            | A document change appears in the work panel with a before/after preview. Approve, reject, or ask for a revision. |
+| "Book 30 min with Meera on Thursday"           | A calendar proposal. It's refused if either of you is already busy then.                                         |
+| "Email the team a QA summary"                  | An email draft to teammates' inboxes. External addresses are always blocked.                                     |
 
-The other screens:
+On the design canvas, try "Add a retry state if sign-in fails and connect it back to one-tap",
+then **Undo last edit** or **Review publication**.
 
-- **Team:** teammates and their status, the invite link, and asking someone's Alter directly
-- **Approvals:** every proposed change waiting for your decision
-- **Escalations:** questions other people's Alters need you to answer
-- **Activity:** what happened while you were away, each with a receipt of the sources and rules used
-- **Settings:** what your Alter knows, what it may share, and your email
+Everything else is in the **More** menu:
+
+- **Ask & delegate:** your Alter screen
+- **Live: Team sync:** the meeting companion. It asks Rahul's Alter questions, records the
+  conversation, opens a saved Google Meet link and connects a recording rig
+- **Shared plan:** the design canvas
+- **Waiting on you:** every proposed change waiting for your decision
+- **Team decisions:** questions other people's Alters need you to answer
+- **The team's Alters:** teammates and their status, the invite link, and asking someone's Alter
+  directly
+- **Work log:** what happened while you were away, each with a receipt of the sources and rules used
+- **Meetings:** recorded meetings and their prepared follow-up for review
 - **Files:** the workspace's Google files and your team inbox
+- **Rules & memory:** what your Alter knows, what it may share, your email and phone notifications
+
+Opening a link in Google Meet does not put an AI into the call. Joining Meet as "Rahul's Alter"
+needs the OBS and audio-routing setup in
+[docs/storyboard-implementation.md](docs/storyboard-implementation.md#prepare-and-record-the-meet-scene).
 
 ## Running the tests
 
-| Part | Command (from the repository root) |
-|---|---|
-| API (Python) | `PYTHONPATH=services/api services/api/.venv/bin/pytest services/api/tests -q` |
-| Web: type check and build | `npm --prefix apps/web run build` |
-| Web: lint | `npm --prefix apps/web run lint` |
-| Web: browser tests (demo mode) | `npm --prefix apps/web run test:e2e` |
-| Web: browser tests against the local API | `npm --prefix apps/web run test:backend` |
-| Web: installable app (PWA) | `npm --prefix apps/web run test:pwa` |
-| Voice token service | `cd services/live-token && .venv/bin/python -m pytest -q` (set up its `.venv` as in [its README](services/live-token/README.md)) |
-| Firestore security rules | `npm ci --prefix infra && npm --prefix infra run test:rules` (needs Java for the Firebase emulator) |
+| Part                                     | Command (from the repository root)                                                                                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| API (Python)                             | `PYTHONPATH=services/api services/api/.venv/bin/pytest services/api/tests -q`                                                     |
+| Web: type check and build                | `npm --prefix apps/web run build`                                                                                                 |
+| Web: lint                                | `npm --prefix apps/web run lint`                                                                                                  |
+| Web: browser tests (demo mode)           | `npm --prefix apps/web run test:e2e`                                                                                              |
+| Web: browser tests against the local API | `npm --prefix apps/web run test:backend`                                                                                          |
+| Web: installable app (PWA)               | `npm --prefix apps/web run test:pwa`                                                                                              |
+| Voice token service                      | `cd services/live-token && .venv/bin/python -m pytest -q` (set up its `.venv` as in [its README](services/live-token/README.md)) |
+| Firestore security rules                 | `npm ci --prefix infra && npm --prefix infra run test:rules` (needs Java for the Firebase emulator)                               |
 
 The browser tests need Playwright's Chromium: run `cd apps/web && npx playwright install chromium`
 once. The tests use stand-ins for Gemini, Firebase and Google, so they don't prove that the real
-services work. [docs/real-model-testing.md](docs/real-model-testing.md) covers that.
+services work. [docs/real-model-testing.md](docs/real-model-testing.md) covers that. To check
+real voice, `services/api/scripts/test_live_audio.py` sends a synthetic greeting to the configured
+native-audio model (a paid call; see [docs/connected-workday.md](docs/connected-workday.md)).
 
 ## Project layout
 
 ```
-apps/web/              React + Vite web app (PWA): all screens, voice, demo mode
+apps/web/              React + Vite web app (PWA): Alter screen, design canvas, meeting
+                       companion, recording kiosk, other screens, voice, demo mode
 services/api/          FastAPI + Google ADK backend: workspaces, Alters, A2A, approvals,
-                       policy checks and Google app actions
-services/live-token/   Small service that issues single-use Gemini Live voice tokens
+                       policy checks, Google app actions, meetings, plans, the voice relay
+                       and notifications
+services/api/scripts/  Helper scripts: demo tokens, voice and model smoke tests, Search setup
+                       and the world seeder
+services/live-token/   Older alternative voice transport: single-use Gemini Live tokens
 contracts/             Shared sample data used by both the app and the API
 infra/                 Deployment script, Cloud Build config, Firestore rules tests
 docs/                  Architecture, shared contract, track plans, deployment guides
@@ -189,29 +245,35 @@ firestore.rules        Who may read what in Firestore (all writes go through the
 
 ### Documentation
 
-| Doc | What it covers |
-|---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Positioning, design decisions and the build plan |
-| [docs/00-shared-contract.md](docs/00-shared-contract.md) | API endpoints, Firestore layout, seed data, limits |
-| [docs/track-a-agent-backend.md](docs/track-a-agent-backend.md) | Backend plan: workspaces, ADK Alters, A2A, policy checks, Google actions |
-| [docs/track-b-voice-and-app.md](docs/track-b-voice-and-app.md) | App plan: screens, Gemini Live voice, demo video |
-| [docs/storyboard.md](docs/storyboard.md) | The 3-minute demo video script |
-| [video/README.md](video/README.md) | Recording the demo with Google Meet and OBS |
+| Doc                                                                   | What it covers                                                                                      |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [docs/connected-workday.md](docs/connected-workday.md)                 | **Start here:** the current workday experience, local setup, deployment and acceptance checks |
+| [docs/storyboard-implementation.md](docs/storyboard-implementation.md) | Meeting workflows, voice relay, phone notifications, Search and the Meet recording rig              |
+| [docs/workday-experience-plan.md](docs/workday-experience-plan.md)     | Product plan for the workday experience (some items are still proposals)                            |
+| [LOCAL_CODEX_HANDOFF.md](LOCAL_CODEX_HANDOFF.md)                       | Current project state, local Mac setup and credential troubleshooting                               |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Positioning, design decisions and the build plan                                                    |
+| [docs/00-shared-contract.md](docs/00-shared-contract.md)               | API endpoints, Firestore layout, seed data, limits                                                  |
+| [docs/track-a-agent-backend.md](docs/track-a-agent-backend.md)         | Backend plan: workspaces, ADK Alters, A2A, policy checks, Google actions                            |
+| [docs/track-b-voice-and-app.md](docs/track-b-voice-and-app.md)         | App plan: screens, Gemini Live voice, demo video                                                    |
+| [docs/storyboard.md](docs/storyboard.md)                               | The 3-minute demo video script                                                                      |
+| [video/README.md](video/README.md)                                     | Recording the demo with Google Meet and OBS                                                         |
 
 ## Support
 
-Open an issue at <https://github.com/hack-stuff/alter/issues> with what you ran, what you
+Open an issue at [https://github.com/hack-stuff/alter/issues](https://github.com/hack-stuff/alter/issues) with what you ran, what you
 expected and what happened. For error messages that include a `Reference:` code, include that
 code; it matches the server log entry.
 
 ## Roadmap
 
-- [ ] Set up the Google Cloud and Firebase project, Agent Platform models and the demo Google account
-- [ ] Run the real-model tests against Agent Platform
+- [X] Set up the Google Cloud and Firebase project, Agent Platform models and the demo Google account
+- [X] Run the real-model and native-audio tests against Agent Platform
+- [X] Deploy the API to Cloud Run and the app to Firebase Hosting
+- [ ] Deploy the latest workday, meeting and notification changes (Cloud Tasks queue, Firestore indexes)
 - [ ] Run the Firestore security rules tests with the Firebase emulator
-- [ ] Deploy the API and voice token service to Cloud Run and the app to Firebase Hosting
 - [ ] Set Agent Platform quotas and a billing budget with alerts
-- [ ] Check real Google file changes, voice on a phone, invites and cleanup end to end
+- [ ] Check phone notifications, Search indexing and real Google writes after redeploying
+- [ ] Rehearse the Google Meet recording rig end to end
 - [ ] Record the demo video
 
 ## Contributing
