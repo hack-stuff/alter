@@ -76,3 +76,19 @@ test('failed Google setup offers retry and does not enter an unusable workspace'
   await page.getByLabel('Opening your workday').getByRole('button', { name: 'Retry Google setup' }).click()
   expect((await request).method()).toBe('POST')
 })
+
+test('slow workspace setup reveals the workday even when voice cannot start', async ({ page }) => {
+  await page.clock.install()
+  await page.goto('/')
+  await page.getByLabel('Your name').fill('Alex')
+  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.evaluate(async () => {
+    const { mockSnapshot, patchMock } = await import('/src/api/mock/workspace.ts')
+    patchMock({ workspace: { ...mockSnapshot().workspace!, state: 'provisioning' } })
+  })
+  await expect(page.getByLabel('Opening your workday')).toBeVisible()
+  await page.clock.fastForward(8_100)
+  await expect(page.getByLabel('Opening your workday')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  await expect(page.getByText('Your Alter is connecting to your team’s Google resources…')).toBeVisible()
+})

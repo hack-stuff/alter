@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth, signInAnonymously, connectAuthEmulator } from 'firebase/auth'
+import { getAuth, signInAnonymously, connectAuthEmulator, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 
 let signedIn: Promise<User> | undefined
@@ -23,4 +23,9 @@ export async function firebaseIdToken(): Promise<string> {
   signedIn ??= signInAnonymously(auth).then(({ user }) => user)
   try { const user = await signedIn; return await user.getIdToken() }
   finally { signedIn = undefined }
+}
+
+export async function firebaseSignOut(): Promise<void> {
+  await signOut(getAuth(firebaseApp()))
+  signedIn = undefined
 }

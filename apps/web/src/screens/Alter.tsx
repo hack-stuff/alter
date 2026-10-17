@@ -181,9 +181,14 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const autoVoice = liveVoice && ready
   useEffect(() => {
     if (!opening) return
-    const timer = window.setTimeout(() => setOpeningSlow(true), 18000)
+    const timer = window.setTimeout(() => setOpeningSlow(true), 8000)
     return () => window.clearTimeout(timer)
   }, [opening])
+  useEffect(() => {
+    if (!opening || !openingSlow || voiceState !== 'closed' || setupState === 'provisioning_failed') return
+    sessionStorage.setItem('alter.live.opened.' + workspaceId, '1')
+    setOpened(true)
+  }, [opening, openingSlow, voiceState, setupState, workspaceId])
 
   function say(text: string) {
     speak(text, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) })
@@ -292,7 +297,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
         <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : voiceError ? 'Voice needs a moment of attention.' : voiceState === 'connecting' ? 'Connecting your Alter…' : voiceState === 'listening' ? 'Your briefing is coming together…' : 'Preparing your briefing…'}</p>
         {setupState === 'provisioning_failed' && onRetrySetup && <button type="button" className="primary" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}
         {setupState === 'provisioning_failed' && setupRetryError && <p role="alert" className="error">{setupRetryError}</p>}
-        {ready && (openingSlow || voiceError) && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
+        {setupState !== 'provisioning_failed' && (openingSlow || voiceError) && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
       </div>
     </div>}
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, MOCK, ApiError, httpCall } from './api/client'
 import { useWorkspace } from './api/useWorkspace'
 import type { Approval, JoinResult } from './api/types'
@@ -72,6 +72,31 @@ export default function App() {
   const [error, setError] = useState('')
   const [retryingSetup, setRetryingSetup] = useState(false)
   const [setupRetryError, setSetupRetryError] = useState('')
+  const [confirmLogout, setConfirmLogout] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+  const logoutDialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = logoutDialog.current
+    if (confirmLogout && !dialog?.open) dialog?.showModal()
+    if (!confirmLogout && dialog?.open) dialog.close()
+  }, [confirmLogout, loggingOut])
+  async function logout() {
+    if (loggingOut) return
+    setLoggingOut(true); setLogoutError('')
+    try {
+      if (!MOCK) {
+        if (localStorage.getItem('alter.push.device')) await (await import('./push')).disablePush()
+        if (import.meta.env.VITE_DEV_AUTH === '1') localStorage.removeItem('alter.dev.uid')
+        else await (await import('./firebase-auth')).firebaseSignOut()
+      }
+      for (const key of Object.keys(sessionStorage)) if (key.startsWith('alter.')) sessionStorage.removeItem(key)
+      window.location.replace('/')
+    } catch (e) {
+      setLogoutError(e instanceof Error ? e.message : 'Could not log out. Please try again.')
+      setLoggingOut(false)
+    }
+  }
   function joined(join: JoinResult, name: string) { setSession({ join, name }); setOverrides({}); go('home') }
   function updateApproval(updated: Approval) { setOverrides((cards) => ({ ...cards, [updated.id]: updated })) }
   function go(next: View) { setMore(false); window.scrollTo({ top: 0 }); if (next === 'meetings') showView(next); else navigateTo(navAction(next)) }
@@ -90,6 +115,7 @@ export default function App() {
     finally { setResetting(false) }
   }
   if (parameters.get('kiosk') === '1' && (session || parameters.get('director') !== '1')) return <Kiosk memberId={parameters.get('tile') ?? 'rahul'} meetingId={parameters.get('meeting') ?? undefined} />
+  if (loggingOut) return <main className="join-layout"><p role="status" className="quiet-status">Logging out…</p></main>
   if (restoring) return <main className="join-layout"><p role="status" className="quiet-status"><span className="alter-mark alter-mark-small" aria-hidden="true">✦</span>Opening your Alter…</p></main>
   if (restoreError && !session) return <main className="join-layout"><div className="sheet narrow"><p className="error" role="alert">{restoreError}</p><button className="primary" onClick={() => { setRestoreError(''); setRestoring(true); setRestoreAttempt((value) => value + 1) }}>Retry sign-in</button></div></main>
   if (!session) return <main className="join-layout">{parameters.get('director') === '1' ? <Director onJoined={joined} /> : <Join inviteCode={inviteCode} onJoined={joined} />}</main>
@@ -134,8 +160,16 @@ export default function App() {
       <div className="rail-foot">
         <Notifications items={data.notifications ?? []} onOpen={(path) => { const params = new URL(path, location.origin).searchParams; go(params.has('meeting') ? 'meetings' : params.has('decision') ? 'decisions' : 'files'); if (params.has('meeting')) { sessionStorage.setItem('alter.open.meeting', params.get('meeting')!); setGeneration((g) => g + 1) } }} />
         <span className="rail-me" title={session.name}><Avatar name={session.name} size="small" /></span>
+        <button type="button" className="rail-logout" aria-label="Log out" title="Log out" onClick={() => { setLogoutError(''); setConfirmLogout(true) }}><Icon name="logout" size={19} /><span>Log out</span></button>
       </div>
     </nav>
+    <dialog ref={logoutDialog} className="logout-dialog" aria-labelledby="logout-title" onCancel={() => setConfirmLogout(false)}>
+      <p className="eyebrow">Account</p>
+      <h2 id="logout-title">Log out?</h2>
+      <p className="hint">{MOCK ? 'This local demo session will close.' : import.meta.env.VITE_DEV_AUTH === '1' ? 'This demo uses a browser-only identity. Logging out switches to a new identity, so this workspace may not be available again from this browser.' : 'This Alter uses anonymous sign-in. Logging out may prevent you from reopening this workspace. Your saved work will not be deleted.'}</p>
+      {logoutError && <p role="alert" className="error">{logoutError}</p>}
+      <div className="actions"><button type="button" onClick={() => setConfirmLogout(false)}>Cancel</button><button type="button" className="reject" onClick={() => void logout()}>Log out</button></div>
+    </dialog>
     {more && <button type="button" className="sheet-scrim" aria-label="Close menu" onClick={() => setMore(false)} />}
 
     <main className="workspace">

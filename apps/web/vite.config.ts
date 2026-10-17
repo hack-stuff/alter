@@ -23,5 +23,8 @@ export default defineConfig({
     },
   })],
   resolve: { alias: { '@contracts': contracts } },
-  server: { fs: { allow: ['.', contracts, seed] } },
+  server: {
+    fs: { allow: ['.', contracts, seed] },
+    watch: { ignored: ['**/backend-test-results/**', '**/test-results/**', '**/playwright-report/**'] },
+  },
 })

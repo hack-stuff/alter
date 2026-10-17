@@ -25,6 +25,7 @@ const paths: Record<string, string> = {
   check: 'm5 12 4 4L19 6',
   clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
   more: 'M4 12h1m6 0h1m6 0h1',
+  logout: 'M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M13 8l4 4-4 4M7 12h10',
   close: 'm6 6 12 12M6 18 18 6',
   undo: 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
   list: 'M8 6h12M8 12h12M8 18h12M4 6h0M4 12h0M4 18h0',
