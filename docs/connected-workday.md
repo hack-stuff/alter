@@ -1,6 +1,6 @@
 # Connected workday setup and acceptance
 
-The Alter, diagram and meeting companion now use the persisted API. This document describes this implementation, rather than the earlier scripted screen prototype.
+The Alter, diagram and meeting review now use the persisted API. This document describes this implementation, rather than the earlier scripted screen prototype.
 
 ## What is connected
 
@@ -9,7 +9,7 @@ The Alter, diagram and meeting companion now use the persisted API. This documen
 - **Design canvas** has owner-only server storage, numbered revisions, validated graph edits and ten undo steps. Production uses a typed Gemini graph patch; the explicit local AI adapter is used only when `AI_BACKEND=local`. A failed production model call never invokes that adapter.
 - **Review publication** prepares a new Google Docs specification of the graph. It does not edit running authentication configuration or claim to create a native Google Drawing. The exact reviewed graph revision must still be current when approved. The regular write executor provides the result and receipt. **Read back published document** fetches actual provider content.
 - **Meeting questions** use the existing A2A transport and sharing policy. The answer, citations, trace and escalation ID come from the server. Saving a priority question is distinguished from actual phone delivery.
-- **Capture** stores typed and voice transcripts in the meeting. A local outbox retains uploads until acknowledged; the existing recording rig can capture the actual Meet audio. Finalizing opens the existing persisted review, approval, continuation and owner-decision workflow.
+- **Capture** stores typed and voice transcripts in the meeting. A local outbox retains uploads until acknowledged; the existing recording rig can capture the actual Meet audio. The review page opens a linked call in Google Meet, or the Meet homepage to start one, then keeps capture and the persisted review, approval, continuation and owner-decision workflow in Alter.
 - **Voice** is one chat session that stays on while the Alter moves between screens. On the canvas, spoken edits ("change the timeout to 15 minutes") revise the saved plan and highlight the changed node. A live greeting uses the verified owner's name/context and does not invent completed work. The meeting companion still starts its own scoped huddle session for Rahul's Alter.
 - **Autonomous Alter.** Doc, sheet and calendar changes the owner's Alter drafts are applied immediately (`Engine.autopilot`) and kept as a before/after record. Emails stay `proposed` until the owner approves them, by button, by typing "send it" / "approve it" / "reject that", or by voice through the Live `decide_proposal` tool.
 - **Navigation** goes through one typed action, `navigateTo(screen, targetElementId?, highlightState?)`, for the nine screens (`home`, `canvas`, `meeting`, `approvals`, `decisions`, `team`, `work-log`, `rules`, `files`). A deterministic parser (`apps/web/src/agent/navigation.ts`) acts on the streaming transcript or typed text before the model answers, and the Live `navigate_to` tool covers everything else; a later tool call for the same screen is skipped. Workday screens stay mounted, so a switch takes one frame, and the target item is scrolled to, focused and pulsed. The Voice Bar shows where the Alter went.
@@ -65,7 +65,7 @@ LIVE_LOCATION: us-central1
 MODEL_TIMEOUT_MS: '60000'
 ```
 
-Optionally add `MEET_URL` with an existing Google Meet call URL. Alternatively, save that link from the meeting companion; it is stored for the current owner. The link must have the form `https://meet.google.com/abc-defg-hij`. It is not a secret and is not evidence that the AI is connected to the call.
+Optionally add `MEET_URL` with an existing Google Meet call URL. Alternatively, start a call from the review page and save its link there; it is stored for the current owner. The link must have the form `https://meet.google.com/abc-defg-hij`. It is not a secret and is not evidence that the AI is connected to the call.
 
 Deploy backend first, then rebuild Hosting with the existing public Firebase config, `VITE_MOCK=0`, `VITE_DEV_AUTH=0`, the production `/v1` API URL and an empty `VITE_LIVE_TOKEN_BASE`. Keep the current Firestore rules: plans are accessed through the owner-checked API and gain no direct client write/read permission.
 
@@ -80,7 +80,7 @@ The new source files are included by the existing API image build; the product-l
 
 ## Actual Google Meet operation
 
-The app opens an existing real Google Meet. It still does **not** autonomously join a Google account or manufacture live participant tiles. Before the evaluation window:
+The app opens a linked Google Meet or the Meet homepage to start one. It shows the user's Alter and seeded teammates' Alters as ready **in Alter**; it still does **not** autonomously join their Google accounts or manufacture live participant tiles. Before the evaluation window:
 
 1. Create the actual Meet with the hosting account and verify admission from an external account. Save its URL in the companion or API configuration.
 2. Start a consenting meeting capture in the companion. Expand **Connect the Meet recording rig**, generate room access and open the linked kiosk.
@@ -104,4 +104,3 @@ The companion's microphone hears its selected device input, not another tab's au
 Local automated tests cover the connected API using simulated Google resources and synthetic model adapters. Paid model access, actual phone notification display and the external Meet audio bridge remain project/device acceptance checks.
 
 Validation: 82 backend tests passed, with eight paid Vertex tests skipped. All 32 existing browser checks passed. The twelve connected desktop/mobile cases passed across the full regression run and the corrected relay/workday rerun; the final six-case relay/workday rerun passed. The final plan suite (ten cases), TypeScript/Vite build, lint, Python import/undefined checks and whitespace checks passed. Vertex graph schema serialization was also exercised through the real SDK with a local mock HTTP transport, which does not prove provider access. Desktop and mobile visual inspection checks the edited node remains visible without page overflow.
-

@@ -202,8 +202,8 @@ export default function App() {
           />
         </div>
         {(screen === 'meeting' || screen === 'meetings') && <div className="segmented page-tabs" role="tablist" aria-label="Meeting views">
-          <button role="tab" aria-selected={screen === 'meeting'} onClick={() => go('meeting')}>Companion</button>
-          <button role="tab" aria-selected={screen === 'meetings'} onClick={() => go('meetings')}>Meetings</button>
+          <button role="tab" aria-selected={screen === 'meeting'} onClick={() => go('meeting')}>Review</button>
+          <button role="tab" aria-selected={screen === 'meetings'} onClick={() => go('meetings')}>All meetings</button>
         </div>}
         <div data-screen="meeting" hidden={screen !== 'meeting'}>
           <MeetCompanion

@@ -31,6 +31,9 @@ const DIRECTIVES: { kind: 'do' | 'say'; text: string; open?: 'meet' | 'plan' }[]
   { kind: 'say', text: "What's blocking launch?" },
 ]
 
+const dayKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+const eventDay = (value: string) => dayKey(new Date(value))
+
 interface Offer {
   key: string
   num: string
@@ -65,6 +68,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const onOpen = (surface: WorkSurface) => onNavigate(navigateTo(LEGACY_SURFACES[surface]))
   const [day, setDay] = useState<Day>()
   const [dayError, setDayError] = useState('')
+  const [selectedDay, setSelectedDay] = useState(() => dayKey(new Date()))
   const [voiceState, setVoiceState] = useState<'connecting' | 'listening' | 'speaking' | 'closed'>('closed')
   const liveVoice = import.meta.env.VITE_MOCK !== '1' || !!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()
   const greetedBefore = useRef(!!sessionStorage.getItem('alter.live.greeted.' + workspaceId))
@@ -169,7 +173,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const stateLine = busy ? `Working — ${latest ?? 'on it'}` : needsCount ? `${needsCount} thing${needsCount === 1 ? '' : 's'} waiting on you` : 'Here with you'
 
   const statusText = `Hello ${name}. Your login journey and team follow-up are here. ${rahulName}'s Alter can help with his permitted project knowledge.`
-  const workedText = 'Continue the design, ask a teammate’s Alter, or open the meeting companion. I’ll show you the work before publishing it.'
+  const workedText = 'Continue the design, ask a teammate’s Alter, or open the team sync. I’ll show you the work before publishing it.'
   const needsText = pending.length && asks.length
     ? `${pending.length} drafts wait for your okay, and the team has a question only you can answer — both are listed below.`
     : pending.length ? `${pending.length === 1 ? 'One draft is' : `${pending.length} drafts are`} waiting for your okay — I haven’t touched a single file until you say so.`
@@ -197,8 +201,8 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const OFFERS: Offer[] = [
     {
       key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Call linked' : 'Team conversation', title: 'Join the team sync',
-      desc: `Ask ${rahulName}’s Alter, capture the sync, and prepare the follow-up.`,
-      go: 'Take me in', hot: /join|sync|meet|room|call/, sayLine: 'Opening your meeting companion. Start capture after participants consent.',
+      desc: `Open Google Meet, then review the follow-up with ${rahulName}’s Alter.`,
+      go: 'Open meeting', hot: /join|sync|meet|room|call/, sayLine: 'Opening your meeting review. Join the call in Google Meet.',
       run: () => onOpen('meet'),
     },
     {
@@ -282,6 +286,13 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
 
   const me = members.find((m) => m.id === meId)
   const agendaTarget = (title: string): 'plan' | 'meet' | undefined => /review|design|journey|canvas|plan/i.test(title) ? 'plan' : /sync|meeting|stand-?up|call/i.test(title) ? 'meet' : undefined
+  const calendarDays = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date()
+    date.setHours(12, 0, 0, 0)
+    date.setDate(date.getDate() + offset)
+    return date
+  })
+  const selectedEvents = (day?.agenda ?? []).filter((event) => eventDay(event.start) === selectedDay)
   const QUICK = [
     { label: 'Hear my briefing', run: () => { if (liveVoice) setBriefing((n) => n + 1); else say(greetingText) } },
     { label: 'Continue the login flow', run: () => onOpen('plan') },
@@ -316,31 +327,6 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     {setupState === 'provisioning' && <p role="status" className="notice">Your Alter is connecting to your team’s Google resources…</p>}
     {setupState === 'provisioning_failed' && !opening && <div role="alert" className="notice is-error setup-retry"><span>Google setup didn’t finish. Your workspace and work are saved.</span>{onRetrySetup && <button type="button" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}{setupRetryError && <span>{setupRetryError}</span>}</div>}
 
-    <div className="home-grid">
-      <section className="sheet today" aria-label="Your Google Calendar agenda">
-        <div className="sheet-head"><h2>Your agenda</h2><span className="source-pill is-quiet"><AppIcon app="calendar" />From your Calendar</span></div>
-        {day?.agenda.length ? <ol className="agenda">{day.agenda.map((event) => {
-          const target = agendaTarget(event.title)
-          const meet = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) ? event.meetUrl : ''
-          return <li key={event.id} className="agenda-row">
-            <time dateTime={event.start}>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
-            <span className="agenda-title"><AppIcon app="calendar" /><strong>{event.title}</strong></span>
-            <span className="agenda-actions">
-              {meet && <a className="source-pill" href={meet} target="_blank" rel="noreferrer"><AppIcon app="meet" />Join Google Meet ↗</a>}
-              {target && <button type="button" className="ghost small" onClick={() => onOpen(target)}>{target === 'plan' ? 'Open canvas' : 'Open companion'} <Icon name="arrow" size={14} /></button>}
-            </span>
-          </li>
-        })}</ol> : <p className="hint">{MOCK ? 'Your calendar appears here in the connected app.' : dayError || 'No upcoming events in your connected demo calendar.'}</p>}
-      </section>
-
-      <aside className="sheet waiting" aria-label="Waiting on you">
-        <div className="sheet-head"><h2>Waiting on you</h2>{needsCount > 0 && <span className="count-pill">{needsCount}</span>}</div>
-        {needsCount === 0 && <p className="hint">Nothing is waiting on you. Your Alter makes doc, sheet and calendar changes directly; emails wait until you say send.</p>}
-        {pending.length > 0 && <button type="button" className="waiting-row" onClick={() => onOpen('approvals')}><Icon name="approvals" size={18} /><span><strong>{pending.length} draft{pending.length === 1 ? '' : 's'} waiting</strong><small>Say “send it” or “reject it”, or open to review.</small></span><Icon name="arrow" size={16} /></button>}
-        {asks.length > 0 && <a className="waiting-row" href="#team-questions"><Icon name="decision" size={18} /><span><strong>{asks.length} question{asks.length === 1 ? '' : 's'} only you can answer</strong><small>Escalated by a teammate’s Alter.</small></span><Icon name="arrow" size={16} /></a>}
-      </aside>
-    </div>
-
     <section className="next-up" aria-label="What your Alter can do next">
       <h3>Where should we start?</h3>
       <ol className={`offer-list ${picked ? 'is-clearing' : ''}`}>
@@ -355,6 +341,36 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
       </ol>
       <p className="pick-echo" role="status">{pickEcho && <><span className="alter-glyph" aria-hidden="true">✦</span>{pickEcho}</>}</p>
     </section>
+
+    <div className="home-grid">
+      <section className="sheet today" aria-label="Your Google Calendar agenda">
+        <div className="sheet-head"><div><p className="eyebrow">Your calendar</p><h2>{selectedDay === dayKey(new Date()) ? 'Today' : calendarDays.find((date) => dayKey(date) === selectedDay)?.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</h2></div><span className="source-pill is-quiet"><AppIcon app="calendar" />Google Calendar</span></div>
+        <div className="calendar-days" role="group" aria-label="Choose a day">{calendarDays.map((date) => {
+          const key = dayKey(date)
+          const count = day?.agenda.filter((event) => eventDay(event.start) === key).length ?? 0
+          return <button type="button" key={key} className={`calendar-day${selectedDay === key ? ' is-selected' : ''}`} aria-pressed={selectedDay === key} onClick={() => setSelectedDay(key)}><span>{date.toLocaleDateString([], { weekday: 'short' })}</span><strong>{date.getDate()}</strong><small>{count ? `${count} event${count === 1 ? '' : 's'}` : 'Free'}</small></button>
+        })}</div>
+        {selectedEvents.length ? <ol className="agenda">{selectedEvents.map((event) => {
+          const target = agendaTarget(event.title)
+          const meet = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) ? event.meetUrl : ''
+          return <li key={event.id} className="agenda-row">
+            <time dateTime={event.start}>{new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}<small>{new Date(event.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</small></time>
+            <span className="agenda-title"><span className="agenda-color" aria-hidden="true" /><strong>{event.title}</strong></span>
+            <span className="agenda-actions">
+              {meet && <a className="source-pill" href={meet} target="_blank" rel="noreferrer"><AppIcon app="meet" />Join Meet ↗</a>}
+              {target && <button type="button" className="ghost small" onClick={() => onOpen(target)}>{target === 'plan' ? 'Open canvas' : 'Open review'} <Icon name="arrow" size={14} /></button>}
+            </span>
+          </li>
+        })}</ol> : <p className="calendar-empty">{MOCK ? 'Connect Google Calendar to see your day.' : dayError || 'No events on this day. Your time is yours.'}</p>}
+      </section>
+
+      <aside className="sheet waiting" aria-label="Waiting on you">
+        <div className="sheet-head"><h2>Waiting on you</h2>{needsCount > 0 && <span className="count-pill">{needsCount}</span>}</div>
+        {needsCount === 0 && <p className="hint">Nothing is waiting on you. Your Alter makes doc, sheet and calendar changes directly; emails wait until you say send.</p>}
+        {pending.length > 0 && <button type="button" className="waiting-row" onClick={() => onOpen('approvals')}><Icon name="approvals" size={18} /><span><strong>{pending.length} draft{pending.length === 1 ? '' : 's'} waiting</strong><small>Say “send it” or “reject it”, or open to review.</small></span><Icon name="arrow" size={16} /></button>}
+        {asks.length > 0 && <a className="waiting-row" href="#team-questions"><Icon name="decision" size={18} /><span><strong>{asks.length} question{asks.length === 1 ? '' : 's'} only you can answer</strong><small>Escalated by a teammate’s Alter.</small></span><Icon name="arrow" size={16} /></a>}
+      </aside>
+    </div>
 
     {asks.length > 0 && <section className="alter-needs" id="team-questions" aria-label="The team is waiting on your answer">
       <h3>The team is waiting on your answer</h3>

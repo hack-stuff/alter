@@ -49,6 +49,7 @@ export function MeetCompanion({
     'connecting' | 'listening' | 'speaking' | 'closed'
   >('closed')
   const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const [askOpen, setAskOpen] = useState(false)
   const [unsaved, setUnsaved] = useState(0)
   const queue = useRef<Segment[]>([])
   const upload = useRef<Promise<void> | undefined>(undefined)
@@ -194,55 +195,44 @@ export function MeetCompanion({
   }
   const rahul = members.find((m) => m.id === 'rahul')
   const capturing = meeting?.state === 'capturing'
+  const meetingAlters = [
+    { id: memberId, name: owner, note: 'Your Alter · taking notes and preparing your review' },
+    ...members.filter((member) => member.id !== memberId && (member.status === 'on_leave' || member.status === 'away' || member.status === 'in_meetings')).slice(0, 2).map((member) => ({ id: member.id, name: member.name, note: member.status === 'on_leave' ? 'Covering while away' : 'Available while busy' })),
+  ]
+  const meetDestination = meetUrl || 'https://meet.google.com/'
   return (
     <section className="screen meeting-screen">
-      <header className="meeting-head">
+      <header className="meeting-head meeting-review-head">
         <div className="meeting-title">
           <AppIcon app="meet" size={24} />
           <div>
-            <p className="eyebrow">{owner}'s team sync</p>
-            <h1>Login revamp · Rahul’s Alter</h1>
+            <p className="eyebrow">Meeting review</p>
+            <h1>Team sync</h1>
           </div>
         </div>
-        <div className="meeting-badges">
-          {capturing && <span className="badge-consent"><span className="rec-dot" aria-hidden="true" />Consented transcript</span>}
-          {meetUrl ? <a href={meetUrl} target="_blank" rel="noreferrer" className="source-pill"><AppIcon app="meet" />Call linked · Open Google Meet ↗</a> : <span className="source-pill is-quiet">No call linked</span>}
-        </div>
+        <a href={meetDestination} target="_blank" rel="noreferrer" className="primary meet-launch"><AppIcon app="meet" />{meetUrl ? 'Join Google Meet' : 'Start in Google Meet'} ↗</a>
       </header>
-      <p className="hint meeting-note">Ask about Rahul’s permitted work. The Google Meet opens separately; this page doesn’t join the call or show who is in it.</p>
+      <p className="hint meeting-note">Meet runs in Google Meet. Return here to capture a consenting conversation and review what your Alter prepares.</p>
+      <div className="meeting-review-steps" aria-label="Meeting workflow"><span><strong>1</strong> Meet in Google Meet</span><span><strong>2</strong> Capture with consent</span><span><strong>3</strong> Review before sharing</span></div>
+      <section className="sheet meeting-alter-lineup" aria-label="Alters ready for the demo">
+        <div><p className="eyebrow">Ready in Alter</p><h2>Your meeting team</h2><p className="hint">These Alters are available here. Google Meet participants are separate; connect the room audio below to bring an Alter into the call.</p></div>
+        <div className="meeting-alter-list">{meetingAlters.map((item) => <div className="meeting-alter-person" key={item.id}><AlterMark size="small" /><span><strong>{item.name}'s Alter</strong><small>{item.note}</small></span></div>)}</div>
+      </section>
       {error && <p role="alert" className="notice is-error">{error}</p>}
       {busy && <p role="status" className="thinking"><span className="alter-glyph" aria-hidden="true">✦</span>{busy}</p>}
       <div className="meeting-grid">
         <div className="meeting-main">
-          <section className="alter-tile" aria-label="Rahul's Alter" data-nav-id="rahul" data-nav-label="Rahul's Alter">
-            <div className="alter-tile-head">
-              <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Rahul" size="large" away={rahul?.status === 'on_leave' || !rahul} /><AlterMark size="medium" /></span>
-              <div><h2>Rahul’s Alter <AlterBadge /></h2><p className="hint">{rahul?.status === 'on_leave' || !rahul ? 'Rahul is on leave · ' : ''}answers from his permitted notes, and asks Rahul about commitments</p></div>
-            </div>
-            <OnScreenTips title="Ask Rahul’s Alter" tips={[
-              { type: 'say', text: 'Why did we switch to one-tap sign-in?' },
-              { type: 'say', text: 'When are we launching the login revamp?' },
-              { type: 'say', text: 'Is AUTH-112 approved for production?' },
-            ]} onSelectPrompt={ask} />
-            <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); ask(question) }}>
-              <label className="sr-only" htmlFor="meeting-question">Question for Rahul’s Alter</label>
-              <input id="meeting-question" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={!!busy} placeholder="Ask Rahul’s Alter…" />
-              <button className="primary" disabled={!!busy || !question.trim()}>Ask</button>
-            </form>
-                  {!MOCK && capturing && meeting && <VoiceControl mode="huddle" targetId="rahul" meetingId={meeting.id} autoStart active={voiceEnabled && active} onTextFallback={ask} onState={setVoice} onCapture={capture} onResult={(res) => setLatest(res as Answer)} />}
-            {latest && <article className={`answer answer-${latest.outcome}`} aria-label="Rahul’s actual answer">
-              <p className="eyebrow">{latest.outcome === 'ask' ? '⚑ Owner decision needed' : latest.outcome === 'deny' ? '× Not shared' : '✓ Answer from Rahul’s Alter'}</p>
-              <p>{latest.answer}</p>
-              <Citations sources={latest.citations} />
-              {latest.escalationId && <p className="escalation-note"><span className="alter-glyph" aria-hidden="true">✦</span>Priority question saved for Rahul. Phone delivery depends on his registered notification device.</p>}
-              <LiveTrace workspaceId={workspaceId} traceId={latest.traceId} />
-            </article>}
+          <section className="sheet meeting-review-panel" aria-label="Meeting review status">
+            <p className="eyebrow">Your review</p>
+            <h2>{!meeting ? 'The review begins after your call.' : capturing ? 'Your meeting is being captured.' : 'Your follow-up is ready to review.'}</h2>
+            <p className="hint">{!meeting ? 'Start a consenting session to save the conversation. Your Alter will prepare the status doc, team summary, and tasks.' : capturing ? `${meeting.segmentCount} transcript segments saved. Finish the meeting to prepare a review.` : 'Inspect the proposed changes and approve them before anything is shared.'}</p>
+            {capturing && <span className="badge-consent"><span className="rec-dot" aria-hidden="true" />Consented transcript</span>}
+            {meeting && !capturing && <button className="primary" onClick={() => onReview(meeting.id)}>Open prepared review <Icon name="arrow" size={16} /></button>}
           </section>
-
-          <section className="sheet transcript-sheet" aria-label="Meeting transcript">
+          <details key={meeting?.id ?? 'new'} className="sheet transcript-sheet" aria-label="Meeting transcript" open={!meeting}>
+            <summary className="sheet-head"><strong>Conversation record</strong><span className="source-pill is-quiet">{meeting?.segmentCount ?? 0} saved</span></summary>
             {!meetingId && <div className="consent-start">
-              <h3>Capture this conversation</h3>
-              <p className="hint">Save real questions and voice transcripts, then let your Alter prepare the follow-up.</p>
+              <p className="hint">Capture a real conversation only when the participants agree.</p>
               <label className="check-label"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />The participants consent to transcript capture.</label>
               <button className="primary" disabled={!consent || !!busy || MOCK} onClick={() => void action('Starting your saved meeting…', async () => {
                 const value = await meetingApi.create('Login revamp · team sync', members.filter((m) => ['priya', 'meera', 'arjun'].includes(m.id)).map((m) => m.id), 'rahul')
@@ -265,21 +255,20 @@ export function MeetCompanion({
                   <button disabled={!transcript.trim() || !!busy} onClick={() => { capture(transcript, 'human'); setTranscript('') }}>Save transcript</button>
                   {unsaved > 0 && <button onClick={() => void action('Uploading transcript…', flush)}>Retry transcript upload</button>}
                 </div>
-                <p className="hint">This page captures its selected microphone only. To hear the Google Meet call, use the recording rig and route Meet audio into it.</p>
+                <p className="hint">This page captures its selected microphone. To capture Google Meet audio, route the room audio into it.</p>
               </>}
             </>}
             {!meeting && <p className="hint">No transcript has been recorded here yet.</p>}
-          </section>
+          </details>
         </div>
-
-        <aside className="followup-tray" aria-label="Follow-ups">
+        <aside className="followup-tray" aria-label="Meeting tools">
           <section className="sheet">
-            <h3>Follow-ups</h3>
-            <p className="hint">When the meeting ends, your Alter drafts these for you to review together. Nothing is sent before you approve.</p>
+            <h3>Prepared for your review</h3>
+            <p className="hint">Nothing is shared until you approve the completed review.</p>
             <ul className="tray-list">
-              <li><AppIcon app="docs" /><span>Status doc changes</span><small>{meeting && !capturing ? 'Drafted' : 'After the meeting'}</small></li>
-              <li><AppIcon app="gmail" /><span>Team summary</span><small>{meeting && !capturing ? 'Drafted' : 'After the meeting'}</small></li>
-              <li><AppIcon app="sheets" /><span>Tracker rows</span><small>{meeting && !capturing ? 'Drafted' : 'After the meeting'}</small></li>
+              <li><AppIcon app="docs" /><span>Status doc changes</span><small>{meeting && !capturing ? 'Drafted' : 'After the call'}</small></li>
+              <li><AppIcon app="gmail" /><span>Team summary</span><small>{meeting && !capturing ? 'Drafted' : 'After the call'}</small></li>
+              <li><AppIcon app="sheets" /><span>Tracker rows</span><small>{meeting && !capturing ? 'Drafted' : 'After the call'}</small></li>
             </ul>
             {meeting && (capturing
               ? <button className="primary" disabled={!!busy} onClick={() => void action('Preparing the meeting follow-up…', finish)}>Meeting finished — prepare my review</button>
@@ -287,16 +276,43 @@ export function MeetCompanion({
           </section>
           {capturing && meeting && <RoomSetup meetingId={meeting.id} memberId="rahul" />}
           <details className="sheet meet-url-box">
-            <summary>{meetUrl ? 'Change the linked Google Meet' : 'Connect an existing Google Meet'}</summary>
+            <summary>{meetUrl ? 'Change the linked Google Meet' : 'Link the Google Meet you started'}</summary>
             <form onSubmit={(e) => { e.preventDefault(); void action('Saving the meeting link…', async () => { const value = await dayApi.setMeetUrl(urlDraft); setMeetUrl(value.meetUrl) }) }}>
               <label>Existing Google Meet link<input value={urlDraft} onChange={(e) => setUrlDraft(e.target.value)} placeholder="https://meet.google.com/abc-defg-hij" /></label>
               <button disabled={!!busy}>Save Meet link</button>
             </form>
-            <p className="hint">The host must join Rahul’s AI account using the rig and admit external guests. A saved link does not connect the audio.</p>
+            <p className="hint">Linking the call lets you reopen it here. A link alone does not connect an Alter to the call.</p>
           </details>
           <button type="button" className="ghost" onClick={onBack}><Icon name="back" size={16} />Back to your Alter</button>
         </aside>
       </div>
+      <details className="sheet meeting-ask-details" onToggle={(event) => setAskOpen(event.currentTarget.open)}>
+        <summary>Ask Rahul's Alter about the work</summary>
+        <div className="alter-tile" aria-label="Rahul's Alter" data-nav-id="rahul" data-nav-label="Rahul's Alter">
+          <div className="alter-tile-head">
+            <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Rahul" size="large" away={rahul?.status === 'on_leave' || !rahul} /><AlterMark size="medium" /></span>
+            <div><h2>Rahul’s Alter <AlterBadge /></h2><p className="hint">{rahul?.status === 'on_leave' || !rahul ? 'Rahul is on leave · ' : ''}answers from his permitted notes, and asks Rahul about commitments</p></div>
+          </div>
+          <OnScreenTips title="Ask Rahul’s Alter" tips={[
+            { type: 'say', text: 'Why did we switch to one-tap sign-in?' },
+            { type: 'say', text: 'When are we launching the login revamp?' },
+            { type: 'say', text: 'Is AUTH-112 approved for production?' },
+          ]} onSelectPrompt={ask} />
+          <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); ask(question) }}>
+            <label className="sr-only" htmlFor="meeting-question">Question for Rahul’s Alter</label>
+            <input id="meeting-question" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={!!busy} placeholder="Ask Rahul’s Alter…" />
+            <button className="primary" disabled={!!busy || !question.trim()}>Ask</button>
+          </form>
+          {!MOCK && capturing && meeting && <VoiceControl mode="huddle" targetId="rahul" meetingId={meeting.id} autoStart active={voiceEnabled && active && askOpen} onTextFallback={ask} onState={setVoice} onCapture={capture} onResult={(res) => setLatest(res as Answer)} />}
+          {latest && <article className={`answer answer-${latest.outcome}`} aria-label="Rahul’s actual answer">
+            <p className="eyebrow">{latest.outcome === 'ask' ? '⚑ Owner decision needed' : latest.outcome === 'deny' ? '× Not shared' : '✓ Answer from Rahul’s Alter'}</p>
+            <p>{latest.answer}</p>
+            <Citations sources={latest.citations} />
+            {latest.escalationId && <p className="escalation-note"><span className="alter-glyph" aria-hidden="true">✦</span>Priority question saved for Rahul. Phone delivery depends on his registered notification device.</p>}
+            <LiveTrace workspaceId={workspaceId} traceId={latest.traceId} />
+          </article>}
+        </div>
+      </details>
     </section>
   )
 }

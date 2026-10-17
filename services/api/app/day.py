@@ -34,7 +34,7 @@ def day(engine, ctx):
             ctx.workspace_id,
             ctx.member_id,
             start.isoformat(),
-            (start + timedelta(days=2)).isoformat(),
+            (start + timedelta(days=7)).isoformat(),
         )
     except Exception:
         agenda_error = (

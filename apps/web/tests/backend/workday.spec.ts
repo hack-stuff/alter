@@ -17,6 +17,10 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
   await expect(
     page.getByRole('region', { name: 'Your Google Calendar agenda' }),
   ).toContainText('Review Meera')
+  await expect(page.getByRole('heading', { name: 'Where should we start?' })).toBeVisible()
+  const startTop = await page.getByRole('heading', { name: 'Where should we start?' }).evaluate((element) => element.getBoundingClientRect().top)
+  const calendarTop = await page.getByRole('region', { name: 'Your Google Calendar agenda' }).evaluate((element) => element.getBoundingClientRect().top)
+  expect(startTop).toBeLessThan(calendarTop)
   await page.getByRole('button', { name: /Shape the login plan/ }).click()
   await expect(
     page.getByRole('heading', { name: 'Login journey', exact: true }),
@@ -68,18 +72,21 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
     .first()
     .click()
   await page.getByRole('button', { name: /Join the team sync/ }).click()
+  await expect(page.getByRole('link', { name: 'Start in Google Meet', exact: false })).toHaveAttribute('href', 'https://meet.google.com/')
+  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Priya's Alter")
+  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Rahul's Alter")
   await expect(
     page.getByText('No transcript has been recorded here yet.'),
   ).toBeVisible()
   await page
-    .getByText('Connect an existing Google Meet', { exact: true })
+    .getByText('Link the Google Meet you started', { exact: true })
     .click()
   await page
     .getByLabel('Existing Google Meet link')
     .fill('https://meet.google.com/abc-defg-hij')
   await page.getByRole('button', { name: 'Save Meet link' }).click()
   await expect(
-    page.getByRole('link', { name: 'Open Google Meet', exact: false }),
+    page.getByRole('link', { name: 'Join Google Meet', exact: false }),
   ).toHaveAttribute('href', 'https://meet.google.com/abc-defg-hij')
   await page
     .getByLabel('The participants consent to transcript capture.')
@@ -88,6 +95,7 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
   await expect(
     page.getByRole('button', { name: 'Meeting finished — prepare my review' }),
   ).toBeVisible()
+  await page.getByText("Ask Rahul's Alter about the work").click()
   await page
     .getByRole('button', { name: /Try saying:.*Why did we switch/ })
     .click()
@@ -100,6 +108,7 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
   await expect(
     page.getByRole('article', { name: 'Rahul’s actual answer' }),
   ).toContainText('Priority question saved')
+  await page.getByText('Conversation record', { exact: true }).click()
   await page
     .getByLabel('Add actual meeting transcript')
     .fill(

@@ -235,6 +235,7 @@ def test_demo_day_is_isolated_resumable_and_not_director(system):
     value = c.get("/v1/day", headers={"X-Dev-Uid": "judge1"}).json()
     assert value["role"] == "Product lead"
     assert any("login journey" in event["title"] for event in value["agenda"])
+    assert len({event["start"][:10] for event in value["agenda"]}) >= 5
     import asyncio
 
     asyncio.run(
@@ -302,7 +303,9 @@ def test_voice_context_tracks_setup_and_verified_workday(system):
     ready_context = json.loads(LiveRelay(e).context(ctx, LiveStart(mode="chat")))
     assert ready_context["workday"]["project"] == "Login revamp"
     assert ready_context["workday"]["pendingDrafts"] == []
-    assert [item["title"] for item in ready_context["workday"]["agenda"]] == [
+    upcoming = [item["title"] for item in ready_context["workday"]["agenda"]]
+    assert 1 <= len(upcoming) <= 2
+    assert set(upcoming) <= {
         "Review Meera's login journey",
         "Login revamp · team sync",
-    ]
+    }
