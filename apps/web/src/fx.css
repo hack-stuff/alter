@@ -68,12 +68,11 @@
 .app-alter .notice-toggle:hover:not(:disabled) {
   background: #192747;
 }
+/* Bleed via .fx's negative margins, which match .app's padding; 100vw would include
+   a classic scrollbar's width and scroll the page sideways. */
 .alter-screen.fx {
   min-height: calc(100dvh - 80px);
   max-width: none;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
 }
 .alter-screen.is-opening .alter-content { visibility: hidden; }
 .alter-screen:not(.is-opening) .alter-content { animation: stage-in .45s ease-out both; }
@@ -379,7 +378,6 @@
 }
 
 @media (min-width: 761px) and (max-width: 1100px) {
-  .alter-screen.fx { margin-left: -48px; margin-right: -28px; }
   .alter-landing { grid-template-columns: minmax(235px, 275px) minmax(0, 1fr); gap: 24px; padding-top: 20px; }
   .alter-landing .alter-core-letter { font-size: 40px; }
   .alter-landing .alter-face h2 { font-size: 22px; }
@@ -604,6 +602,19 @@
   .join-fx { padding: 30px 26px 28px; }
   .join-fx h1 { font-size: 31px; }
   .offer-num { display: none; }
+}
+
+/* Laptop-height screens: fit the whole join card without scrolling. */
+@media (max-height: 900px) and (min-width: 761px) {
+  .join-fx-page { padding: 16px 24px; }
+  .join-fx { gap: 12px; padding: 24px 36px 24px; }
+  .join-fx h1 { margin-top: 4px; font-size: 32px; }
+  .join-fx > p { font-size: 15px; line-height: 1.5; }
+  .join-fx .hint { margin-top: -4px; font-size: 13px; }
+  .join-fx input { padding: 9px 12px; }
+  .join-fx .primary { padding: 10px 20px; }
+  .join-core { width: 60px; height: 60px; }
+  .join-core .core-letter { font-size: 24px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
