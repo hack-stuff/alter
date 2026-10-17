@@ -26,6 +26,7 @@ interface Props {
   onState?: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
   onNavigate?: (screen: WorkSurface) => void
   onFirstSpeech?: () => void
+  onUnroutedUtterance?: (text: string) => void
   onError?: (message: string) => void
 }
 export function VoiceControl(props: Props) {
@@ -53,6 +54,7 @@ export function VoiceControl(props: Props) {
       onResult: (result, tool, text) => { if (tool === 'respond_escalation' && props.draftOnly) callbacks.current.onTranscript?.(text); callbacks.current.onResult(result, tool, text) },
       onState: (value) => { stateRef.current = value; setState(value); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
       onFirstSpeech: () => callbacks.current.onFirstSpeech?.(),
+      onUnroutedUtterance: (text) => callbacks.current.onUnroutedUtterance?.(text),
       onTranscript: (text, speaker, final) => { if (speaker === 'user') { setInput(text); if (final && props.draftOnly) callbacks.current.onTranscript?.(text) } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
       onError: (message) => { setError(message); callbacks.current.onError?.(message) },
       onLevel: (value) => { setLevel(value); callbacks.current.onLevel?.(value) },

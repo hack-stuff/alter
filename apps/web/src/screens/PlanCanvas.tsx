@@ -284,6 +284,7 @@ export function PlanCanvas({
                     targetId={plan.id}
                     autoStart
                     onState={setVoice}
+                    onUnroutedUtterance={(text) => { if (/\b(add|remove|delete|change|edit|update|move|connect|disconnect|redraw|modify|include|insert|put|make|create|draw|link|route)\b/i.test(text)) edit(text) }}
                     onResult={(value) => receive(value as Plan)}
                   />
                 )}

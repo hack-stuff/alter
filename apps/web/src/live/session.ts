@@ -17,6 +17,7 @@ export interface LiveOptions extends ToolContext {
   onError: (message: string) => void
   onLevel?: (level: number) => void
   onFirstSpeech?: () => void
+  onUnroutedUtterance?: (text: string) => void
 }
 let currentSession: LiveSession | undefined
 export class LiveSession {
@@ -41,6 +42,8 @@ export class LiveSession {
   private cancelled = new Set<string>()
   private release?: () => void
   private firstSpeech = false
+  private toolCalled = false
+  private fallbackTimer?: ReturnType<typeof setTimeout>
   constructor(options: LiveOptions) { this.options = options }
   // The page's conversation can change while voice is open (for example, after a typed message).
   setConversationId(id: string | undefined) { this.options.conversationId = id }
@@ -118,6 +121,10 @@ export class LiveSession {
   }
   private async message(message: LiveServerMessage) {
     if (this.stopped) return
+    if (message.toolCall?.functionCalls?.length) {
+      this.toolCalled = true
+      clearTimeout(this.fallbackTimer)
+    }
     for (const id of message.toolCallCancellation?.ids ?? []) this.cancelled.add(id)
     const content = message.serverContent
     if (content?.interrupted) { this.clearPlayback(); this.output = ''; this.options.onState('listening') }
@@ -133,7 +140,15 @@ export class LiveSession {
     if (content?.turnComplete) {
       if (this.input) this.options.onTranscript(this.input, 'user', true)
       if (this.output) this.options.onTranscript(this.output, 'alter', true)
+      const utterance = this.input.trim()
+      if (utterance && !this.toolCalled && this.options.onUnroutedUtterance) {
+        clearTimeout(this.fallbackTimer)
+        this.fallbackTimer = setTimeout(() => {
+          if (!this.stopped) this.options.onUnroutedUtterance?.(utterance)
+        }, 500)
+      }
       this.input = ''; this.output = ''
+      this.toolCalled = false
     }
     for (const call of message.toolCall?.functionCalls ?? []) {
       if (!call.id || !call.name || this.cancelled.has(call.id) || this.pending.has(call.id) || this.handled.has(call.id)) continue
@@ -144,7 +159,11 @@ export class LiveSession {
         if (call.name === 'alter_chat' && result && typeof result === 'object' && 'conversationId' in result && typeof result.conversationId === 'string') this.options.conversationId = result.conversationId
         if (!this.stopped && !this.cancelled.has(id)) this.connection?.sendToolResponse({ functionResponses: [{ id, name: call.name, response: { result } }] })
       } catch (error) {
-        if (!this.stopped && !this.cancelled.has(id)) this.connection?.sendToolResponse({ functionResponses: [{ id, name: call.name, response: { error: error instanceof Error ? error.message : 'The request failed. Ask the user to retry.' } }] })
+        if (!this.stopped && !this.cancelled.has(id)) {
+          const message = error instanceof Error ? error.message : 'The request failed. Please try again.'
+          this.options.onError(message)
+          this.connection?.sendToolResponse({ functionResponses: [{ id, name: call.name, response: { error: message } }] })
+        }
       } finally { this.pending.delete(id); this.handled.add(id) }
     }
   }
@@ -180,7 +199,7 @@ export class LiveSession {
       if (this.output) this.options.onTranscript(this.output, 'alter', true)
       this.input = ''; this.output = ''
     }
-    this.stopped = true; clearTimeout(this.deadline); clearTimeout(this.playbackTimer)
+    this.stopped = true; clearTimeout(this.deadline); clearTimeout(this.playbackTimer); clearTimeout(this.fallbackTimer)
     this.abort.abort()
     this.clearPlayback(); const connection = this.connection; this.connection = undefined; connection?.close()
     this.stream?.getTracks().forEach((track) => track.stop()); this.stream = undefined

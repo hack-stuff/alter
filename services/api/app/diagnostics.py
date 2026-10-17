@@ -8,6 +8,32 @@ import traceback
 from uuid import uuid4
 
 
+def report_unhandled_request(exc):
+    """Log only exception metadata; request text and provider messages stay private."""
+    reference = uuid4().hex[:12]
+    print(
+        json.dumps(
+            {
+                "severity": "ERROR",
+                "event": "unhandled_request_failed",
+                "reference": reference,
+                "exceptionType": type(exc).__name__,
+                "frames": [
+                    {
+                        "file": Path(frame.filename).name,
+                        "line": frame.lineno,
+                        "function": frame.name,
+                    }
+                    for frame in traceback.extract_tb(exc.__traceback__)[-10:]
+                ],
+            }
+        ),
+        file=sys.stderr,
+        flush=True,
+    )
+    return reference
+
+
 def report_agent_failure(exc, settings):
     reference = uuid4().hex[:12]
     code = getattr(exc, "code", None)

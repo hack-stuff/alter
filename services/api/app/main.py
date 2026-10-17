@@ -82,14 +82,16 @@ def create_app(settings=None, engine=None):
             request._body = bytes(data)
         try:
             return await call_next(request)
-        except Exception:
-            # Do not let provider exception strings reach Uvicorn logs or the browser.
+        except Exception as exc:
+            from app.diagnostics import report_unhandled_request
+
+            reference = report_unhandled_request(exc)
             return JSONResponse(
                 {
                     "detail": {
                         "error": {
                             "code": "SERVICE_UNAVAILABLE",
-                            "message": "The request could not be completed. Please contact the administrator.",
+                            "message": f"The request could not be completed. Please contact the administrator. Reference: {reference}",
                         }
                     }
                 },

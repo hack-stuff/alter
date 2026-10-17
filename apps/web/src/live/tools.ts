@@ -1,7 +1,7 @@
 import { api } from '../api/client'
 import { meetingApi } from '../api/meetings'
 import { planApi } from '../api/plans'
-import { workSurface, type WorkSurface } from '../agent/navigation'
+import { designEdit, requestedCard, workSurface, type WorkSurface } from '../agent/navigation'
 import type { LiveMode } from './modes'
 
 export interface ToolContext { mode: LiveMode; targetId?: string; conversationId?: string; meetingId?: string; draftOnly?: boolean; onNavigate?: (screen: WorkSurface) => void; onResult: (result: unknown, tool: string, input: string) => void }
@@ -17,16 +17,22 @@ export async function dispatchLiveTool(name: string, args: Record<string, unknow
   let input: string
   if (name === 'alter_chat') {
     input = text(args, 'message')
+    if (designEdit(input) && context.onNavigate) {
+      const current = await planApi.get()
+      const updated = await planApi.revise(current.id, current.revision, input)
+      context.onNavigate('plan')
+      return { navigation: 'plan', changed: updated.revision !== current.revision, revision: updated.revision, explanation: updated.explanation, instruction: 'The private design draft is open. Publishing still requires review.' }
+    }
     const destination = workSurface(input)
     if (destination && context.onNavigate) {
       context.onNavigate(destination)
       return { navigation: destination, instruction: 'The requested work surface has opened. No work was published or sent.' }
     }
-    result = await api.chat(input, context.conversationId, 'voice')
+    result = await api.chat(requestedCard(input) === 4 ? "Ask Rahul's Alter to confirm the launch date" : input, context.conversationId, 'voice')
     context.conversationId = (result as { conversationId: string }).conversationId
   } else if (name === 'revise_diagram') {
-    const id = text(args, 'planId')
-    if (id !== context.targetId) throw new Error('Only the open design can be edited.')
+    const id = context.targetId
+    if (!id || (args.planId !== undefined && text(args, 'planId') !== id)) throw new Error('Only the open design can be edited.')
     input = text(args, 'instruction')
     const current = await planApi.get(id)
     result = await planApi.revise(id, current.revision, input)

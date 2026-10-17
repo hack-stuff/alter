@@ -19,7 +19,7 @@ from app.util import iso, now
 TOOLS = {
     "diagram": (
         "revise_diagram",
-        {"planId": "Open design plan ID", "instruction": "Requested design edit"},
+        {"instruction": "Requested design edit to the already open private plan"},
     ),
     "chat": ("alter_chat", {"message": "Work request"}),
     "revise": (

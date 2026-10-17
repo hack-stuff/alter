@@ -8,11 +8,24 @@ from types import SimpleNamespace
 from google.auth.exceptions import DefaultCredentialsError, RefreshError
 import pytest
 
-from app.diagnostics import report_live_failure
+from app.diagnostics import report_live_failure, report_unhandled_request
 
 
 class ProviderFailure(Exception):
     code = 403
+
+
+def test_unhandled_request_log_has_reference_without_request_text(capsys):
+    try:
+        raise RuntimeError("private-token; prompt=private-question")
+    except RuntimeError as exc:
+        reference = report_unhandled_request(exc)
+    log = json.loads(capsys.readouterr().err)
+    assert log["event"] == "unhandled_request_failed"
+    assert log["reference"] == reference
+    assert log["exceptionType"] == "RuntimeError"
+    assert "private-token" not in json.dumps(log)
+    assert "private-question" not in json.dumps(log)
 
 
 @pytest.mark.parametrize(

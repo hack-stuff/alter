@@ -23,7 +23,7 @@ const VOICE_RULES =
 export const MODES: Record<LiveMode, ModeConfig> = {
   diagram: {
     systemInstruction: `Help edit the open private design. Call revise_diagram for edits. ${VOICE_RULES}`,
-    tools: [tool('revise_diagram', 'Edit the open saved design draft. This never publishes or approves it.', { planId: str, instruction: str })],
+    tools: [tool('revise_diagram', 'Edit the open saved design draft. This never publishes or approves it.', { instruction: str })],
   },
   chat: {
     systemInstruction: `You are the user's Alter (AI), their personal work representative. Pass every request to alter_chat. ${VOICE_RULES}`,

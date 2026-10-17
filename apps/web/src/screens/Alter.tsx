@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, MOCK, httpCall } from '../api/client'
 import { dayApi, type Day } from '../api/day'
-import { workSurface } from '../agent/navigation'
+import { designEdit, requestedCard, workSurface } from '../agent/navigation'
+import { dispatchLiveTool } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
 import { VoiceControl } from '../components/VoiceControl'
@@ -111,6 +112,17 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       setDraft('')
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your message. Please try again.'); setDraft(text) }
     finally { setBusy(false) }
+  }
+
+  async function recoverSpokenAction(text: string) {
+    if (!workSurface(text) && !designEdit(text) && requestedCard(text) !== 4) return
+    setError('')
+    try {
+      await dispatchLiveTool('alter_chat', { message: text }, {
+        mode: 'chat', conversationId, onNavigate: onOpen,
+        onResult: (value, _tool, input) => receive(value as { conversationId: string; reply: Message }, input),
+      })
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete that voice action. Please try again.') }
   }
 
   const conversation = streamedMessages && streamedMessages.id === conversationId && streamedMessages.items.length ? streamedMessages.items : messages
@@ -265,7 +277,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       </div>
     </div>
 
-    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active && ready} greet={!greetedBefore.current} onNavigate={onOpen} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
+    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active && ready} greet={!greetedBefore.current} onNavigate={onOpen} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
 
     <div className="fx-ticker" aria-hidden="true">
       {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}
