@@ -233,6 +233,7 @@ html { scroll-padding-bottom: 96px; }
 .voice-fallback { display: flex; gap: 8px; padding: 8px; border-radius: 14px; background: var(--sheet); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
 .voice-control { display: grid; gap: 6px; }
 .voice-inline-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.voice-closed .voice-inline-bar { justify-content: center; }
 .voice-inline-bar .voice-indicator { width: 28px; height: 28px; }
 .voice-lock { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
 
