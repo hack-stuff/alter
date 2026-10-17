@@ -1,20 +1,30 @@
 # Alter
 
 **Everyone on a team gets their own Alter: an AI representative that answers teammates and their
-Alters within the limits you set, and acts in Google Docs, Drive, Sheets, Calendar and Gmail only
-when you approve.**
+Alters within the limits you set, and works in Google Docs, Drive, Sheets and Calendar for you.
+Anything that leaves the team, like sending an email, waits until you say so.**
 
 Built by Team Cold Silicon for the Google AI Builder Cup 2026, Theme 5 (Future of Work).
 All people, projects and data in this repository are fictional.
 
 > **Project status:** hackathon prototype. Local simulation and the connected Google/voice path
-> have both been exercised; the connected build is deployed at [alter-48b59.web.app](https://alter-48b59.web.app/).
+> have both been exercised; the connected build is deployed at [myalter.web.app](https://myalter.web.app/).
 > Some meeting and notification steps still require operator setup and verification.
 
-What's new: the app now opens on a guided **workday**. You step into Priya's day as product lead,
-hear a spoken briefing from your Alter, edit a login-flow design by voice, join a team meeting with
-Rahul's Alter and approve the follow-up work. [docs/connected-workday.md](docs/connected-workday.md)
-describes how this works and how to set it up.
+What's new:
+
+- **A redesigned app.** The "Quiet Desk" design from [docs/design-brief.md](docs/design-brief.md):
+  an icon rail on laptops and a bottom bar on phones, a docked voice bar, humans as circles and
+  Alters as amber squircles, Google app icons on files and sources, light and dark themes.
+- **Your Alter does the work.** Doc, sheet and calendar changes it drafts are applied straight
+  away and kept as a record. Emails wait as drafts until you approve them, or just say "send it".
+  You can also say or type "approve it" or "reject that email".
+- **Instant navigation by voice or text.** "Open approvals", "show me the calendar proposal" or
+  "show the retry node on the canvas" switch screens as soon as the words are recognised, and
+  highlight the item. The voice session stays on while it moves you between screens.
+- **The guided workday.** You step into Priya's day as product lead, hear a spoken briefing, edit a
+  login-flow design by voice, join a team meeting with Rahul's Alter and send the follow-up.
+  [docs/connected-workday.md](docs/connected-workday.md) describes how this works and how to set it up.
 
 ## Description
 
@@ -24,9 +34,9 @@ rules they set.
 
 - **Ask a teammate's Alter.** "Why did we switch to one-tap sign-in?" gets an answer with sources
   from Rahul's notes, even while Rahul is on leave.
-- **Delegate work.** Ask your Alter to update the status doc, add a tracker row, book a meeting or
-  email the team. It drafts a proposal with a before/after preview. Nothing changes in Google
-  until you press **Approve**.
+- **Delegate work.** Ask your Alter to update the status doc, add a tracker row or book a meeting,
+  and it does it, leaving a before/after record you can inspect. Emails to the team are drafted
+  and wait for you: press **Approve** or say "send it".
 - **Stay in control.** Each person sets what their Alter may share, and with whom. Requests it
   can't answer, such as committing to a date for someone else, become questions for that person.
 - **Alters talk to each other.** One Alter asks another over the
@@ -34,8 +44,8 @@ rules they set.
   checked against the owner's rules, and recorded with a receipt.
 - **Voice.** Your Alter greets you with a spoken briefing of your day. Talk to it, revise a
   proposal or dictate a reply with [Gemini Live](https://ai.google.dev/gemini-api/docs/live),
-  relayed through the API, so no Gemini API key is needed. Approving always needs the on-screen
-  button.
+  relayed through the API, so no Gemini API key is needed. Say "open approvals", "send it" or
+  "reject that" and it does it.
 - **Design by voice.** A saved design canvas (a login-flow diagram) that you edit by voice or text,
   with numbered revisions and undo. After you review it, it's published as a Google Docs
   specification.
@@ -133,7 +143,8 @@ Secret Manager.
 
 ### 3. Cloud deployment
 
-The team demo is deployed at [alter-48b59.web.app](https://alter-48b59.web.app/). A separate
+The current build is deployed at [myalter.web.app](https://myalter.web.app/) (Google Cloud
+project `x-pathway-511910-q0`; the Hosting site is `myalter`). A separate
 deployment needs a billing-enabled Google Cloud project with Firebase, Firestore, Gemini
 Enterprise Agent Platform, and a demo Google account for Docs, Drive, Sheets, Calendar and Gmail.
 Voice runs through the API's native-audio relay, which uses the service's own Google Cloud
@@ -167,27 +178,28 @@ launch. You can also type or say these:
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | "Why did we switch to one-tap sign-in?"        | Your Alter answers with links to its sources.                                                                    |
 | "Ask Rahul's Alter to confirm the launch date" | Rahul is on leave and committing to a date is his call, so his Alter asks him instead of answering.              |
-| "Add a QA update to the status doc"            | A document change appears in the work panel with a before/after preview. Approve, reject, or ask for a revision. |
-| "Book 30 min with Meera on Thursday"           | A calendar proposal. It's refused if either of you is already busy then.                                         |
-| "Email the team a QA summary"                  | An email draft to teammates' inboxes. External addresses are always blocked.                                     |
+| "Add a QA update to the status doc"            | The status doc is updated right away; the change and its before/after record appear in the conversation.        |
+| "Book 30 min with Meera on Thursday"           | The event is added to the team calendar. It's refused if either of you is already busy then.                     |
+| "Email the team a QA summary"                  | An email draft to teammates' inboxes. Say "send it" or press **Approve** to send. External addresses are blocked. |
+| "Open approvals" / "show the retry node"       | The screen switches immediately and the item is highlighted.                                                      |
 
 On the design canvas, try "Add a retry state if sign-in fails and connect it back to one-tap",
 then **Undo last edit** or **Review publication**.
 
-Everything else is in the **More** menu:
+The rail (the bottom bar and its **More** sheet on phones) holds every screen. You can also ask
+your Alter to open any of them:
 
-- **Ask & delegate:** your Alter screen
-- **Live: Team sync:** the meeting companion. It asks Rahul's Alter questions, records the
-  conversation, opens a saved Google Meet link and connects a recording rig
-- **Shared plan:** the design canvas
-- **Waiting on you:** every proposed change waiting for your decision
-- **Team decisions:** questions other people's Alters need you to answer
-- **The team's Alters:** teammates and their status, the invite link, and asking someone's Alter
-  directly
+- **Home:** your Alter, today's agenda, what's waiting on you, and the ask bar
+- **Canvas:** the login-flow design canvas
+- **Meeting:** the meeting companion. It asks Rahul's Alter questions, records the
+  conversation, opens a saved Google Meet link and connects a recording rig. Its **Meetings** tab
+  lists recorded meetings and their prepared follow-up
+- **Approvals:** drafts waiting for you (emails) and a record of changes your Alter made
+- **Decisions:** questions other people's Alters need you to answer
+- **Team:** teammates and their Alters, the invite link, and asking someone's Alter directly
 - **Work log:** what happened while you were away, each with a receipt of the sources and rules used
-- **Meetings:** recorded meetings and their prepared follow-up for review
-- **Files:** the workspace's Google files and your team inbox
 - **Rules & memory:** what your Alter knows, what it may share, your email and phone notifications
+- **Files:** the workspace's Google files and your team inbox
 
 Opening a link in Google Meet does not put an AI into the call. Joining Meet as "Rahul's Alter"
 needs the OBS and audio-routing setup in
@@ -255,7 +267,9 @@ code; it matches the server log entry.
 - [X] Set up the Google Cloud and Firebase project, Agent Platform models and the demo Google account
 - [X] Run the real-model and native-audio tests against Agent Platform
 - [X] Deploy the API to Cloud Run and the app to Firebase Hosting
-- [ ] Deploy the latest workday, meeting and notification changes (Cloud Tasks queue, Firestore indexes)
+- [X] Deploy the latest workday, meeting and notification changes (Cloud Tasks queue, Firestore indexes)
+- [X] Redesign the web app to the Quiet Desk design brief
+- [ ] Deploy the autonomous-Alter behavior and voice navigation (API and web)
 - [ ] Run the Firestore security rules tests with the Firebase emulator
 - [ ] Set Agent Platform quotas and a billing budget with alerts
 - [ ] Check phone notifications, Search indexing and real Google writes after redeploying

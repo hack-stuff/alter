@@ -6,7 +6,7 @@ The existing endpoints and fixture shapes remain compatible. The integrated impl
 
 - `POST/GET /v1/meetings`, `GET /v1/meetings/{id}`, immutable segment uploads, finalize, bundle revision, exact-revision bundle approval, and pause/resume/cancel/retry commands. Clients read owner-only meeting headers; transcript segments and internal jobs are server-only.
 - A separately selected one-use continuation grant, approved alongside the concrete review. It permits only the represented Alter's production-readiness lookup and the corresponding field in the workspace status Doc, expires after one hour, and can be revoked. Other writes require their existing explicit owner approval. Every automated effect still uses the policy gate, revision checks, a receipt and reconciliation.
-- `POST /v1/live/sessions` and `/v1/live/connect`: the preferred ADC-backed Vertex native-audio relay. Tools are restricted by mode and target; voice never approves. The old `/v1/live/token` service is an explicitly selected legacy alternative.
+- `POST /v1/live/sessions` and `/v1/live/connect`: the preferred ADC-backed Vertex native-audio relay. Tools are restricted by mode and target. The owner's chat session also has `navigate_to` (client-side screen changes) and `decide_proposal` (approve or reject a waiting draft when the owner says so). The old `/v1/live/token` service is an explicitly selected legacy alternative.
 - `POST /v1/meetings/{id}/room`: twenty-minute access for a consenting recording rig. The credential can only upload that meeting's transcript, ask its represented Alter and obtain a scoped huddle session. It cannot finalize, approve, edit memory/rules or read the organizer's other work.
 - Owner-only in-app notifications, device registration for FCM, notification deep links, source imports/versioning, memory editing/audiences/evidence versions, and a provider-backed artifact refresh endpoint.
 - Durable meeting jobs with a transactional outbox, Cloud Tasks, leases, deadlines and bounded retries. Current chat/provisioning/welcome execution keeps its earlier mechanism; the durable coordinator's scope is explicit.
@@ -95,7 +95,7 @@ workspaces/{wid}/conversations/{cid}/messages/{n}
   { from: "human"|"alter", text, citations[], approvalIds[], traceIds[], ts }
 workspaces/{wid}/conversations/{cid}/events/{n}  # live progress: "Checking Rahul's Alter…", "Drafting doc…"
   { kind: thinking|tool|a2a|approval, label, ts }
-workspaces/{wid}/approvals/{id}                  # an Alter wants to act; its owner decides
+workspaces/{wid}/approvals/{id}                  # a change the Alter made (applied) or an email waiting for the owner (proposed)
   { owner: mid, kind: doc_create|doc_edit|sheet_update|calendar_event|email,
     title, revision, preview:{ before?, after, diffs[] }, citations[], target?:{url},
     state: proposed|approved|applied|rejected|failed, externalUrl?, reason }

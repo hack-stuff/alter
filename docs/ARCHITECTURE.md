@@ -138,12 +138,12 @@ away_mode: answer_within_contract
 ### 3.5 Real workflow: Google Doc update
 - Target: a "Payments status" Google Doc created before the demo.
 - `update_doc` prepares a `batchUpdate` (insert text + named range for "Decisions" and "Dates").
-- **Never applied without approval.** The approval card shows a rendered before/after diff.
+- **Applied by the Alter, kept as a record.** Internal changes (docs, sheets, calendar) are applied as soon as the owner's Alter makes them; the card shows the before/after diff. Emails wait until the owner approves or says "send it".
 
 ### 3.6 Live voice review
 - live-bridge opens a Gemini Live session whose system prompt holds the pending approval, the diff and the citations.
 - Video input is the diff rendered as an image (768×768), resent when it changes.
-- Tools: `get_pending()`, `explain(claim_id)`, `approve(id)`, `reject(id, reason)`.
+- Tools (as built): `alter_chat`, `navigate_to(screen, target?, highlight?)` and `decide_proposal(decision, kind?)` in the owner's chat session; mode-scoped tools for revising, replying and huddles.
 
 ---
 
