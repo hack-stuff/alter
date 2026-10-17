@@ -60,6 +60,10 @@ export const LEGACY_SURFACES: Record<WorkSurface, ScreenId> = { meet: 'meeting',
 
 const verb = /^(?:(?:hey|ok|okay|so)[, ]+)?(?:alter[, ]+)?(?:(?:please|can you|could you|would you|will you|i want to|i'd like to|let'?s|let me|now|and)\s+)*(?:open|show(?: me)?|view|see|join|go(?: back)? to|take me(?: back)? to|bring (?:me )?up|pull up|navigate to|switch to|jump to|head to|back to|shape)\b/i
 const negation = /\b(?:don'?t|do not|never|not now|no need|stop|cancel)\b/i
+export function startMeetingIntent(input: string): boolean {
+  const text = input.trim()
+  return text.length <= 160 && !negation.test(text) && /\b(?:start|create|launch|begin|set up)\s+(?:(?:a|the|our|my|new)\s+)*(?:google\s+)?(?:meet(?:ing)?|call|team sync)\b/i.test(text)
+}
 // Order matters: more specific screens first ("team decisions" before "team").
 const SCREEN_WORDS: [ScreenId, RegExp][] = [
   ['decisions', /\b(?:decisions?|escalations?|team decisions|questions? (?:for|waiting on) me)\b/i],

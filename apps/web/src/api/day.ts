@@ -27,4 +27,6 @@ export const dayApi = {
       : httpCall('GET', '/day'),
   setMeetUrl: (url: string): Promise<{ meetUrl: string }> =>
     httpCall('PUT', '/day/meet-link', { url }),
+  createMeet: (): Promise<{ meetUrl: string }> =>
+    httpCall('POST', '/day/meet'),
 }

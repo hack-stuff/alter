@@ -22,6 +22,8 @@ export function MeetCompanion({
   onBack,
   onReview,
   active = true,
+  ready = true,
+  startRequest = 0,
 }: {
   members: Member[]
   owner?: string
@@ -31,6 +33,8 @@ export function MeetCompanion({
   onReview: (id: string) => void
   /** Hidden but mounted: no microphone until the companion is on screen. */
   active?: boolean
+  ready?: boolean
+  startRequest?: number
 }) {
   const key = `alter.live.meeting.${workspaceId}.${memberId}`
   const [meetingId, setMeetingId] = useState(
@@ -38,6 +42,8 @@ export function MeetCompanion({
   )
   const [meeting, setMeeting] = useState<MeetingDetail>()
   const [meetUrl, setMeetUrl] = useState('')
+  const [meetChecking, setMeetChecking] = useState(true)
+  const [meetError, setMeetError] = useState('')
   const [urlDraft, setUrlDraft] = useState('')
   const [consent, setConsent] = useState(false)
   const [question, setQuestion] = useState('')
@@ -53,23 +59,47 @@ export function MeetCompanion({
   const [unsaved, setUnsaved] = useState(0)
   const queue = useRef<Segment[]>([])
   const upload = useRef<Promise<void> | undefined>(undefined)
+  const launching = useRef(false)
+  async function launchMeet() {
+    if (launching.current) return
+    launching.current = true
+    setMeetError('')
+    try {
+      const value = await dayApi.createMeet()
+      setMeetUrl(value.meetUrl)
+      setUrlDraft(value.meetUrl)
+      window.location.assign(value.meetUrl)
+    } catch (e) {
+      setMeetError(e instanceof Error ? e.message : 'Google Meet could not start. Retry after checking Calendar access.')
+      launching.current = false
+    }
+  }
   useEffect(() => {
+    if (startRequest <= 0) return
+    const timer = window.setTimeout(() => void launchMeet(), 0)
+    return () => window.clearTimeout(timer)
+  }, [startRequest])
+  useEffect(() => {
+    if (!ready) return
     let stopped = false
     void dayApi
       .get()
-      .then((day) => {
+      .then(async (day) => {
+        const link = day.meetUrl ? { meetUrl: day.meetUrl } : await dayApi.createMeet()
         if (!stopped) {
-          setMeetUrl(day.meetUrl)
-          setUrlDraft(day.meetUrl)
+          setMeetUrl(link.meetUrl)
+          setUrlDraft(link.meetUrl)
+          setMeetError('')
         }
       })
       .catch((e) => {
-        if (!stopped) setError(e.message)
+        if (!stopped) setMeetError(e instanceof Error ? e.message : 'Google Meet setup failed.')
       })
+      .finally(() => { if (!stopped) setMeetChecking(false) })
     return () => {
       stopped = true
     }
-  }, [])
+  }, [ready])
   useEffect(() => {
     if (!meetingId) return
     try {
@@ -199,7 +229,6 @@ export function MeetCompanion({
     { id: memberId, name: owner, note: 'Your Alter · taking notes and preparing your review' },
     ...members.filter((member) => member.id !== memberId && (member.status === 'on_leave' || member.status === 'away' || member.status === 'in_meetings')).slice(0, 2).map((member) => ({ id: member.id, name: member.name, note: member.status === 'on_leave' ? 'Covering while away' : 'Available while busy' })),
   ]
-  const meetDestination = meetUrl || 'https://meet.google.com/'
   return (
     <section className="screen meeting-screen">
       <header className="meeting-head meeting-review-head">
@@ -210,9 +239,10 @@ export function MeetCompanion({
             <h1>Team sync</h1>
           </div>
         </div>
-        <a href={meetDestination} target="_blank" rel="noreferrer" className="primary meet-launch"><AppIcon app="meet" />{meetUrl ? 'Join Google Meet' : 'Start in Google Meet'} ↗</a>
+        {meetUrl ? <a href={meetUrl} target="_blank" rel="noreferrer" className="primary meet-launch"><AppIcon app="meet" />Join Google Meet ↗</a> : <button type="button" className="primary meet-launch" disabled={meetChecking || launching.current} onClick={() => void launchMeet()}><AppIcon app="meet" />{meetChecking ? 'Creating Google Meet…' : 'Start Google Meet'} ↗</button>}
       </header>
-      <p className="hint meeting-note">Meet runs in Google Meet. Return here to capture a consenting conversation and review what your Alter prepares.</p>
+      <p className="hint meeting-note">Your call opens in Google Meet. Return here to capture a consenting conversation and review what your Alter prepares.</p>
+      {meetError && <div className="notice is-error" role="alert"><span>{meetError}</span><button type="button" onClick={() => void launchMeet()}>Retry Meet setup</button></div>}
       <div className="meeting-review-steps" aria-label="Meeting workflow"><span><strong>1</strong> Meet in Google Meet</span><span><strong>2</strong> Capture with consent</span><span><strong>3</strong> Review before sharing</span></div>
       <section className="sheet meeting-alter-lineup" aria-label="Alters ready for the demo">
         <div><p className="eyebrow">Ready in Alter</p><h2>Your meeting team</h2><p className="hint">These Alters are available here. Google Meet participants are separate; connect the room audio below to bring an Alter into the call.</p></div>
@@ -277,7 +307,7 @@ export function MeetCompanion({
           {capturing && meeting && <RoomSetup meetingId={meeting.id} memberId="rahul" />}
           <details className="sheet meet-url-box">
             <summary>{meetUrl ? 'Change the linked Google Meet' : 'Link the Google Meet you started'}</summary>
-            <form onSubmit={(e) => { e.preventDefault(); void action('Saving the meeting link…', async () => { const value = await dayApi.setMeetUrl(urlDraft); setMeetUrl(value.meetUrl) }) }}>
+            <form onSubmit={(e) => { e.preventDefault(); void action('Saving the meeting link…', async () => { const value = await dayApi.setMeetUrl(urlDraft); setMeetUrl(value.meetUrl); setMeetError('') }) }}>
               <label>Existing Google Meet link<input value={urlDraft} onChange={(e) => setUrlDraft(e.target.value)} placeholder="https://meet.google.com/abc-defg-hij" /></label>
               <button disabled={!!busy}>Save Meet link</button>
             </form>

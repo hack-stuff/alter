@@ -50,6 +50,25 @@ test('the fast-path parser only fires on clear navigation requests', async ({ pa
   ])
 })
 
+test('starting a Meet is distinct from opening its review', async ({ page }) => {
+  await page.goto('/')
+  const decisions = await page.evaluate(async () => {
+    const { startMeetingIntent } = await import('/src/agent/navigation.ts')
+    return ['Start the meeting', 'Please create a Google Meet', 'Begin our team sync', 'Open the meeting review', "Don't start the meeting"].map(startMeetingIntent)
+  })
+  expect(decisions).toEqual([true, true, true, false, false])
+})
+
+test('a spoken start command creates a Meet link and opens it without a click', async ({ page }) => {
+  await page.route('**/v1/day/meet', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ meetUrl: 'https://meet.google.com/abc-defg-hij' }) }))
+  await page.route('https://meet.google.com/abc-defg-hij', (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Google Meet test call</h1>' }))
+  await withLiveHarness(page)
+  await join(page)
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Start the meeting' }, turnComplete: true } }))
+  await expect(page).toHaveURL('https://meet.google.com/abc-defg-hij')
+  await expect(page.getByRole('heading', { name: 'Google Meet test call' })).toBeVisible()
+})
+
 test('a spoken "open" moves the screen from the streaming transcript, before any tool call', async ({ page }) => {
   await withLiveHarness(page)
   await join(page)

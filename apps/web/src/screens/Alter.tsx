@@ -4,7 +4,7 @@ import { alterNav } from '../agent/navigator'
 import { parseDecision, pickApproval, type DecisionIntent } from '../agent/decisions'
 import { api, MOCK, httpCall } from '../api/client'
 import { dayApi, type Day } from '../api/day'
-import { canvasEdit, requestedCard, parseNavigation, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
+import { canvasEdit, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
 import { dispatchLiveTool } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
@@ -47,7 +47,7 @@ interface Offer {
   run: () => void
 }
 
-export function Alter({ name, workspaceId, members, meId, approvals, escalations, events, active = true, ready = true, setupState, retryingSetup = false, setupRetryError = '', onRetrySetup, onUpdate, onRefresh, onNavigate }: {
+export function Alter({ name, workspaceId, members, meId, approvals, escalations, events, active = true, ready = true, setupState, retryingSetup = false, setupRetryError = '', onRetrySetup, onUpdate, onRefresh, onNavigate, onStartMeeting }: {
   name: string
   workspaceId: string
   members: Member[]
@@ -64,6 +64,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   onUpdate: (a: Approval) => void
   onRefresh: () => void
   onNavigate: (action: NavigationAction, source?: NavigationSource) => void
+  onStartMeeting: () => void
 }) {
   const onOpen = (surface: WorkSurface) => onNavigate(navigateTo(LEGACY_SURFACES[surface]))
   const [day, setDay] = useState<Day>()
@@ -126,6 +127,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
 
   async function send(text: string) {
     if (busy || !text.trim()) return
+    if (startMeetingIntent(text)) { onStartMeeting(); setDraft(''); return }
     const decision = parseDecision(text)
     if (decision && pickApproval(approvals, decision)) {
       setBusy(true); setError('')
@@ -260,6 +262,8 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   useEffect(() => { offersRef.current = OFFERS })
 
   const routeRef = useRef<(phrase: string) => void>(() => {})
+  const startMeetingRef = useRef(onStartMeeting)
+  useEffect(() => { startMeetingRef.current = onStartMeeting })
   useEffect(() => {
     routeRef.current = (phrase) => {
       const text = phrase.toLowerCase()
@@ -275,6 +279,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
       onInterim: (phrase) => setHeard(phrase.toLowerCase()),
       onFinal: (phrase) => {
         setHeard('')
+        if (startMeetingIntent(phrase)) { startMeetingRef.current(); return }
         const match = offersRef.current.find((offer) => offer.hot.test(phrase.toLowerCase()))
         if (match) { pickRef.current(match); return }
         routeRef.current(phrase)
@@ -400,6 +405,6 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     </section>
 
     {/* The Voice Bar lives on the page, not on Home, so the Alter keeps talking while it moves between screens. */}
-    {liveVoice && createPortal(<VoiceControl dock mode="chat" active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={(text) => void send(text)} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
+    {liveVoice && createPortal(<VoiceControl dock mode="chat" active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={(text) => void send(text)} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
   </section>
 }

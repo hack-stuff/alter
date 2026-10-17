@@ -68,6 +68,7 @@ export default function App() {
   const [resetting, setResetting] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [generation, setGeneration] = useState(0)
+  const [meetingStartRequest, setMeetingStartRequest] = useState(0)
   const [more, setMore] = useState(false)
   const [error, setError] = useState('')
   const [retryingSetup, setRetryingSetup] = useState(false)
@@ -100,6 +101,7 @@ export default function App() {
   function joined(join: JoinResult, name: string) { setSession({ join, name }); setOverrides({}); go('home') }
   function updateApproval(updated: Approval) { setOverrides((cards) => ({ ...cards, [updated.id]: updated })) }
   function go(next: View) { setMore(false); window.scrollTo({ top: 0 }); if (next === 'meetings') showView(next); else navigateTo(navAction(next)) }
+  function startMeeting() { go('meeting'); setMeetingStartRequest((value) => value + 1) }
   async function retrySetup() {
     if (retryingSetup) return
     setRetryingSetup(true); setSetupRetryError('')
@@ -199,6 +201,7 @@ export default function App() {
             onUpdate={updateApproval}
             onRefresh={refresh}
             onNavigate={(action, source) => navigateTo(action, source)}
+            onStartMeeting={startMeeting}
           />
         </div>
         {(screen === 'meeting' || screen === 'meetings') && <div className="segmented page-tabs" role="tablist" aria-label="Meeting views">
@@ -212,6 +215,8 @@ export default function App() {
             workspaceId={session.join.workspaceId}
             memberId={session.join.memberId}
             active={screen === 'meeting'}
+            ready={data.workspace?.state === 'ready' || (MOCK && !data.workspace?.state)}
+            startRequest={meetingStartRequest}
             onReview={(id) => { sessionStorage.setItem('alter.open.meeting', id); showView('meetings'); setGeneration((g) => g + 1) }}
             onBack={() => go('home')}
           />

@@ -23,6 +23,7 @@ interface Props {
   /** When voice fails in the dock, typed text goes here instead. */
   onTextFallback?: (text: string) => void
   onTranscript?: (text: string) => void
+  onUserUtterance?: (text: string) => void
   onResult: (result: unknown, tool: string, input: string) => void
   onSpeaking?: (speaking: boolean) => void
   onCapture?: (text: string, kind: 'human' | 'alter') => void
@@ -92,7 +93,7 @@ export function VoiceControl(props: Props) {
       onState: (value) => { stateRef.current = value; setState(value); if (value === 'closed') setEnded(true); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
       onFirstSpeech: () => callbacks.current.onFirstSpeech?.(),
       onUnroutedUtterance: (text) => callbacks.current.onUnroutedUtterance?.(text),
-      onTranscript: (text, speaker, final) => { setLastSpeaker(speaker === 'user' ? 'user' : 'alter'); if (speaker === 'user') { setInput(text); if (final && props.draftOnly) callbacks.current.onTranscript?.(text) } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
+      onTranscript: (text, speaker, final) => { setLastSpeaker(speaker === 'user' ? 'user' : 'alter'); if (speaker === 'user') { setInput(text); if (final) { callbacks.current.onUserUtterance?.(text); if (props.draftOnly) callbacks.current.onTranscript?.(text) } } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
       onError: (message) => { setError(message); callbacks.current.onError?.(message) },
       onLevel: (value) => { setLevel(value); callbacks.current.onLevel?.(value) },
     })

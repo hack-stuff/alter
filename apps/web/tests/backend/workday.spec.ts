@@ -72,7 +72,7 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
     .first()
     .click()
   await page.getByRole('button', { name: /Join the team sync/ }).click()
-  await expect(page.getByRole('link', { name: 'Start in Google Meet', exact: false })).toHaveAttribute('href', 'https://meet.google.com/')
+  await expect(page.getByRole('button', { name: 'Start Google Meet', exact: false })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Priya's Alter")
   await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Rahul's Alter")
   await expect(

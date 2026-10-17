@@ -13,6 +13,9 @@ class LocalApps:
     def __init__(self, store, settings):
         self.store, self.settings = store, settings
 
+    def create_meet(self, wid, member):
+        raise error(503, "MEET_UNAVAILABLE", "This local demo simulates Google Calendar and cannot create a real Google Meet link. Connect the Google backend to start a call automatically.")
+
     def url(self, rid):
         return self.settings.service_url.rstrip("/") + "/local/files/" + rid
 

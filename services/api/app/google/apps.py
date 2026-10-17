@@ -55,6 +55,14 @@ class GoogleApps:
             end,
         )
 
+    def create_meet(self, wid, member):
+        return calendar.create_meet(
+            self.service("calendar", "v3"),
+            self.workspace(wid)["googleIds"]["calendar"],
+            wid,
+            member,
+        )
+
     def apply(self, wid, approval, member, caller):
         action = approval["action"]
         operation = f"{approval['id']}:{approval['revision']}"

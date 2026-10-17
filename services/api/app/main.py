@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from html import escape
 
-from fastapi import Depends, FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Header, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
@@ -240,6 +240,37 @@ def create_app(settings=None, engine=None):
 
         engine.store.atomic(save)
         return {"meetUrl": url}
+
+    @app.post("/v1/day/meet")
+    def create_meet(ctx=Depends(member)):
+        workspace = engine.store.get(f"workspaces/{ctx.workspace_id}")
+        if not workspace or workspace.get("state") != "ready":
+            raise error(409, "WORKSPACE_NOT_READY", "Finish Google setup before starting a meeting.")
+        path = f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}"
+        profile = engine.store.get(path)
+        if not profile:
+            raise error(404, "MEMBER_NOT_FOUND", "Your workspace membership could not be found.")
+        current = profile.get("meetUrl") or engine.settings.meet_url
+        if current:
+            return {"meetUrl": validate_meet_url(current)}
+        try:
+            url = validate_meet_url(engine.apps.create_meet(ctx.workspace_id, ctx.member_id))
+        except HTTPException:
+            raise
+        except Exception as exc:
+            from app.diagnostics import report_provision_failure
+            report_provision_failure(exc)
+            raise error(503, "MEET_CREATION_FAILED", "Google Meet could not create the call. Check Calendar conference permissions and retry.") from exc
+        if not url:
+            raise error(503, "MEET_CREATION_FAILED", "Google Meet did not return a usable join link. Retry shortly.")
+        def save(tx):
+            current_profile = tx.get(path)
+            if current_profile.get("meetUrl"):
+                return current_profile["meetUrl"]
+            tx.set(path, {**current_profile, "meetUrl": url})
+            return url
+
+        return {"meetUrl": engine.store.atomic(save)}
 
     @app.get("/v1/plans/{pid}")
     def get_plan(pid: str, ctx=Depends(member)):

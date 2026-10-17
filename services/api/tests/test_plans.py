@@ -222,6 +222,24 @@ def test_actual_agenda_and_meet_link_validation(team):
     )
 
 
+def test_meet_link_is_created_once_and_never_simulated(team, monkeypatch):
+    c, e, h, _ = team
+    unavailable = c.post("/v1/day/meet", headers=h)
+    assert unavailable.status_code == 503
+    assert unavailable.json()["detail"]["error"]["code"] == "MEET_UNAVAILABLE"
+    calls = []
+    def create(wid, mid):
+        calls.append((wid, mid))
+        return "https://meet.google.com/abc-defg-hij"
+    monkeypatch.setattr(e.apps, "create_meet", create)
+    first = c.post("/v1/day/meet", headers=h)
+    second = c.post("/v1/day/meet", headers=h)
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json() == {"meetUrl": "https://meet.google.com/abc-defg-hij"}
+    assert len(calls) == 1
+    assert c.get("/v1/day", headers=h).json()["meetUrl"] == first.json()["meetUrl"]
+
+
 def test_demo_day_is_isolated_resumable_and_not_director(system):
     c, e = system
     first = c.post("/v1/demo/day", headers={"X-Dev-Uid": "judge1"}).json()
