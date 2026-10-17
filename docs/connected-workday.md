@@ -52,7 +52,7 @@ CLI login alone does not refresh the credentials used by Python. A passing Cloud
 
 ## Deploy
 
-Use the updated `storyboard-workflows-redesign` branch. Existing browser sessions keep their current role; use a fresh browser profile/incognito session to try the new Priya entry without replacing existing work.
+Deploy from `main`. Existing browser sessions keep their current role; use a fresh browser profile/incognito session to try the new Priya entry without replacing existing work.
 
 Use the existing `infra/deploy-api.sh` exports and ignored `infra/api.env.yaml`. Preserve:
 
