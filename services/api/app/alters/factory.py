@@ -239,7 +239,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             payload = await asyncio.to_thread(
                 engine.brain.planner(ctx).draft_document, payload, observed
             )
-        progress("Drafting a proposal for your review…")
+        progress("Making the change…" if kind != "email" else "Drafting the email for you to send…")
         card = await asyncio.to_thread(
             engine.proposals.create,
             ctx,
@@ -248,11 +248,16 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
             "You asked your Alter to prepare this change.",
             citations(observed),
         )
+        card = await asyncio.to_thread(engine.autopilot, ctx, card)
         proposal_ids.append(card["id"])
         return {
             "approvalId": card["id"],
             "preview": card["preview"],
-            "state": "proposed",
+            "state": card["state"],
+            "externalUrl": card.get("externalUrl"),
+            "note": "Applied in the workspace."
+            if card["state"] == "applied"
+            else "Drafted. Ask the owner to say send (or approve) before it goes out.",
         }
 
     async def charge(callback_context, llm_request):
@@ -282,7 +287,7 @@ def build_alter(engine, ctx, member, *, serving=False, trace_id=None):
     mode = (
         "You are serving another member. Read-only tools and escalation are your entire authority."
         if serving
-        else "Your owner is driving. All external changes must be proposed for the approval button."
+        else "Your owner is driving. Doc, sheet and calendar changes you draft are applied immediately; emails wait until the owner says send. When the owner says approve, reject or send, the app handles it."
     )
     agent = LlmAgent(
         name="alter_" + member["id"],

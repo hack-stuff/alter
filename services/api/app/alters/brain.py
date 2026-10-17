@@ -190,8 +190,11 @@ class LocalBrain:
                 "approvalIds": [],
                 "traceIds": [],
             }
+        card = engine.autopilot(ctx, card)
         return {
-            "text": "I prepared a proposal. Review the content and press Approve or Reject.",
+            "text": "Done — I made that change in the workspace."
+            if card["state"] == "applied"
+            else "I drafted the email. Say send, or press Send, when it’s ready to go out.",
             "citations": card["citations"],
             "approvalIds": [card["id"]],
             "traceIds": [],

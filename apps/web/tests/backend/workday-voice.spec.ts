@@ -58,29 +58,29 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   await page.getByRole('button', { name: 'Step into Priya’s day' }).click()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
   expect(starts.at(-1)?.mode).toBe('chat')
-  // Live sometimes speaks a reply without calling its tool. The transcript
-  // must still open the requested card and hand the microphone to the canvas.
+  // Live sometimes speaks a reply without calling its tool. The streaming
+  // transcript alone opens the requested card, and the same voice session
+  // follows the user onto the canvas instead of reconnecting.
   send!({ serverContent: { inputTranscription: { text: 'Open card two' }, turnComplete: true } })
+  await expect(page.getByRole('heading', { name: 'Login journey', exact: true })).toBeVisible()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
-  await expect.poll(() => starts.at(-1)?.mode).toBe('diagram')
-  await expect.poll(() => closed.size).toBeGreaterThanOrEqual(1)
-  await expect.poll(() => active.size).toBe(1)
+  expect(starts.map((start) => start.mode)).toEqual(['chat'])
+  expect(active.size).toBe(1)
   await expect(page.getByRole('button', { name: 'End voice' })).toHaveCount(1)
-  expect(starts.at(-1)!.targetId).toMatch(/^login_/)
   send!({
     toolCall: {
       functionCalls: [
         {
           id: 'diagram-edit-1',
-          name: 'revise_diagram',
-          args: { instruction: 'Add a retry state if sign-in fails' },
+          name: 'alter_chat',
+          args: { message: 'Add a retry state if sign-in fails' },
         },
       ],
     },
   })
-  await expect(
-    page.getByRole('button', { name: /fallback Changed Retry sign-in/ }),
-  ).toBeVisible()
+  const retry = page.getByRole('button', { name: /fallback ✦ Added( by voice)? Retry sign-in/ })
+  await expect(retry).toBeVisible()
+  await expect(retry).toHaveClass(/nav-highlight/)
   await expect(page.getByText('Your saved design · Revision 2')).toBeVisible()
   send!({ serverContent: { inputTranscription: { text: 'Change the session timeout to 15 minutes' }, turnComplete: true } })
   await expect(page.getByText('Your saved design · Revision 3')).toBeVisible()
@@ -89,11 +89,9 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
     .getByRole('button', { name: 'Back to your Alter', exact: false })
     .first()
     .click()
-  await expect.poll(() => starts.at(-1)?.mode).toBe('chat')
-  await expect.poll(() => closed.size).toBeGreaterThanOrEqual(2)
-  await expect.poll(() => active.size).toBe(1)
+  expect(starts.map((start) => start.mode)).toEqual(['chat'])
+  expect(active.size).toBe(1)
   await page.getByRole('button', { name: /Join the team sync/ }).click()
-  await expect.poll(() => active.size).toBe(0)
   await page
     .getByLabel('The participants consent to transcript capture.')
     .check()

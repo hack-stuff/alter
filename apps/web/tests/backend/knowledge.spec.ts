@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { openScreen } from '../nav'
 
 test('source and memory controls preserve review and audience through corrections', async ({ page }, info) => {
   await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.7' : '127.0.0.6' })
   await page.goto('/')
   await page.getByLabel('Your name').fill('Knowledge demo')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
-  const nav = page.getByRole('navigation', { name: 'Alter' })
-  await nav.getByRole('button', { name: /^More/ }).click()
-  await nav.getByRole('button', { name: 'Rules & memory', exact: true }).filter({ visible: true }).click()
+  await openScreen(page, 'Rules')
   await page.getByLabel('Teach your Alter something').fill('Lighthouse uses the blue checklist.')
   await expect(page.getByLabel('Use new guidance')).toHaveValue('owner')
   await page.getByRole('button', { name: 'Teach', exact: true }).click()

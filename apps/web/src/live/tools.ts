@@ -1,32 +1,72 @@
 import { api } from '../api/client'
 import { meetingApi } from '../api/meetings'
 import { planApi } from '../api/plans'
-import { designEdit, requestedCard, workSurface, type WorkSurface } from '../agent/navigation'
+import { canvasEdit, isScreenId, navigateTo, parseNavigation, requestedCard, type HighlightState, type NavigationAction, type NavigationSource } from '../agent/navigation'
+import { alterNav, planUpdates, recentlyOpened } from '../agent/navigator'
+import type { Plan } from '../api/plans'
+import { parseDecision, type DecisionIntent } from '../agent/decisions'
 import type { LiveMode } from './modes'
 
-export interface ToolContext { mode: LiveMode; targetId?: string; conversationId?: string; meetingId?: string; draftOnly?: boolean; onNavigate?: (screen: WorkSurface) => void; onResult: (result: unknown, tool: string, input: string) => void }
-const allowed: Record<LiveMode, string> = { chat: 'alter_chat', revise: 'revise_approval', reply: 'respond_escalation', huddle: 'ask_alter', review: 'revise_meeting', diagram: 'revise_diagram' }
+export interface ToolContext { mode: LiveMode; targetId?: string; conversationId?: string; meetingId?: string; draftOnly?: boolean; onNavigate?: (action: NavigationAction, source?: NavigationSource) => void; onDecide?: (intent: DecisionIntent) => Promise<unknown>; onResult: (result: unknown, tool: string, input: string) => void }
+// Each mode may call only its own tools. No mode has a tool that approves, revises
+// or rejects a proposal on the user's behalf from navigation: those stay on-screen buttons.
+const allowed: Record<LiveMode, readonly string[]> = { chat: ['alter_chat', 'navigate_to', 'decide_proposal'], revise: ['revise_approval'], reply: ['respond_escalation'], huddle: ['ask_alter'], review: ['revise_meeting'], diagram: ['revise_diagram'] }
+const highlights: HighlightState[] = ['pulse', 'focus', 'none']
+
+/** Which node a revision added, or else the first one it changed. */
+function changedNode(before: Plan, after: Plan): string | undefined {
+  const added = after.nodes.find((node) => !before.nodes.some((old) => old.id === node.id))
+  if (added) return added.id
+  return after.nodes.find((node) => JSON.stringify(node) !== JSON.stringify(before.nodes.find((old) => old.id === node.id)))?.id
+}
 function text(args: Record<string, unknown>, key: string) {
   const value = args[key]
   if (typeof value !== 'string' || !value.trim() || value.length > 10_000) throw new Error('A valid message is required.')
   return value.trim()
 }
 export async function dispatchLiveTool(name: string, args: Record<string, unknown>, context: ToolContext): Promise<unknown> {
-  if (name !== allowed[context.mode]) throw new Error('This voice session cannot perform that action. Approval requires the on-screen button.')
+  if (!allowed[context.mode].includes(name)) throw new Error('This voice session cannot perform that action.')
+  if (name === 'decide_proposal') {
+    // The owner said approve, reject or send: decide the matching waiting draft.
+    if (!context.onDecide) throw new Error('Decisions are made from your own Alter.')
+    const decision = args.decision === 'reject' ? 'reject' : args.decision === 'approve' ? 'approve' : undefined
+    if (!decision) throw new Error('Say approve, send or reject.')
+    const kinds = ['email', 'calendar_event', 'doc', 'sheet_update'] as const
+    const kind = kinds.find((value) => value === args.kind)
+    return await context.onDecide({ decision, kind })
+  }
   let result: unknown
   let input: string
+  const go = (action: NavigationAction, source: NavigationSource) => context.onNavigate ? context.onNavigate(action, source) : alterNav.dispatch(action, source)
+  if (name === 'navigate_to') {
+    // Client-only: moves the view and highlights a target. Never touches data.
+    const screen = args.screen
+    if (!isScreenId(screen)) throw new Error('Unknown screen.')
+    const target = typeof args.target === 'string' && args.target.trim() ? args.target.trim().slice(0, 120) : undefined
+    const highlight = highlights.find((value) => value === args.highlight) ?? 'pulse'
+    const action = navigateTo(screen, target, highlight)
+    const already = recentlyOpened(action)
+    if (!already) go(action, 'voice-tool')
+    result = { navigation: screen, target: target ?? null, alreadyOpen: already, instruction: screen === 'approvals' ? 'The proposal is on screen for the user to inspect. Only the user can approve, revise or reject it, by pressing the on-screen buttons.' : 'The screen is open. Nothing was published, sent or approved.' }
+    return result
+  }
   if (name === 'alter_chat') {
     input = text(args, 'message')
-    if (designEdit(input) && context.onNavigate) {
+    const decision = parseDecision(input)
+    if (decision && context.onDecide) return await context.onDecide(decision)
+    if (canvasEdit(input, alterNav.current()) && context.onNavigate) {
       const current = await planApi.get()
       const updated = await planApi.revise(current.id, current.revision, input)
-      context.onNavigate('plan')
-      return { navigation: 'plan', changed: updated.revision !== current.revision, revision: updated.revision, explanation: updated.explanation, instruction: 'The private design draft is open. Publishing still requires review.' }
+      planUpdates.publish(updated)
+      go(navigateTo('canvas', changedNode(current, updated), 'pulse'), 'voice-tool')
+      return { navigation: 'canvas', changed: updated.revision !== current.revision, revision: updated.revision, explanation: updated.explanation, instruction: 'The private design draft is open with the change highlighted. Publishing still requires review.' }
     }
-    const destination = workSurface(input)
-    if (destination && context.onNavigate) {
-      context.onNavigate(destination)
-      return { navigation: destination, instruction: 'The requested work surface has opened. No work was published or sent.' }
+    const intent = parseNavigation(input)
+    if (intent && (intent.confidence === 'high' || requestedCard(input)) && context.onNavigate) {
+      // The transcript fast path usually opened this already; don't navigate twice.
+      const already = recentlyOpened(intent.action)
+      if (!already) go(intent.action, 'voice-tool')
+      return { navigation: intent.action.screen, target: intent.action.targetElementId ?? null, alreadyOpen: already, instruction: 'The requested screen has opened. No work was published, sent or approved.' }
     }
     result = await api.chat(requestedCard(input) === 4 ? "Ask Rahul's Alter to confirm the launch date" : input, context.conversationId, 'voice')
     context.conversationId = (result as { conversationId: string }).conversationId

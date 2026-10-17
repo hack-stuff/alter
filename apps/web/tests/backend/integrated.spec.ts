@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { openScreen, showMoreRequests } from '../nav'
 
 test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, invite and reset',async({page,browser,isMobile})=>{
   const errors:string[]=[]
@@ -9,12 +10,13 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   await expect(page.getByRole('heading',{name:"Alex's Alter"})).toBeVisible()
   await expect(page.getByText('Local development · simulated AI', {exact:false})).toBeVisible()
   await expect(page.getByRole('status').filter({hasText:'Setting up your team'})).toHaveCount(0)
-  async function nav(name:string){ const menu=page.getByRole('navigation',{name:'Alter'}); let button=menu.getByRole('button',{name,exact:false}).filter({visible:true}); if(!await button.count()){await menu.getByRole('button',{name:/^More/}).click();button=menu.getByRole('button',{name,exact:false}).filter({visible:true})};await button.click()}
-  await nav('ask')
-  await page.getByRole('button',{name:'Add a QA update to the status doc'}).click()
+  const nav = (name: string) => openScreen(page, name)
+  await nav('Home')
+  await showMoreRequests(page); await page.getByRole('button',{name:'Add a QA update to the status doc'}).click()
   await page.getByRole('button',{name:'Review proposal'}).click()
   const card=page.getByRole('article',{name:'Login revamp · QA update'}).filter({visible:true})
   await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Revise', exact: true }).click()
   await card.getByLabel('Revision instructions').fill('Add an iOS regression check.')
   await card.getByRole('button',{name:'Revise proposal'}).click()
   await expect(card.getByText('Document update · Revision 2')).toBeVisible()
@@ -24,7 +26,7 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   expect(fileUrl).toContain('/local/files/')
   const resource=await page.request.get(fileUrl!)
   expect(await resource.text()).toContain('iOS regression check')
-  await nav('the team')
+  await nav('Team')
   await page.getByRole('button',{name:"Ask Rahul's Alter"}).click()
   await page.getByLabel("Question for Rahul's Alter").fill('Why one-tap?')
   await page.getByRole('button',{name:'Send question'}).click()
@@ -48,7 +50,7 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   await guest.getByLabel('Your name').fill('Jamie')
   await guest.getByRole('button',{name:'Get my Alter'}).click()
   await expect(guest.getByRole('heading',{name:"Jamie's Alter"})).toBeVisible()
-  await nav('team decisions')
+  await nav('Decisions')
   const question=page.getByRole('article').filter({hasText:'Can QA commit'})
   await expect(question).toBeVisible()
   await question.getByLabel('Your reply').fill('I need another test run before choosing a date.')
@@ -57,12 +59,13 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   await expect(question.getByText('Your answer:',{exact:false})).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading',{name:"Alex's Alter"})).toBeVisible()
-  await nav('waiting')
+  await nav('Approvals')
   await expect(page.getByRole('article',{name:'Login revamp · QA update'}).getByRole('status')).toHaveText('Applied')
-  await nav('rules')
+  await nav('Rules')
   await page.getByRole('button',{name:'Reset Alter'}).click()
   await page.getByRole('button',{name:'Confirm reset'}).click()
   await expect(page.getByRole('heading',{name:"Alex's Alter"})).toBeVisible()
+  await showMoreRequests(page)
   await expect(page.getByRole('button',{name:'Add a QA update to the status doc'})).toBeVisible()
   await guest.reload()
   await expect(guest.getByRole('heading',{name:"Jamie's Alter"})).toBeVisible()

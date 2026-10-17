@@ -79,6 +79,20 @@ class Engine:
             or verifier is not None
         )
 
+    # Changes inside the team workspace (docs, sheets, calendar) are applied as
+    # soon as the owner's Alter drafts them. Anything that leaves the workspace
+    # (email) waits until the owner says to send it.
+    CONFIRM_FIRST = frozenset({"email"})
+
+    def autopilot(self, ctx, card):
+        if card.get("kind") in self.CONFIRM_FIRST or card.get("state") != "proposed":
+            return card
+        try:
+            return self.application.decide(ctx, card["id"], "approve", card["revision"])
+        except HTTPException:
+            # Left as a draft; the owner can still apply it from the card.
+            return card
+
     @cached_property
     def hmac_secret(self):
         return self.settings.a2a_secret or (

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { openMeetings } from '../nav'
 
 test('meeting review: transcript, mobile cards, edit, approved work and background follow-up', async ({ page }, info) => {
   const errors: string[] = []
@@ -8,10 +9,9 @@ test('meeting review: transcript, mobile cards, edit, approved work and backgrou
   await page.getByLabel('Your name').fill('Priya demo')
   await page.getByRole('button', { name: 'Get my Alter' }).click()
   await expect(page.getByRole('heading', { name: "Priya demo's Alter" })).toBeVisible()
-  await page.getByRole('navigation', { name: 'Alter' }).getByRole('button', { name: /^More/ }).click()
-  await page.getByRole('navigation', { name: 'Alter' }).getByRole('button', { name: 'Meetings', exact: true }).filter({ visible: true }).click()
+  await openMeetings(page)
   await page.getByRole('button', { name: 'New meeting' }).click()
-  await page.getByLabel('The participants consent', { exact: false }).check()
+  await page.getByRole('checkbox', { name: 'The participants consent', exact: false }).check()
   await page.getByRole('button', { name: 'Start capture', exact: true }).click()
   const transcript = "Rahul switched to Google one-tap on October 8.\nWhen are we launching this?\nMeera, update the mock-ups.\nPriya will update the status doc."
   await page.getByLabel('Add meeting transcript').fill(transcript)
@@ -47,10 +47,9 @@ test('meeting review: transcript, mobile cards, edit, approved work and backgrou
   await expect(page.getByRole('heading', { name: 'One less thing to chase.' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Open updated document' })).toHaveAttribute('href', /\/local\/files\//)
   await page.getByRole('button', { name: 'Refresh current document' }).click()
-  await expect(page.getByText('Production readiness', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-screen="meetings"]').getByText('Production readiness', { exact: true })).toBeVisible()
   await page.reload()
-  await page.getByRole('navigation', { name: 'Alter' }).getByRole('button', { name: /^More/ }).click()
-  await page.getByRole('navigation', { name: 'Alter' }).getByRole('button', { name: 'Meetings', exact: true }).filter({ visible: true }).click()
+  await openMeetings(page)
   await expect(page.getByText('2 reviewed actions completed.', { exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })

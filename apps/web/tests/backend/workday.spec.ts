@@ -25,7 +25,7 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
     .getByRole('button', { name: /Try saying:.*Add a retry state/ })
     .click()
   await expect(
-    page.getByRole('button', { name: /fallback Changed Retry sign-in/ }),
+    page.getByRole('button', { name: /fallback ✦ Added( by voice)? Retry sign-in/ }),
   ).toBeVisible()
   await expect(page.getByText('Your saved design · Revision 2')).toBeVisible()
   await page.reload()

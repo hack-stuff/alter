@@ -625,7 +625,8 @@ def test_real_adk_runner_invokes_typed_document_tool(team, monkeypatch):
     )
     assert len(result["approvalIds"]) == 1
     card = e.proposals.owned(e.auth.member(Caller("alice")), result["approvalIds"][0])
-    assert card["state"] == "proposed" and card["action"]["sections"][0]["lines"] == [
+    # Internal workspace changes are applied as soon as the Alter drafts them.
+    assert card["state"] == "applied" and card["action"]["sections"][0]["lines"] == [
         "Draft only."
     ]
 

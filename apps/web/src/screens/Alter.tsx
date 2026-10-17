@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { alterNav } from '../agent/navigator'
+import { parseDecision, pickApproval, type DecisionIntent } from '../agent/decisions'
 import { api, MOCK, httpCall } from '../api/client'
 import { dayApi, type Day } from '../api/day'
-import { designEdit, requestedCard, workSurface } from '../agent/navigation'
+import { canvasEdit, requestedCard, parseNavigation, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
 import { dispatchLiveTool } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
@@ -10,6 +13,8 @@ import { AlterBadge } from '../components/AlterBadge'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Citations } from '../components/Citations'
 import { Icon } from '../components/Icon'
+import { AlterMark, Avatar, PersonWithAlter } from '../components/People'
+import { AppIcon } from '../components/AppIcon'
 import { Question } from './Escalations'
 import { listen, speak, stopSpeaking, isVoiceMuted, setVoiceMuted } from '../agent/voice'
 import type { Approval, Escalation, Member, Message, ProgressEvent } from '../api/types'
@@ -39,10 +44,11 @@ interface Offer {
   run: () => void
 }
 
-export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, ready = true, setupState, retryingSetup = false, setupRetryError = '', onRetrySetup, onUpdate, onRefresh, onOpen }: {
+export function Alter({ name, workspaceId, members, meId, approvals, escalations, events, active = true, ready = true, setupState, retryingSetup = false, setupRetryError = '', onRetrySetup, onUpdate, onRefresh, onNavigate }: {
   name: string
   workspaceId: string
   members: Member[]
+  meId?: string
   approvals: Approval[]
   escalations: Escalation[]
   events: ProgressEvent[]
@@ -54,8 +60,9 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   onRetrySetup?: () => Promise<void>
   onUpdate: (a: Approval) => void
   onRefresh: () => void
-  onOpen: (screen: 'meet' | 'plan' | 'approvals' | 'activity') => void
+  onNavigate: (action: NavigationAction, source?: NavigationSource) => void
 }) {
+  const onOpen = (surface: WorkSurface) => onNavigate(navigateTo(LEGACY_SURFACES[surface]))
   const [day, setDay] = useState<Day>()
   const [dayError, setDayError] = useState('')
   const [voiceState, setVoiceState] = useState<'connecting' | 'listening' | 'speaking' | 'closed'>('closed')
@@ -83,6 +90,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   const [heard, setHeard] = useState('')
   const [picked, setPicked] = useState<string | null>(null)
   const [pickEcho, setPickEcho] = useState('')
+  const [briefing, setBriefing] = useState(0)
   useEffect(() => { if (conversationId && !MOCK) sessionStorage.setItem('alter.conversation.' + workspaceId, conversationId) }, [workspaceId, conversationId])
   useEffect(() => {
     if (MOCK || !conversationId) return
@@ -99,10 +107,35 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     setMessages((m) => [...m, { from: 'human', text, citations: [], approvalIds: [], traceIds: [], ts: timestamp() }, r.reply])
     setConversationId(r.conversationId)
   }
+  // "Send it", "approve the invite", "reject that": decide the matching waiting draft.
+  async function decide(intent: DecisionIntent) {
+    const target = pickApproval(approvals, intent)
+    if (!target) return { decided: false, instruction: 'Nothing is waiting for that decision. Say so briefly.' }
+    const updated = await api.decide(target.id, intent.decision, target.revision)
+    onUpdate(updated)
+    const done = intent.decision === 'reject' ? `Rejected “${updated.title}”.` : updated.kind === 'email' ? `Sent “${updated.title}”.` : `Applied “${updated.title}”.`
+    setMessages((m) => [...m, { from: 'alter', text: done, citations: [], approvalIds: [updated.id], traceIds: [], ts: timestamp() }])
+    return { decided: true, decision: intent.decision, title: updated.title, state: updated.state }
+  }
+  const decideRef = useRef(decide)
+  useEffect(() => { decideRef.current = decide })
+
   async function send(text: string) {
     if (busy || !text.trim()) return
-    const destination = workSurface(text)
-    if (destination) { onOpen(destination); setDraft(''); return }
+    const decision = parseDecision(text)
+    if (decision && pickApproval(approvals, decision)) {
+      setBusy(true); setError('')
+      try {
+        setMessages((m) => [...m, { from: 'human', text: text.trim(), citations: [], approvalIds: [], traceIds: [], ts: timestamp() }])
+        await decide(decision)
+        setDraft('')
+      } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete that. Please try again.'); setDraft(text) }
+      finally { setBusy(false) }
+      return
+    }
+    // Fast path: a clear "open X" never waits on the model.
+    const intent = parseNavigation(text)
+    if (intent?.confidence === 'high') { onNavigate(intent.action, 'text'); setDraft(''); return }
     setBusy(true); setError('')
     try {
       let cid = conversationId
@@ -115,11 +148,11 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   }
 
   async function recoverSpokenAction(text: string) {
-    if (!workSurface(text) && !designEdit(text) && requestedCard(text) !== 4) return
+    if (!parseNavigation(text) && !parseDecision(text) && !canvasEdit(text, alterNav.current()) && requestedCard(text) !== 4) return
     setError('')
     try {
       await dispatchLiveTool('alter_chat', { message: text }, {
-        mode: 'chat', conversationId, onNavigate: onOpen,
+        mode: 'chat', conversationId, onNavigate: (action, source) => onNavigate(action, source ?? 'voice-tool'), onDecide: (intent) => decideRef.current(intent),
         onResult: (value, _tool, input) => receive(value as { conversationId: string; reply: Message }, input),
       })
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete that voice action. Please try again.') }
@@ -158,7 +191,7 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
 
   const OFFERS: Offer[] = [
     {
-      key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Google Meet linked' : 'Team conversation', title: 'Join the team sync',
+      key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Call linked' : 'Team conversation', title: 'Join the team sync',
       desc: `Ask ${rahulName}’s Alter, capture the sync, and prepare the follow-up.`,
       go: 'Take me in', hot: /join|sync|meet|room|call/, sayLine: 'Opening your meeting companion. Start capture after participants consent.',
       run: () => onOpen('meet'),
@@ -240,101 +273,112 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
     })
   }, [liveVoice, active])
 
-  const micLine = liveVoice ? voiceState === 'listening' ? 'Listening' : voiceState === 'speaking' ? 'Speaking' : voiceState === 'connecting' ? 'Connecting voice…' : 'Voice is off' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — the cards and typing still work' : 'Starting to listen…'
-  const ticker = [
-    { text: day?.role ?? 'Your personal work companion' },
-    { text: day?.meetUrl ? 'Google Meet linked · host presence unverified' : 'Connect a Meet link in the companion' },
-    { text: needsCount ? `${needsCount} awaiting your call` : 'Nothing waiting on you' },
+  const micLine = liveVoice ? voiceState === 'listening' ? 'Listening' : voiceState === 'speaking' ? 'Speaking' : voiceState === 'connecting' ? 'Connecting voice…' : 'Voice is off' : mic === 'listening' ? 'Always listening' : mic === 'unsupported' ? 'Voice is unavailable in this browser — typing still works' : 'Starting to listen…'
+
+  const me = members.find((m) => m.id === meId)
+  const agendaTarget = (title: string): 'plan' | 'meet' | undefined => /review|design|journey|canvas|plan/i.test(title) ? 'plan' : /sync|meeting|stand-?up|call/i.test(title) ? 'meet' : undefined
+  const QUICK = [
+    { label: 'Hear my briefing', run: () => { if (liveVoice) setBriefing((n) => n + 1); else say(greetingText) } },
+    { label: 'Continue the login flow', run: () => onOpen('plan') },
+    { label: `Ask ${rahulName}'s Alter why we switched to one-tap sign-in`, run: () => void send("Ask Rahul's Alter why we switched to one-tap sign-in") },
   ]
 
-  return <section className={`screen alter-screen fx${opening ? ' is-opening' : ''}`}>
-    <div className="fx-aurora" aria-hidden="true" />
+  return <section className={`screen home${opening ? ' is-opening' : ''}`}>
     {opening && <div className="alter-opening" aria-label="Opening your workday">
-      <div className="alter-opening-core" aria-hidden="true"><span>{(name[0] ?? 'A').toUpperCase()}</span></div>
-      <p className="alter-opening-kicker">{name}&apos;s Alter · Workday</p>
-      <h1>Your day is already in motion.</h1>
-      <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : voiceError ? 'Voice needs a moment of attention.' : voiceState === 'connecting' ? 'Connecting your Alter…' : voiceState === 'listening' ? 'Your briefing is coming together…' : 'Preparing your briefing…'}</p>
-      {setupState === 'provisioning_failed' && onRetrySetup && <button type="button" className="alter-opening-skip" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}
-      {setupState === 'provisioning_failed' && setupRetryError && <p role="alert" className="alter-opening-status">{setupRetryError}</p>}
-      {ready && (openingSlow || voiceError) && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
+      <div className="opening-card">
+        <span className={`opening-mark${voiceState === 'connecting' ? ' is-connecting' : ''}`} aria-hidden="true">✦</span>
+        <p className="eyebrow">{name}&apos;s Alter · Workday</p>
+        <h1>Your day is already in motion.</h1>
+        <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : voiceError ? 'Voice needs a moment of attention.' : voiceState === 'connecting' ? 'Connecting your Alter…' : voiceState === 'listening' ? 'Your briefing is coming together…' : 'Preparing your briefing…'}</p>
+        {setupState === 'provisioning_failed' && onRetrySetup && <button type="button" className="primary" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}
+        {setupState === 'provisioning_failed' && setupRetryError && <p role="alert" className="error">{setupRetryError}</p>}
+        {ready && (openingSlow || voiceError) && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
+      </div>
     </div>}
-    <div className="alter-content">
-    <div className="alter-landing">
-    <div className="alter-agent-panel">
-    <div className="alter-face">
-      <div className={`alter-core ${speaking ? 'is-speaking' : ''} ${mic === 'listening' || voiceState === 'listening' ? 'is-listening' : ''}`} aria-hidden="true">
-        <span className="core-sweep" />
-        <span className="alter-core-ring" />
-        <span className="alter-core-ring alter-core-ring-far" />
-        <span className="alter-core-letter">{(name[0] ?? 'A').toUpperCase()}</span>
+
+    <header className="identity-strip">
+      <PersonWithAlter name={name} size="large" />
+      <div className="identity-copy">
+        <h1 className="identity-name">{name}&apos;s Alter <AlterBadge /></h1>
+        <p className="identity-role">{day?.role ?? me?.role ?? 'Your personal work companion'}</p>
+        <p className={`alter-state${busy || speaking || voiceState === 'listening' || mic === 'listening' ? ' is-active' : ''}`}><span className="presence-dot" aria-hidden="true" />{stateLine}{!liveVoice && <> · {micLine}</>}</p>
       </div>
-      <div className="alter-face-copy">
-        <h2>{name}&apos;s Alter <AlterBadge /></h2>
-        <p className="alter-state"><span className="presence-dot" aria-hidden="true" /> {stateLine}</p>
-        <p className="alter-mic"><span className="alter-mic-dot" aria-hidden="true" /> {micLine}
-          {!liveVoice && <button type="button" className="alter-mute" aria-label={muted ? 'Unmute your Alter' : 'Mute your Alter'} onClick={() => { const next = !muted; setVoiceMuted(next); setMuted(next); if (next) { stopSpeaking(); setSpeaking(false) } }}>{muted ? '🔇' : '🔊'}</button>}
-        </p>
+      <div className="identity-side">
+        {!liveVoice && <button type="button" className="ghost icon-only" aria-label={muted ? 'Unmute your Alter' : 'Mute your Alter'} onClick={() => { const next = !muted; setVoiceMuted(next); setMuted(next); if (next) { stopSpeaking(); setSpeaking(false) } }}><Icon name={muted ? 'micOff' : 'mic'} size={18} /></button>}
       </div>
+    </header>
+
+    {setupState === 'provisioning' && <p role="status" className="notice">Your Alter is connecting to your team’s Google resources…</p>}
+    {setupState === 'provisioning_failed' && !opening && <div role="alert" className="notice is-error setup-retry"><span>Google setup didn’t finish. Your workspace and work are saved.</span>{onRetrySetup && <button type="button" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}{setupRetryError && <span>{setupRetryError}</span>}</div>}
+
+    <div className="home-grid">
+      <section className="sheet today" aria-label="Your Google Calendar agenda">
+        <div className="sheet-head"><h2>Your agenda</h2><span className="source-pill is-quiet"><AppIcon app="calendar" />From your Calendar</span></div>
+        {day?.agenda.length ? <ol className="agenda">{day.agenda.map((event) => {
+          const target = agendaTarget(event.title)
+          const meet = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) ? event.meetUrl : ''
+          return <li key={event.id} className="agenda-row">
+            <time dateTime={event.start}>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+            <span className="agenda-title"><AppIcon app="calendar" /><strong>{event.title}</strong></span>
+            <span className="agenda-actions">
+              {meet && <a className="source-pill" href={meet} target="_blank" rel="noreferrer"><AppIcon app="meet" />Join Google Meet ↗</a>}
+              {target && <button type="button" className="ghost small" onClick={() => onOpen(target)}>{target === 'plan' ? 'Open canvas' : 'Open companion'} <Icon name="arrow" size={14} /></button>}
+            </span>
+          </li>
+        })}</ol> : <p className="hint">{MOCK ? 'Your calendar appears here in the connected app.' : dayError || 'No upcoming events in your connected demo calendar.'}</p>}
+      </section>
+
+      <aside className="sheet waiting" aria-label="Waiting on you">
+        <div className="sheet-head"><h2>Waiting on you</h2>{needsCount > 0 && <span className="count-pill">{needsCount}</span>}</div>
+        {needsCount === 0 && <p className="hint">Nothing is waiting on you. Your Alter makes doc, sheet and calendar changes directly; emails wait until you say send.</p>}
+        {pending.length > 0 && <button type="button" className="waiting-row" onClick={() => onOpen('approvals')}><Icon name="approvals" size={18} /><span><strong>{pending.length} draft{pending.length === 1 ? '' : 's'} waiting</strong><small>Say “send it” or “reject it”, or open to review.</small></span><Icon name="arrow" size={16} /></button>}
+        {asks.length > 0 && <a className="waiting-row" href="#team-questions"><Icon name="decision" size={18} /><span><strong>{asks.length} question{asks.length === 1 ? '' : 's'} only you can answer</strong><small>Escalated by a teammate’s Alter.</small></span><Icon name="arrow" size={16} /></a>}
+      </aside>
     </div>
 
-    {liveVoice && <div className="alter-voice-dock"><VoiceControl mode="chat" active={active && ready} greet={!greetedBefore.current} onNavigate={onOpen} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} /></div>}
-
-    <div className="fx-ticker" aria-hidden="true">
-      {ticker.map((chip, i) => <span key={i} className={`fx-chip `}><i /> {chip.text}</span>)}
-    </div>
-
-    </div>
-
-    <section className="alter-actions" aria-label="What your Alter can do next">
-    <div className="alter-actions-heading"><h3>Where should we start?</h3></div>
-    <div className={`offer-grid ${picked ? 'is-clearing' : ''}`}>
-      {OFFERS.map((offer) => (
-        <button key={offer.key} type="button" disabled={!ready || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
-          <span className="offer-head">
-            <span className="offer-glyph"><Icon name={offer.glyph} size={18} /></span>
+    <section className="next-up" aria-label="What your Alter can do next">
+      <h3>Where should we start?</h3>
+      <ol className={`offer-list ${picked ? 'is-clearing' : ''}`}>
+        {OFFERS.map((offer) => <li key={offer.key}>
+          <button type="button" disabled={!ready || busy} className={`offer-card ${hot === offer.key ? 'is-hot' : ''} ${picked === offer.key ? 'is-picked' : ''}`} onClick={() => pickAndRun(offer)}>
             <span className="offer-num">{offer.num}</span>
-          </span>
-          <span className="offer-kicker">{offer.kicker}</span>
-          <strong>{offer.title}</strong>
-          <span className="offer-desc">{offer.desc}</span>
-          <span className="offer-go">{offer.go} <span aria-hidden="true">↗</span></span>
-        </button>
-      ))}
-    </div>
-    <p className="pick-echo" role="status">{pickEcho && <><span className="sparkle-i" aria-hidden="true">✦</span>{pickEcho}</>}</p>
+            <span className="offer-body"><strong>{offer.title}</strong><span className="offer-desc">{offer.desc}</span></span>
+            <span className="offer-kicker">{offer.kicker}</span>
+            <Icon name="arrow" size={16} />
+          </button>
+        </li>)}
+      </ol>
+      <p className="pick-echo" role="status">{pickEcho && <><span className="alter-glyph" aria-hidden="true">✦</span>{pickEcho}</>}</p>
     </section>
-    </div>
 
-    <div className="alter-below">
-    {day?.agenda.length ? <section className="day-agenda" aria-label="Your Google Calendar agenda"><p className="eyebrow">From your connected Calendar</p>{day.agenda.map((event) => <article key={event.id}><time>{new Date(event.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time><strong>{event.title}</strong>{/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) && <a href={event.meetUrl} target="_blank" rel="noreferrer">Join Google Meet ↗</a>}</article>)}</section> : !MOCK && <p className="hint">{dayError || 'No upcoming events in your connected demo calendar.'}</p>}
+    {asks.length > 0 && <section className="alter-needs" id="team-questions" aria-label="The team is waiting on your answer">
+      <h3>The team is waiting on your answer</h3>
+      {asks.map((e) => <Question key={e.id} item={e} members={members} meName={name} onRefresh={onRefresh} />)}
+    </section>}
 
-    {asks.length > 0 && <div className="alter-needs">
-      <p className="eyebrow">The team is waiting on your answer</p>
-      {asks.map((e) => <Question key={e.id} item={e} members={members} onRefresh={onRefresh} />)}
-    </div>}
+    <section className="sheet conversation" aria-label="Ask and delegate">
+      <div className="messages" role="log" aria-label="Conversation">
+        {conversation.map((m, i) => <article key={i} className={`msg ${m.from}`}>
+          {m.from === 'alter' ? <div className="message-author"><AlterMark size="small" />Your Alter <AlterBadge /></div> : <div className="message-author"><Avatar name={name} size="small" />You</div>}
+          <p>{m.text}</p><Citations sources={m.citations} />
+          {m.traceIds.map((id) => <LiveTrace key={id} workspaceId={workspaceId} traceId={id} />)}
+          {m.approvalIds.length > 0 && <button className="chip" onClick={() => { const target = document.getElementById(`proposal-${m.approvalIds[0]}`); target?.scrollIntoView({ block: 'center' }); target?.focus() }}>Review proposal</button>}
+          {m.approvalIds.map((id) => { const a = approvals.find((x) => x.id === id); return a ? <div id={`proposal-${id}`} key={id} tabIndex={-1}><ApprovalCard voiceEnabled approval={a} onUpdate={onUpdate} /></div> : null })}
+        </article>)}
+      </div>
+      {busy && <p className="thinking" role="status"><span className="alter-glyph" aria-hidden="true">✦</span>{latest ?? 'Your Alter is working on your request…'}</p>}
+      <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); void send(draft) }}>
+        <label className="sr-only" htmlFor="message">Message your Alter</label>
+        <input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy || !ready} />
+        <button className="primary" disabled={busy || !ready || !draft.trim()}>Send</button>
+      </form>
+      <div className="chip-row">{QUICK.map((chip) => <button key={chip.label} type="button" className="chip" disabled={busy || !ready} onClick={chip.run}>{chip.label}</button>)}</div>
+      {conversation.length === 0 && <details className="more-requests"><summary>More things to ask</summary><div className="chip-row">{DIRECTIVES.map((d) => <button key={d.text} type="button" className="chip" disabled={busy} onClick={() => d.open ? onOpen(d.open) : void send(d.text)}>{d.text}</button>)}</div></details>}
+      {waitingDrafts.length > 0 && <button type="button" className="ghost small" onClick={() => onOpen('approvals')}>{waitingDrafts.length} draft{waitingDrafts.length === 1 ? '' : 's'} waiting — open approvals</button>}
+      {error && <p role="alert" className="error">{error}</p>}
+    </section>
 
-    {waitingDrafts.length > 0 && <div className="alter-quicklinks">
-      <button type="button" className="chip text-btn" onClick={() => onOpen('approvals')}>{waitingDrafts.length} draft{waitingDrafts.length === 1 ? '' : 's'} waiting — open the queue</button>
-    </div>}
-    <div className="alter-quicklinks">
-      <button type="button" className="chip text-btn" onClick={() => onOpen('activity')}>See the work log</button>
-    </div>
-
-    <div className="messages" role="log" aria-label="Conversation">
-      {conversation.map((m, i) => <article key={i} className={`msg ${m.from}`}>
-        {m.from === 'alter' && <div className="message-author">Your Alter <AlterBadge /></div>}
-        <p>{m.text}</p><Citations sources={m.citations} />
-        {m.traceIds.map((id) => <LiveTrace key={id} workspaceId={workspaceId} traceId={id} />)}
-        {m.approvalIds.length > 0 && <button className="chip approval" onClick={() => { const target = document.getElementById(`proposal-${m.approvalIds[0]}`); target?.scrollIntoView({ block: 'center' }); target?.focus() }}>Review proposal</button>}
-        {m.approvalIds.map((id) => { const a = approvals.find((x) => x.id === id); return a ? <div id={`proposal-${id}`} key={id} tabIndex={-1}>{<ApprovalCard voiceEnabled approval={a} onUpdate={onUpdate} />}</div> : null })}
-      </article>)}
-    </div>
-    {busy && <p className="thinking" role="status">{latest ?? 'Your Alter is working on your request…'}</p>}
-    {conversation.length === 0 && <div className="suggested">{DIRECTIVES.map((d) => <button key={d.text} disabled={busy} onClick={() => d.open ? onOpen(d.open) : void send(d.text)}>{d.text} <span aria-hidden="true">↗</span></button>)}</div>}
-    <form className="composer" onSubmit={(e) => { e.preventDefault(); void send(draft) }}><label className="sr-only" htmlFor="message">Message your Alter</label><input id="message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask or delegate…" disabled={busy || !ready} /><button className="primary" disabled={busy || !ready || !draft.trim()}>Send</button></form>
-
-    {error && <p role="alert" className="error">{error}</p>}
-    </div>
-    </div>
+    {/* The Voice Bar lives on the page, not on Home, so the Alter keeps talking while it moves between screens. */}
+    {liveVoice && createPortal(<VoiceControl dock mode="chat" active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={(text) => void send(text)} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
   </section>
 }

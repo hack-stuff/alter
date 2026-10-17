@@ -5,6 +5,7 @@ import type { ToolContext } from './tools'
 import { pcm16Resampler, pcmBase64, decodeAudio } from './audio'
 import { connectRelay } from './relay'
 import { startVoiceAudio, pauseVoiceAudio } from './voiceAudio'
+import { parseNavigation } from '../agent/navigation'
 
 export interface LiveOptions extends ToolContext {
   mode: LiveMode
@@ -44,6 +45,7 @@ export class LiveSession {
   private firstSpeech = false
   private toolCalled = false
   private fallbackTimer?: ReturnType<typeof setTimeout>
+  private fastKey = ''
   constructor(options: LiveOptions) { this.options = options }
   // The page's conversation can change while voice is open (for example, after a typed message).
   setConversationId(id: string | undefined) { this.options.conversationId = id }
@@ -131,6 +133,7 @@ export class LiveSession {
     if (content?.inputTranscription?.text) {
       this.input += content.inputTranscription.text
       this.options.onTranscript(this.input, 'user', false)
+      this.fastNavigate(this.input)
     }
     if (content?.outputTranscription?.text) {
       this.output += content.outputTranscription.text
@@ -149,6 +152,7 @@ export class LiveSession {
       }
       this.input = ''; this.output = ''
       this.toolCalled = false
+      this.fastKey = ''
     }
     for (const call of message.toolCall?.functionCalls ?? []) {
       if (!call.id || !call.name || this.cancelled.has(call.id) || this.pending.has(call.id) || this.handled.has(call.id)) continue
@@ -166,6 +170,17 @@ export class LiveSession {
         }
       } finally { this.pending.delete(id); this.handled.add(id) }
     }
+  }
+  // Sub-100ms path: as soon as the streaming transcript is an unambiguous
+  // "open X", move the view. The model's later tool call is then deduplicated.
+  private fastNavigate(text: string) {
+    if (this.options.mode !== 'chat' || !this.options.onNavigate) return
+    const intent = parseNavigation(text)
+    if (intent?.confidence !== 'high') return
+    const key = `${intent.action.screen}|${intent.action.targetElementId ?? ''}`
+    if (key === this.fastKey) return
+    this.fastKey = key
+    this.options.onNavigate(intent.action, 'voice-fast')
   }
   private play(data: string, mimeType: string) {
     if (!this.audio || this.stopped) return

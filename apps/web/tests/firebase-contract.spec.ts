@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { openScreen, showMoreRequests } from './nav'
 
 test.use({ baseURL: 'http://127.0.0.1:5175' })
 const fixture = (name: string) => JSON.parse(readFileSync(resolve('../../contracts/fixtures', `${name}.json`), 'utf8'))
@@ -73,18 +74,16 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   await page.getByRole('button', { name: 'Get my Alter' }).click()
   await page.getByRole('button', { name: 'Enter without voice' }).click()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  await showMoreRequests(page)
   await page.getByRole('button', { name: 'Add a QA update to the status doc' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
   await expect(page.getByRole('article', { name: 'Status doc · QA section' })).toBeVisible()
   await expect(page.getByRole('log').getByText('Streamed reply from the conversation collection.')).toBeVisible()
-  const alterNav = page.getByRole('navigation', { name: 'Alter' })
-  await alterNav.getByRole('button', { name: /^More/ }).click()
-  await alterNav.getByRole('button', { name: /^Waiting on you/ }).filter({ visible: true }).click()
+  await openScreen(page, 'Approvals')
   await expect(page.getByText('Another member private proposal')).toHaveCount(0)
   const observed = await page.evaluate(() => (window as any).firestoreHarness.observed)
   expect(observed.find((ref: any) => ref.path.endsWith('/approvals')).filters).toEqual([{ field: 'owner', op: '==', value: 'm_judge' }])
-  await alterNav.getByRole('button', { name: /^More/ }).click()
-  await alterNav.getByRole('button', { name: /^Work log/ }).filter({ visible: true }).click()
+  await openScreen(page, 'Work log')
   await expect(page.getByText('2026-10-14', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Rahul's Alter answered/ })).toBeVisible()
   expect(headers.length).toBeGreaterThanOrEqual(3)
