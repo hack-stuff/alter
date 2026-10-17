@@ -1,9 +1,12 @@
 """Create a fresh Google Meet room that does not require host admission."""
 
 import json
+import os
+from urllib.parse import urlparse
 
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
+import requests
 
 from app.day import validate_meet_url
 from app.errors import error
@@ -51,3 +54,26 @@ def create_open_space(settings, secrets):
             "Google did not confirm open access for this room, so Alter will not send you to a host waiting screen.",
         )
     return validate_meet_url(space.get("meetingUri", ""))
+
+
+def join_local_alter(settings, url):
+    """Wait for the optional local demo account to join before opening Meet."""
+    if not getattr(settings, "dev_mode", False):
+        return
+    endpoint = os.getenv("ALTER_MEET_BOT_URL", "").rstrip("/")
+    if not endpoint:
+        return
+    parsed = urlparse(endpoint)
+    if parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost"):
+        raise error(503, "ALTER_JOIN_FAILED", "The local Alter participant address must use loopback HTTP.")
+    try:
+        response = requests.post(endpoint + "/join", json={"meetUrl": url}, timeout=35)
+        response.raise_for_status()
+        if response.json().get("joined") is not True:
+            raise ValueError("The Alter did not confirm its Meet presence.")
+    except Exception as exc:
+        raise error(
+            503,
+            "ALTER_JOIN_FAILED",
+            "The Alter has not joined this Meet. Sign into the local Alter browser and retry with a new room.",
+        ) from exc

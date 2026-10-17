@@ -56,7 +56,9 @@ class GoogleApps:
         )
 
     def create_meet(self, wid, member):
-        return meet.create_open_space(self.settings, self.secrets)
+        url = meet.create_open_space(self.settings, self.secrets)
+        meet.join_local_alter(self.settings, url)
+        return url
 
     def apply(self, wid, approval, member, caller):
         action = approval["action"]

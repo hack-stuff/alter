@@ -65,7 +65,7 @@ LIVE_LOCATION: us-central1
 MODEL_TIMEOUT_MS: '60000'
 ```
 
-Optionally add `MEET_URL` with an existing Google Meet call URL. Otherwise, the connected Calendar adapter creates a conference on a workspace calendar event and saves its link for the current owner. The link must have the form `https://meet.google.com/abc-defg-hij`. The local Google simulator cannot create a real Meet room and returns a visible setup error instead of a fake link. A link is not evidence that an AI has joined the call.
+`MEET_URL` can still supply a day-view link, but starting a meeting always creates a fresh Open Meet space through the connected account. The local Google simulator returns a visible setup error instead of a fake link. A link alone is not evidence that an AI has joined the call.
 
 Deploy backend first, then rebuild Hosting with the existing public Firebase config, `VITE_MOCK=0`, `VITE_DEV_AUTH=0`, the production `/v1` API URL and an empty `VITE_LIVE_TOKEN_BASE`. Keep the current Firestore rules: plans are accessed through the owner-checked API and gain no direct client write/read permission.
 
@@ -80,7 +80,7 @@ The new source files are included by the existing API image build; the product-l
 
 ## Actual Google Meet operation
 
-The app creates a fresh open Google Meet and opens it by voice. The OAuth bundle must include Meet space consent from `get_demo_token.py --include-meet`, and the Google Meet API must be enabled. Existing OAuth secrets without `meet_refresh_token` fail with `MEET_SETUP_REQUIRED` while the rest of Google work stays available. It shows the user's Alter and seeded teammates' Alters as ready **in Alter**; it still does **not** autonomously join their Google accounts or manufacture live participant tiles. Meet's microphone and camera prompts belong to Google's origin and cannot be granted by Alter ahead of time. Before the evaluation window:
+The app creates a fresh open Google Meet and opens it by voice. The OAuth bundle must include Meet space consent from `get_demo_token.py --include-meet`, and the Google Meet API must be enabled. Existing OAuth secrets without `meet_refresh_token` fail with `MEET_SETUP_REQUIRED` while the rest of Google work stays available. It shows the user's Alter and seeded teammates' Alters as ready **in Alter**. For a local demo, the optional Chrome participant helper can join one dedicated Google account as a real muted Meet tile before the user enters. It does not route Alter speech or other accounts into Meet. Meet's microphone and camera prompts belong to Google's origin and cannot be granted by Alter ahead of time. Before the evaluation window:
 
 1. Renew the connected demo account's OAuth consent with `--include-meet` and verify a fresh room returns `OPEN` access. The Meet API must be enabled in the Cloud project. Opening the review alone does not create a room; every start command does.
 2. Start a consenting meeting capture in the companion. Expand **Connect the Meet recording rig**, generate room access and open the linked kiosk.
@@ -88,6 +88,8 @@ The app creates a fresh open Google Meet and opens it by voice. The OAuth bundle
 4. Verify that a real attendee's question reaches the Alter and that its answer is audible in Meet. A successful API voice smoke test is insufficient.
 5. Keep the operator and rig available. Existing ten-minute voice sessions and twenty-minute room credentials still require renewal/reconnection; no unattended 24/7 Meet host is supplied by this change.
 6. End room voice, verify transcript uploads and then prepare the review. The server refuses finalization while a meeting voice lease is active.
+
+For the local participant helper, run `ALTER_MEET_BOT_ACCOUNT=... npm --prefix apps/web run meet:bot` and sign into that exact account in the separate Chrome window once. Chrome stores that session in `~/.config/alter/meet-bot-chrome`, outside the repo; do not copy or commit it. Set `ALTER_MEET_BOT_URL=http://127.0.0.1:8787` in the local API environment and restart the API. Each start waits for the helper to confirm that its muted tile joined. If the helper or account is unavailable, Alter shows a retry error and stays on its own page. The helper uses synthetic media devices and mutes its browser output, so it cannot supply a speaking Alter. A real speaking tile still needs the documented OBS and audio-routing rig.
 
 The companion's microphone hears its selected device input, not another tab's audio automatically. Avoid running the companion microphone and rig capture simultaneously for the same audio: use the companion's End voice control when the rig owns capture. The application distinguishes the linked call from actual participant presence, which it cannot independently verify.
 
