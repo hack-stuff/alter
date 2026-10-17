@@ -3,12 +3,13 @@ import { api, MOCK, httpCall } from '../api/client'
 import type { JoinResult } from '../api/types'
 import { Icon } from '../components/Icon'
 import { AlterMark, Avatar } from '../components/People'
+import { AlterAvatarPreview } from '../components/avatar/AlterAvatarPreview'
 
 // The seeded scenario team, shown so a first-time visitor knows who they will meet.
 const TEAM = [
-  { name: 'Meera', role: 'Designer' },
-  { name: 'Arjun', role: 'Engineer' },
-  { name: 'Rahul', role: 'Login owner · on leave', away: true },
+  { name: 'Kani', role: 'Designer' },
+  { name: 'Sahil', role: 'Engineer' },
+  { name: 'Siddhi', role: 'Login owner · on leave', away: true },
 ]
 
 export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: (r: JoinResult, name: string) => void }) {
@@ -29,7 +30,7 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
   }
   function stepIn() {
     setBusy(true); setError('')
-    void httpCall<JoinResult>('POST', '/demo/day').then((result) => onJoined(result, 'Priya')).catch((e) => setError(e.message)).finally(() => setBusy(false))
+    void httpCall<JoinResult>('POST', '/demo/day').then((result) => onJoined(result, 'Dev')).catch((e) => setError(e.message)).finally(() => setBusy(false))
   }
   const demo = !inviteCode && !MOCK
 
@@ -40,10 +41,10 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
       <p className="lede">Everyone on the team gets their own Alter: an AI representative that answers within the limits you set, and acts in Google Docs, Sheets, Calendar and Gmail only when you approve.</p>
     </div>
 
-    {demo && <section className="sheet id-card" aria-label="Priya's workday">
+    {demo && <section className="sheet id-card" aria-label="Dev's workday">
       <div className="id-card-head">
-        <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Priya" size="large" /><AlterMark size="medium" /></span>
-        <div><p className="eyebrow">You’ll be</p><h2>Priya</h2><p className="hint">Product lead · Login revamp</p></div>
+        <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Dev" size="large" /><AlterMark size="medium" /></span>
+        <div><p className="eyebrow">You’ll be</p><h2>Dev</h2><p className="hint">Product lead · Login revamp</p></div>
       </div>
       <ul className="team-row" aria-label="Your teammates">
         {TEAM.map((member) => <li key={member.name} className={member.away ? 'is-away' : undefined}>
@@ -51,7 +52,7 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
           <span><strong>{member.name}</strong><small>{member.role}{member.away && <> · <span className="alter-text">Alter active</span></>}</small></span>
         </li>)}
       </ul>
-      <button type="button" className="primary step-in" disabled={busy} onClick={stepIn}><Icon name="play" size={16} />{busy ? 'Preparing your day…' : 'Step into Priya’s day'}</button>
+      <button type="button" className="primary step-in" disabled={busy} onClick={stepIn}><Icon name="play" size={16} />{busy ? 'Preparing your day…' : 'Step into Dev’s day'}</button>
       <p className="hint">A fictional workday with your own isolated project files. The connected build uses real AI and Google services.</p>
     </section>}
 
@@ -66,5 +67,7 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
       <button className={demo ? '' : 'primary'} disabled={busy || !name.trim()}>{busy ? 'Setting up your team…' : 'Get my Alter'}</button>
       {!inviteCode && <p className="hint">Have an invite link? Open it to join that team.</p>}
     </form>
+
+    <AlterAvatarPreview />
   </div>
 }
