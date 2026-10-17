@@ -67,6 +67,8 @@ MODEL_TIMEOUT_MS: '60000'
 
 `MEET_URL` can still supply a day-view link, but starting a meeting always creates a fresh Open Meet space through the connected account. The local Google simulator returns a visible setup error instead of a fake link. A link alone is not evidence that an AI has joined the call.
 
+For an unattended hosted demo, `ALTER_MEET_BOT_MODE=firestore` makes the API queue a private join request and wait for a confirmed Meet participant before returning the room URL. Run `PYTHONPATH=services/api services/api/.venv/bin/python services/api/scripts/meet_join_worker.py --project=alter-48b59` beside `apps/web/scripts/meet-bot.mjs` on a persistent cloud host with Firestore access and a one-time signed-in Alter Chrome profile. The worker and browser are not provisioned by this repository; setting the mode without them makes meeting launch fail after a timeout. The current browser participant joins with its microphone and camera off. It does not yet speak as the Alter.
+
 Deploy backend first, then rebuild Hosting with the existing public Firebase config, `VITE_MOCK=0`, `VITE_DEV_AUTH=0`, the production `/v1` API URL and an empty `VITE_LIVE_TOKEN_BASE`. Keep the current Firestore rules: plans are accessed through the owner-checked API and gain no direct client write/read permission.
 
 ```bash

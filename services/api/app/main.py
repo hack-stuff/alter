@@ -16,6 +16,7 @@ from app.models import *
 from app.meeting_models import *
 from app.plans import PlanEdit, PlanRevision
 from app.day import MeetLink, day, validate_meet_url
+from app.google import meet_join
 from app.rate_limits import take
 from app.util import identifier, now
 
@@ -269,6 +270,7 @@ def create_app(settings=None, engine=None):
             raise error(503, "MEET_CREATION_FAILED", "Google Meet could not create an open room. Check Meet access and retry.") from exc
         if not url:
             raise error(503, "MEET_CREATION_FAILED", "Google Meet did not return a usable join link. Retry shortly.")
+        meet_join.prepare(engine.store, engine.settings, ctx.workspace_id, ctx.member_id, url)
         def save(tx):
             current_profile = tx.get(path)
             if not current_profile:

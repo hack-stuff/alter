@@ -1021,6 +1021,7 @@ class Engine:
         for collection in (
             "liveTickets",
             "meetingRooms",
+            "meetJoinJobs",
             "workflowJobs",
             "pushDevices",
         ):
