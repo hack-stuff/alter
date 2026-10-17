@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
-import time
 from app.google.drive import run
 
 
@@ -14,65 +13,6 @@ def calendars(service):
         token = page.get("nextPageToken")
         if not token:
             return result
-
-
-def create_meet(service, cid, wid, member):
-    """Create one reusable real Meet link for this workspace member."""
-    eid = sha256(f"{wid}:{member}:alter-meet".encode()).hexdigest()
-    try:
-        event = run(service.events().get(calendarId=cid, eventId=eid))
-    except Exception as exc:
-        if getattr(getattr(exc, "resp", None), "status", None) != 404:
-            raise
-        start = datetime.now(timezone.utc)
-        try:
-            event = run(
-                service.events().insert(
-                    calendarId=cid,
-                    conferenceDataVersion=1,
-                    body={
-                        "id": eid,
-                        "summary": "Alter team sync",
-                        "start": {"dateTime": start.isoformat()},
-                        "end": {"dateTime": (start + timedelta(hours=2)).isoformat()},
-                        "conferenceData": {
-                            "createRequest": {
-                                "requestId": eid,
-                                "conferenceSolutionKey": {"type": "hangoutsMeet"},
-                            }
-                        },
-                        "extendedProperties": {
-                            "private": {"alterWorkspace": wid, "alterOwner": member}
-                        },
-                    },
-                )
-            )
-        except Exception as insert_exc:
-            if getattr(getattr(insert_exc, "resp", None), "status", None) != 409:
-                raise
-            event = run(service.events().get(calendarId=cid, eventId=eid))
-    for _ in range(8):
-        url = event.get("hangoutLink") or next(
-            (
-                entry.get("uri", "")
-                for entry in event.get("conferenceData", {}).get("entryPoints", [])
-                if entry.get("entryPointType") == "video"
-            ),
-            "",
-        )
-        if url:
-            return url
-        status = (
-            event.get("conferenceData", {})
-            .get("createRequest", {})
-            .get("status", {})
-            .get("statusCode")
-        )
-        if status == "failure":
-            raise RuntimeError("Google Calendar could not create the Meet conference.")
-        time.sleep(0.5)
-        event = run(service.events().get(calendarId=cid, eventId=eid))
-    raise RuntimeError("Google Meet did not return a join link in time.")
 
 
 def provision(service, wid):

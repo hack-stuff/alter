@@ -1,7 +1,7 @@
 from hashlib import sha256
 import json
 from app.google.creds import DemoCredentials
-from app.google import drive, docs, sheets, calendar, gmail
+from app.google import drive, docs, sheets, calendar, gmail, meet
 from app.errors import error
 
 
@@ -56,12 +56,7 @@ class GoogleApps:
         )
 
     def create_meet(self, wid, member):
-        return calendar.create_meet(
-            self.service("calendar", "v3"),
-            self.workspace(wid)["googleIds"]["calendar"],
-            wid,
-            member,
-        )
+        return meet.create_open_space(self.settings, self.secrets)
 
     def apply(self, wid, approval, member, caller):
         action = approval["action"]

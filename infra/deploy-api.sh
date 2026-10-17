@@ -13,7 +13,7 @@ if grep -q REPLACE_ "$API_ENV_FILE"; then echo 'Replace all environment placehol
 api_account="alter-api@${GCP_PROJECT}.iam.gserviceaccount.com"
 scheduler_account="alter-scheduler@${GCP_PROJECT}.iam.gserviceaccount.com"
 image="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/alter/alter-api:$(git rev-parse --short HEAD)"
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com aiplatform.googleapis.com secretmanager.googleapis.com cloudscheduler.googleapis.com identitytoolkit.googleapis.com drive.googleapis.com docs.googleapis.com sheets.googleapis.com calendar-json.googleapis.com gmail.googleapis.com cloudtasks.googleapis.com fcm.googleapis.com fcmregistrations.googleapis.com discoveryengine.googleapis.com --project="$GCP_PROJECT"
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com aiplatform.googleapis.com secretmanager.googleapis.com cloudscheduler.googleapis.com identitytoolkit.googleapis.com drive.googleapis.com docs.googleapis.com sheets.googleapis.com calendar-json.googleapis.com meet.googleapis.com gmail.googleapis.com cloudtasks.googleapis.com fcm.googleapis.com fcmregistrations.googleapis.com discoveryengine.googleapis.com --project="$GCP_PROJECT"
 if ! gcloud artifacts repositories describe alter --location="$GCP_REGION" --project="$GCP_PROJECT" >/dev/null 2>&1; then
   gcloud artifacts repositories create alter --repository-format=docker --location="$GCP_REGION" --project="$GCP_PROJECT"
 fi

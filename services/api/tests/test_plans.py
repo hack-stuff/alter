@@ -222,22 +222,24 @@ def test_actual_agenda_and_meet_link_validation(team):
     )
 
 
-def test_meet_link_is_created_once_and_never_simulated(team, monkeypatch):
+def test_each_start_creates_a_fresh_meet_and_never_simulates_one(team, monkeypatch):
     c, e, h, _ = team
     unavailable = c.post("/v1/day/meet", headers=h)
     assert unavailable.status_code == 503
     assert unavailable.json()["detail"]["error"]["code"] == "MEET_UNAVAILABLE"
+    assert c.put("/v1/day/meet-link", headers=h, json={"url": "https://meet.google.com/old-room-aaa"}).status_code == 200
     calls = []
     def create(wid, mid):
         calls.append((wid, mid))
-        return "https://meet.google.com/abc-defg-hij"
+        return ["https://meet.google.com/abc-defg-hij", "https://meet.google.com/klm-nopq-rst"][len(calls) - 1]
     monkeypatch.setattr(e.apps, "create_meet", create)
     first = c.post("/v1/day/meet", headers=h)
     second = c.post("/v1/day/meet", headers=h)
     assert first.status_code == second.status_code == 200
-    assert first.json() == second.json() == {"meetUrl": "https://meet.google.com/abc-defg-hij"}
-    assert len(calls) == 1
-    assert c.get("/v1/day", headers=h).json()["meetUrl"] == first.json()["meetUrl"]
+    assert first.json() == {"meetUrl": "https://meet.google.com/abc-defg-hij"}
+    assert second.json() == {"meetUrl": "https://meet.google.com/klm-nopq-rst"}
+    assert len(calls) == 2
+    assert c.get("/v1/day", headers=h).json()["meetUrl"] == second.json()["meetUrl"]
 
 
 def test_demo_day_is_isolated_resumable_and_not_director(system):

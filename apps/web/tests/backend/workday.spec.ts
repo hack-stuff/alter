@@ -72,18 +72,12 @@ test('Dev edits a persisted design, publishes its reviewed specification, and pr
     .first()
     .click()
   await page.getByRole('button', { name: 'Meeting', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Google Meet needs attention' })).toBeVisible()
-  await page.getByText('Use an existing Meet link').click()
-  await page.getByLabel('Google Meet link').fill('https://meet.google.com/abc-defg-hij')
-  await page.getByRole('button', { name: 'Save Meet link' }).click()
+  await expect(page.getByRole('button', { name: 'Start a new Google Meet' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Dev's Alter")
   await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Siddhi's Alter")
   await expect(
     page.getByText('No transcript has been recorded here yet.'),
   ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Join Google Meet', exact: false }),
-  ).toHaveAttribute('href', 'https://meet.google.com/abc-defg-hij')
   await page
     .getByLabel('The participants consent to transcript capture.')
     .check()

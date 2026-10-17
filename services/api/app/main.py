@@ -16,6 +16,7 @@ from app.models import *
 from app.meeting_models import *
 from app.plans import PlanEdit, PlanRevision
 from app.day import MeetLink, day, validate_meet_url
+from app.rate_limits import take
 from app.util import identifier, now
 
 
@@ -250,9 +251,14 @@ def create_app(settings=None, engine=None):
         profile = engine.store.get(path)
         if not profile:
             raise error(404, "MEMBER_NOT_FOUND", "Your workspace membership could not be found.")
-        current = profile.get("meetUrl") or engine.settings.meet_url
-        if current:
-            return {"meetUrl": validate_meet_url(current)}
+        engine.store.atomic(
+            lambda tx: take(
+                tx,
+                f"meet-create:{ctx.workspace_id}:{ctx.member_id}",
+                12,
+                message="Too many new meetings were started this hour. Please try again later.",
+            )
+        )
         try:
             url = validate_meet_url(engine.apps.create_meet(ctx.workspace_id, ctx.member_id))
         except HTTPException:
@@ -260,13 +266,13 @@ def create_app(settings=None, engine=None):
         except Exception as exc:
             from app.diagnostics import report_provision_failure
             report_provision_failure(exc)
-            raise error(503, "MEET_CREATION_FAILED", "Google Meet could not create the call. Check Calendar conference permissions and retry.") from exc
+            raise error(503, "MEET_CREATION_FAILED", "Google Meet could not create an open room. Check Meet access and retry.") from exc
         if not url:
             raise error(503, "MEET_CREATION_FAILED", "Google Meet did not return a usable join link. Retry shortly.")
         def save(tx):
             current_profile = tx.get(path)
-            if current_profile.get("meetUrl"):
-                return current_profile["meetUrl"]
+            if not current_profile:
+                raise error(404, "MEMBER_NOT_FOUND", "Your workspace membership could not be found.")
             tx.set(path, {**current_profile, "meetUrl": url})
             return url
 

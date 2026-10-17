@@ -54,9 +54,9 @@ test('starting a Meet is distinct from opening its review', async ({ page }) => 
   await page.goto('/')
   const decisions = await page.evaluate(async () => {
     const { startMeetingIntent } = await import('/src/agent/navigation.ts')
-    return ['Start the meeting', 'Please create a Google Meet', 'Begin our team sync', 'Join the team sync', 'Open the meeting review', "Don't start the meeting"].map(startMeetingIntent)
+    return ['Start the meeting', 'Please create a Google Meet', 'Begin our team sync', 'Join the team sync', 'Make me a new meeting', 'Open the meeting review', "Don't start the meeting"].map(startMeetingIntent)
   })
-  expect(decisions).toEqual([true, true, true, true, false, false])
+  expect(decisions).toEqual([true, true, true, true, true, false, false])
 })
 
 test('a spoken start command creates a Meet link and opens it without a click', async ({ page }) => {
@@ -67,6 +67,16 @@ test('a spoken start command creates a Meet link and opens it without a click', 
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Start the meeting' }, turnComplete: true } }))
   await expect(page).toHaveURL('https://meet.google.com/abc-defg-hij')
   await expect(page.getByRole('heading', { name: 'Google Meet test call' })).toBeVisible()
+})
+
+test('voice stays in Alter when open Meet access is unavailable', async ({ page }) => {
+  await page.route('**/v1/day/meet', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: { error: { code: 'MEET_SETUP_REQUIRED', message: 'The connected Google account needs Meet room access.' } } }) }))
+  await withLiveHarness(page)
+  await join(page)
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Start the meeting' }, turnComplete: true } }))
+  await expect(page.getByRole('heading', { name: 'Open Google Meet needs attention' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Meeting setup' }).getByRole('alert')).toContainText('needs Meet room access')
+  await expect(page).toHaveURL(/127\.0\.0\.1/)
 })
 
 test('the home team sync card joins without a second click', async ({ page }) => {

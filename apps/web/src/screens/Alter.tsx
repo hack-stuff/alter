@@ -202,7 +202,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
 
   const OFFERS: Offer[] = [
     {
-      key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Call linked' : 'Team conversation', title: 'Join the team sync',
+      key: 'meet', num: '01', glyph: 'work', kicker: 'Fresh Google Meet', title: 'Join the team sync',
       desc: `Open Google Meet, then review the follow-up with ${siddhiName}’s Alter.`,
       go: 'Join the call', hot: /join|sync|meet|room|call/, sayLine: 'Opening the team sync in Google Meet.',
       run: onStartMeeting,
@@ -357,7 +357,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
         })}</div>
         {selectedEvents.length ? <ol className="agenda">{selectedEvents.map((event) => {
           const target = agendaTarget(event.title)
-          const meet = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(event.meetUrl) ? event.meetUrl : ''
+          const meet = /^https:\/\/meet\.google\.com\/[a-z]+-[a-z]+-[a-z]+$/.test(event.meetUrl) ? event.meetUrl : ''
           return <li key={event.id} className="agenda-row">
             <time dateTime={event.start}>{new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}<small>{new Date(event.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</small></time>
             <span className="agenda-title"><span className="agenda-color" aria-hidden="true" /><strong>{event.title}</strong></span>

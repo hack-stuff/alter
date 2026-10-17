@@ -12,10 +12,17 @@ class MeetLink(Input):
     url: str = Field(max_length=200)
 
 
+def valid_meet_url(url):
+    prefix = "https://meet.google.com/"
+    return bool(
+        isinstance(url, str)
+        and len(url) <= len(prefix) + 128
+        and re.fullmatch(r"https://meet\.google\.com/[a-z]+-[a-z]+-[a-z]+", url)
+    )
+
+
 def validate_meet_url(url):
-    if url and not re.fullmatch(
-        r"https://meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}", url
-    ):
+    if url and not valid_meet_url(url):
         raise error(
             422,
             "INVALID_MEET_URL",
@@ -41,14 +48,11 @@ def day(engine, ctx):
             "Your calendar could not load. Your saved work is still available."
         )
     configured = member.get("meetUrl", engine.settings.meet_url)
-    valid = lambda url: bool(
-        re.fullmatch(r"https://meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}", url or "")
-    )
     meet_url = (
         configured
-        if valid(configured)
+        if valid_meet_url(configured)
         else next(
-            (item["meetUrl"] for item in agenda if valid(item.get("meetUrl"))), ""
+            (item["meetUrl"] for item in agenda if valid_meet_url(item.get("meetUrl"))), ""
         )
     )
     return {
