@@ -38,7 +38,7 @@ interface Offer {
   run: () => void
 }
 
-export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, ready = true, setupState, onUpdate, onRefresh, onOpen }: {
+export function Alter({ name, workspaceId, members, approvals, escalations, events, active = true, ready = true, setupState, retryingSetup = false, setupRetryError = '', onRetrySetup, onUpdate, onRefresh, onOpen }: {
   name: string
   workspaceId: string
   members: Member[]
@@ -48,6 +48,9 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
   active?: boolean
   ready?: boolean
   setupState?: string
+  retryingSetup?: boolean
+  setupRetryError?: string
+  onRetrySetup?: () => Promise<void>
   onUpdate: (a: Approval) => void
   onRefresh: () => void
   onOpen: (screen: 'meet' | 'plan' | 'approvals' | 'activity') => void
@@ -239,7 +242,9 @@ export function Alter({ name, workspaceId, members, approvals, escalations, even
       <p className="alter-opening-kicker">{name}&apos;s Alter · Workday</p>
       <h1>Your day is already in motion.</h1>
       <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : voiceError ? 'Voice needs a moment of attention.' : voiceState === 'connecting' ? 'Connecting your Alter…' : voiceState === 'listening' ? 'Your briefing is coming together…' : 'Preparing your briefing…'}</p>
-      {(openingSlow || voiceError || setupState === 'provisioning_failed') && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
+      {setupState === 'provisioning_failed' && onRetrySetup && <button type="button" className="alter-opening-skip" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}
+      {setupState === 'provisioning_failed' && setupRetryError && <p role="alert" className="alter-opening-status">{setupRetryError}</p>}
+      {ready && (openingSlow || voiceError) && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
     </div>}
     <div className="alter-content">
     <div className="alter-landing">

@@ -58,3 +58,21 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   expect(await page.evaluate(() => (window as any).greetingRequests.length)).toBe(0)
 })
+
+test('failed Google setup offers retry and does not enter an unusable workspace', async ({ page }) => {
+  await page.route('**/v1/workspaces/retry-provision', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'provisioning' }) }))
+  await page.goto('/')
+  await page.getByLabel('Your name').fill('Alex')
+  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.evaluate(async () => {
+    const { mockSnapshot, patchMock } = await import('/src/api/mock/workspace.ts')
+    patchMock({ workspace: { ...mockSnapshot().workspace!, state: 'provisioning_failed' } })
+  })
+  await expect(page.getByLabel('Opening your workday')).toBeVisible()
+  await expect(page.getByLabel('Opening your workday').getByRole('button', { name: 'Retry Google setup' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Enter without voice' })).toHaveCount(0)
+  await expect(page.locator('.offer-card').first()).toBeDisabled()
+  const request = page.waitForRequest('**/v1/workspaces/retry-provision')
+  await page.getByLabel('Opening your workday').getByRole('button', { name: 'Retry Google setup' }).click()
+  expect((await request).method()).toBe('POST')
+})

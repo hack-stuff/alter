@@ -149,3 +149,23 @@ def report_live_failure(exc, settings, stage):
         payload["providerCloseCode"] = close_code
     print(json.dumps(payload), file=sys.stderr, flush=True)
     return {"error": f"{detail} Reference: {reference}", "reference": reference}
+
+
+def report_provision_failure(exc):
+    """Keep provider request details and OAuth credentials out of setup logs."""
+    reference = uuid4().hex[:12]
+    code = getattr(getattr(exc, "resp", None), "status", None)
+    payload = {
+        "severity": "ERROR",
+        "event": "workspace_provision_failed",
+        "reference": reference,
+        "exceptionType": type(exc).__name__,
+        "frames": [
+            {"file": Path(frame.filename).name, "line": frame.lineno, "function": frame.name}
+            for frame in traceback.extract_tb(exc.__traceback__)[-10:]
+        ],
+    }
+    if isinstance(code, int):
+        payload["providerCode"] = code
+    print(json.dumps(payload), file=sys.stderr, flush=True)
+    return reference

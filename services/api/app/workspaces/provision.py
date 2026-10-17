@@ -1,6 +1,7 @@
 from datetime import timedelta
 import secrets
 from app.auth import Caller, MemberContext
+from app.diagnostics import report_provision_failure
 from app.errors import error
 from app.rate_limits import take
 from app.util import new_id, iso, now
@@ -108,7 +109,8 @@ class Workspaces:
                     )
 
             self.store.atomic(finish)
-        except Exception:
+        except Exception as exc:
+            report_provision_failure(exc)
 
             def failed(tx):
                 current = tx.get(f"workspaces/{wid}")

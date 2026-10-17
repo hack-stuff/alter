@@ -122,6 +122,7 @@
 .alter-opening-status { margin: 19px 0 0; color: #adbadc; font-size: 15px; }
 .alter-opening-skip { margin-top: 22px; color: #d8e6ff; border: 1px solid #53699c; background: #1d2e53; }
 .alter-opening-skip:hover { background: #2b426f; }
+.alter-opening-skip:disabled { opacity: .65; cursor: wait; }
 .alter-content { max-width: 1200px; margin: 0 auto; }
 .alter-landing {
   display: grid;

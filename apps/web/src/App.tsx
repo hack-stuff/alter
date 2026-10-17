@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, MOCK, ApiError } from './api/client'
+import { api, MOCK, ApiError, httpCall } from './api/client'
 import { useWorkspace } from './api/useWorkspace'
 import type { Approval, JoinResult } from './api/types'
 import { Alter } from './screens/Alter'
@@ -63,8 +63,17 @@ export default function App() {
   const [generation, setGeneration] = useState(0)
   const [more, setMore] = useState(false)
   const [error, setError] = useState('')
+  const [retryingSetup, setRetryingSetup] = useState(false)
+  const [setupRetryError, setSetupRetryError] = useState('')
   function joined(join: JoinResult, name: string) { setSession({ join, name }); setOverrides({}); setScreen('alter') }
   function updateApproval(updated: Approval) { setOverrides((cards) => ({ ...cards, [updated.id]: updated })) }
+  async function retrySetup() {
+    if (retryingSetup) return
+    setRetryingSetup(true); setSetupRetryError('')
+    try { await httpCall('POST', '/workspaces/retry-provision'); refresh() }
+    catch (e) { setSetupRetryError(e instanceof Error ? e.message : 'Could not retry Google setup. Please try again.') }
+    finally { setRetryingSetup(false) }
+  }
   async function reset() {
     if (!session || resetting) return
     setResetting(true); setError('')
@@ -122,7 +131,7 @@ export default function App() {
 
     {data.workspace?.simulated && <p className="demo-banner">Local development · {data.workspace.aiBackend === 'vertex' ? 'real Gemini on Agent Platform and simulated Google resources' : 'simulated AI and Google resources'} · changes persist on this server</p>}
     {!stageView && data.workspace?.state === 'provisioning' && <p role="status">Your Alter is connecting to your team’s Google resources…</p>}
-    {!stageView && data.workspace?.state === 'provisioning_failed' && <p role="alert" className="error">Google setup failed. Reset the demo or contact the administrator to try again.</p>}
+    {!stageView && data.workspace?.state === 'provisioning_failed' && <div role="alert" className="error setup-retry"><span>Google setup didn’t finish. Your workspace and work are saved.</span><button type="button" disabled={retryingSetup} onClick={() => void retrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>{setupRetryError && <span>{setupRetryError}</span>}</div>}
 
     {streamError && <div role="alert" className="error"><p>{streamError}</p><button onClick={refresh}>Retry updates</button></div>}
     {confirmReset && <section className="reset-confirmation" aria-label="Reset confirmation"><p>Reset this Alter to its starting state? Its conversation, proposals and changes will be cleared.</p><div className="actions"><button onClick={() => void reset()} disabled={resetting}>{resetting ? 'Resetting…' : 'Confirm reset'}</button><button disabled={resetting} onClick={() => { setConfirmReset(false); setError('') }}>Cancel</button></div>{error && <p role="alert" className="error">{error}</p>}</section>}
@@ -137,8 +146,11 @@ export default function App() {
           escalations={escalations}
           events={data.events}
           active={screen === 'alter'}
-          ready={MOCK || data.workspace?.state === 'ready'}
+          ready={data.workspace?.state === 'ready' || (MOCK && !data.workspace?.state)}
           setupState={data.workspace?.state}
+          retryingSetup={retryingSetup}
+          setupRetryError={setupRetryError}
+          onRetrySetup={retrySetup}
           onUpdate={updateApproval}
           onRefresh={refresh}
           onOpen={(s) => setScreen(s)}
