@@ -36,7 +36,7 @@ export function workSurface(text: string): WorkSurface | undefined {
 // or requested by a Live tool call, goes through one NavigationAction.
 // Navigation only changes what is visible. It never approves, sends or edits.
 
-export const SCREEN_IDS = ['home', 'canvas', 'meeting', 'approvals', 'decisions', 'team', 'work-log', 'rules', 'files'] as const
+export const SCREEN_IDS = ['home', 'canvas', 'meeting', 'approvals', 'decisions', 'team', 'work-log', 'rules', 'files', 'computer'] as const
 export type ScreenId = (typeof SCREEN_IDS)[number]
 export type HighlightState = 'pulse' | 'focus' | 'none'
 export type NavigationSource = 'ui' | 'text' | 'voice-fast' | 'voice-tool'
@@ -56,6 +56,13 @@ export function isScreenId(value: unknown): value is ScreenId {
   return typeof value === 'string' && (SCREEN_IDS as readonly string[]).includes(value)
 }
 
+// "Open Notepad on my computer and …" is work for the desktop helper, not navigation.
+const onComputer = /\b(?:on|using|with|from) (?:my|the|this) (?:computer|desktop|laptop|pc|mac)\b|^(?:please\s+)?(?:use|control|take over) (?:my|the|this) (?:computer|desktop|mouse|keyboard)\b/i
+export function desktopTask(text: string): string | undefined {
+  const task = text.trim()
+  return task.length <= 1000 && !negation.test(task) && onComputer.test(task) ? task : undefined
+}
+
 export const LEGACY_SURFACES: Record<WorkSurface, ScreenId> = { meet: 'meeting', plan: 'canvas', approvals: 'approvals', activity: 'work-log' }
 
 const verb = /^(?:(?:hey|ok|okay|so)[, ]+)?(?:alter[, ]+)?(?:(?:please|can you|could you|would you|will you|i want to|i'd like to|let'?s|let me|now|and)\s+)*(?:open|show(?: me)?|view|see|join|go(?: back)? to|take me(?: back)? to|bring (?:me )?up|pull up|navigate to|switch to|jump to|head to|back to|shape)\b/i
@@ -71,6 +78,7 @@ const SCREEN_WORDS: [ScreenId, RegExp][] = [
   ['work-log', /\b(?:work ?log|activity|receipts?|history)\b/i],
   ['rules', /\b(?:rules?|memory|memories|settings|preferences|permissions)\b/i],
   ['files', /\b(?:files?|inbox|drive|folder)\b/i],
+  ['computer', /\b(?:computer|desktop helper|desktop control)\b/i],
   ['canvas', /\b(?:canvas|diagram|design|plan|flow(?:chart)?|login journey|architecture|arch)\b/i],
   ['meeting', /\b(?:meeting|meet|sync|call|companion|stand-?up)\b/i],
   ['team', /\b(?:team|teammates?|alters)\b/i],

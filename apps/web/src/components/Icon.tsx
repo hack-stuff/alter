@@ -11,6 +11,7 @@ const paths: Record<string, string> = {
   decision: 'M12 3v4M12 17v4M4 12h4M16 12h4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
   settings: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',
   files: 'M3 5h7l2 3h9v12H3Z',
+  computer: 'M3 4h18v12H3ZM8 20h8M12 16v4',
   canvas: 'M4 4h6v6H4ZM14 14h6v6h-6ZM10 7h4a3 3 0 0 1 3 3v4',
   meeting: 'M3 7h12v10H3ZM15 10l6-3v10l-6-3',
   log: 'M4 6h2M4 12h2M4 18h2M9 6h11M9 12h11M9 18h11',

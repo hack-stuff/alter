@@ -1,7 +1,8 @@
 import { api } from '../api/client'
 import { meetingApi } from '../api/meetings'
 import { planApi } from '../api/plans'
-import { canvasEdit, isScreenId, navigateTo, parseNavigation, requestedCard, type HighlightState, type NavigationAction, type NavigationSource } from '../agent/navigation'
+import { canvasEdit, desktopTask, isScreenId, navigateTo, parseNavigation, requestedCard, type HighlightState, type NavigationAction, type NavigationSource } from '../agent/navigation'
+import { requestDesktopTask } from '../api/desktop'
 import { alterNav, planUpdates, recentlyOpened } from '../agent/navigator'
 import type { Plan } from '../api/plans'
 import { parseDecision, type DecisionIntent } from '../agent/decisions'
@@ -60,6 +61,12 @@ export async function dispatchLiveTool(name: string, args: Record<string, unknow
       planUpdates.publish(updated)
       go(navigateTo('canvas', changedNode(current, updated), 'pulse'), 'voice-tool')
       return { navigation: 'canvas', changed: updated.revision !== current.revision, revision: updated.revision, explanation: updated.explanation, instruction: 'The private design draft is open with the change highlighted. Publishing still requires review.' }
+    }
+    const task = desktopTask(input)
+    if (task && context.onNavigate) {
+      go(navigateTo('computer'), 'voice-tool')
+      requestDesktopTask(task)
+      return { navigation: 'computer', instruction: 'The Computer page is open and the task starts there with the desktop helper. Each step may wait for the owner to allow it. Nothing has been done on the computer yet.' }
     }
     const intent = parseNavigation(input)
     if (intent && (intent.confidence === 'high' || requestedCard(input)) && context.onNavigate) {

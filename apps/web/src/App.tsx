@@ -13,6 +13,7 @@ import { Escalations } from './screens/Escalations'
 import { Activity } from './screens/Activity'
 import { Settings } from './screens/Settings'
 import { Files } from './screens/Files'
+import { Computer } from './screens/Computer'
 import { Kiosk } from './screens/Kiosk'
 import { Director } from './screens/Director'
 import { Icon } from './components/Icon'
@@ -39,6 +40,7 @@ const SECONDARY: NavItem[] = [
   { id: 'work-log', label: 'Work log', icon: 'log' },
   { id: 'rules', label: 'Rules & memory', icon: 'settings' },
   { id: 'files', label: 'Files', icon: 'files' },
+  { id: 'computer', label: 'Computer', icon: 'computer' },
 ]
 
 export default function App() {
@@ -240,6 +242,7 @@ export default function App() {
           </section>
         </div>}
         {mounted('files') && <div data-screen="files" hidden={screen !== 'files'}><Files workspace={data.workspace} inbox={data.inbox} members={data.members} /></div>}
+        {mounted('computer') && <div data-screen="computer" hidden={screen !== 'computer'}><Computer active={screen === 'computer'} /></div>}
       </div>
     </main>
   </div>

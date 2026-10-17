@@ -75,6 +75,9 @@ class Engine:
         from app.plans import Plans
 
         self.plans = Plans(self)
+        from app.desktop import Desktop
+
+        self.desktop = Desktop(self)
         self.injected = (
             store is not None
             or apps is not None

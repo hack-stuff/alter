@@ -53,6 +53,7 @@ SCREENS = [
     "work-log",
     "rules",
     "files",
+    "computer",
 ]
 # Client-side navigation for the owner's own Alter. It only changes the visible
 # screen in the browser; it has no server effect and cannot approve anything.

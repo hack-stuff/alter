@@ -17,6 +17,7 @@ from app.models import *
 from app.meeting_models import *
 from app.plans import PlanEdit, PlanRevision
 from app.day import MeetLink, day, validate_meet_url
+from app.desktop import DesktopStart, DesktopStep
 from app.google import meet_join
 from app.rate_limits import take
 from app.rooms import RoomCreate, RoomJoin, RoomLeave, RoomPoll, RoomSignal
@@ -68,10 +69,13 @@ def create_app(settings=None, engine=None):
     async def bounded_request(request, call_next):
         # Buffer a bounded body even when Content-Length is missing or dishonest.
         if request.method in ("POST", "PUT", "PATCH"):
+            # A desktop step carries one screenshot; everything else stays small.
+            path = request.url.path
+            limit = 2_200_000 if path.startswith("/v1/desktop/") and path.endswith("/step") else 65536
             data = bytearray()
             async for chunk in request.stream():
                 data.extend(chunk)
-                if len(data) > 65536:
+                if len(data) > limit:
                     return JSONResponse(
                         {
                             "detail": {
@@ -251,6 +255,18 @@ def create_app(settings=None, engine=None):
     @app.get("/v1/day")
     def current_day(ctx=Depends(member)):
         return day(engine, ctx)
+
+    @app.post("/v1/desktop/sessions")
+    def desktop_start(req: DesktopStart, ctx=Depends(member)):
+        return engine.desktop.start(ctx, req)
+
+    @app.post("/v1/desktop/sessions/{sid}/step")
+    async def desktop_step(sid: str, req: DesktopStep, ctx=Depends(member)):
+        return await run_in_threadpool(engine.desktop.step, ctx, identifier(sid), req)
+
+    @app.post("/v1/desktop/sessions/{sid}/stop")
+    def desktop_stop(sid: str, ctx=Depends(member)):
+        return engine.desktop.stop(ctx, identifier(sid))
 
     @app.put("/v1/day/meet-link")
     def meet_link(req: MeetLink, ctx=Depends(member)):

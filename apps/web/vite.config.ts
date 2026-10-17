@@ -5,6 +5,8 @@ import { defineConfig } from 'vite'
 
 const seed = fileURLToPath(new URL('../../services/api/seed', import.meta.url))
 const contracts = fileURLToPath(new URL('../../contracts', import.meta.url))
+// The Computer screen offers the desktop helper's source as a download.
+const desktopHelper = fileURLToPath(new URL('../desktop-helper', import.meta.url))
 
 export default defineConfig({
   plugins: [react(), VitePWA({
@@ -24,7 +26,7 @@ export default defineConfig({
   })],
   resolve: { alias: { '@contracts': contracts } },
   server: {
-    fs: { allow: ['.', contracts, seed] },
+    fs: { allow: ['.', contracts, seed, desktopHelper] },
     watch: { ignored: ['**/backend-test-results/**', '**/test-results/**', '**/playwright-report/**'] },
   },
 })

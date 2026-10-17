@@ -673,3 +673,32 @@ html { scroll-padding-bottom: 96px; }
   .room-controls { gap: 8px; }
   .room-controls .room-leave, .room-controls .room-step-out { padding: 0 16px; }
 }
+
+/* Computer: the desktop helper */
+.helper-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); font-size: 13px; font-weight: 550; color: var(--muted); }
+.helper-pill > span { width: 8px; height: 8px; border-radius: 50%; background: var(--reject); }
+.helper-pill.is-ready > span { background: var(--approve); }
+.computer-setup, .computer-pair, .computer-task, .computer-approval { display: grid; gap: 12px; }
+.computer-setup ol { display: grid; gap: 14px; margin: 0; padding-left: 22px; }
+.computer-setup li { display: grid; gap: 8px; justify-items: start; }
+.computer-setup code { display: block; max-width: 100%; overflow-x: auto; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--sheet-2); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
+.computer-pair input { width: 9em; letter-spacing: .12em; }
+.computer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.computer-task label[for] { font-weight: 600; }
+.computer-task textarea { width: 100%; resize: vertical; }
+.computer-approval { border-color: var(--alter-border); background: var(--alter-soft); }
+.computer-approval h3 { margin: 0; }
+.computer-log { display: grid; gap: 10px; margin: 0; padding: 16px 18px; list-style: none; }
+.computer-log li { display: flex; gap: 10px; align-items: baseline; font-size: 14px; }
+.computer-log .log-goal strong { font-size: 15px; }
+.computer-log .log-alter strong { font-weight: 500; }
+.computer-log .step-state { width: 18px; flex-shrink: 0; text-align: center; font-weight: 700; color: var(--muted); }
+.computer-log .is-done .step-state { color: var(--approve); }
+.computer-log .is-failed .step-state, .computer-log .is-stopped .step-state { color: var(--reject); }
+.computer-log .is-waiting .step-state, .computer-log .is-running .step-state { color: var(--alter); }
+.computer-view { display: grid; gap: 10px; margin: 0; justify-items: start; }
+.computer-shot { position: relative; width: 100%; }
+.computer-view img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+/* Where the next click or typing lands, on the screenshot it was chosen from. */
+.computer-point { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 3px solid var(--alter); background: color-mix(in srgb, var(--alter) 25%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--alter) 18%, transparent); pointer-events: none; }
+@media (max-width: 900px) { .computer-grid { grid-template-columns: minmax(0, 1fr); } }

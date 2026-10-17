@@ -25,6 +25,9 @@ What's new:
 - **The guided workday.** You step into Dev's day as product lead, hear a spoken briefing, edit a
   login-flow design by voice, join a team meeting with Siddhi's Alter and send the follow-up.
   [docs/connected-workday.md](docs/connected-workday.md) describes how this works and how to set it up.
+- **Your Alter can use your computer.** Run the small [desktop helper](apps/desktop-helper/README.md),
+  pair it on the Computer page, then say or type "on my computer, …". Your Alter sees the screen,
+  moves the mouse, clicks and types in any app, and asks before risky steps.
 
 ## Description
 

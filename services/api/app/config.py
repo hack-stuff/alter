@@ -49,6 +49,8 @@ class Settings:
     live_location: str = ""
     meet_url: str = ""
     model_timeout_ms: int = 60000
+    # A Gemini model that supports the computer-use tool, for desktop control.
+    desktop_model: str = ""
 
     @property
     def model_location(self):
@@ -108,6 +110,7 @@ class Settings:
             model_timeout_ms=max(
                 10000, min(120000, int(os.getenv("MODEL_TIMEOUT_MS", "60000")))
             ),
+            desktop_model=os.getenv("DESKTOP_MODEL", "gemini-3-flash-preview"),
         )
 
     def missing(self):

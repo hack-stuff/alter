@@ -5,7 +5,8 @@ import { alterNav } from '../agent/navigator'
 import { parseDecision, pickApproval, type DecisionIntent } from '../agent/decisions'
 import { api, MOCK, httpCall } from '../api/client'
 import { dayApi, type Day } from '../api/day'
-import { canvasEdit, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
+import { canvasEdit, desktopTask, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
+import { requestDesktopTask } from '../api/desktop'
 import { dispatchLiveTool } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
@@ -159,6 +160,12 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
         return true
       } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete that. Please try again.'); setDraft(text); return false }
       finally { setBusy(false) }
+    }
+    const task = desktopTask(text)
+    if (task) {
+      setMessages((m) => [...m, { from: 'human', text: task, citations: [], approvalIds: [], traceIds: [], ts: timestamp() }, { from: 'alter', text: 'I’ll do that on your computer. Follow along on the Computer page.', citations: [], approvalIds: [], traceIds: [], ts: timestamp() }])
+      onNavigate(navigateTo('computer'), 'text'); requestDesktopTask(task); setDraft('')
+      return true
     }
     // Fast path: a clear "open X" never waits on the model.
     const intent = parseNavigation(text)

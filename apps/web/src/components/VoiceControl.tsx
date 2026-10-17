@@ -44,7 +44,7 @@ interface Props {
   onError?: (message: string) => void
 }
 
-const screenNames: Record<ScreenId, string> = { home: 'Home', canvas: 'Canvas', meeting: 'Meeting', approvals: 'Approvals', decisions: 'Decisions', team: 'Team', 'work-log': 'Work log', rules: 'Rules & memory', files: 'Files' }
+const screenNames: Record<ScreenId, string> = { home: 'Home', canvas: 'Canvas', meeting: 'Meeting', approvals: 'Approvals', decisions: 'Decisions', team: 'Team', 'work-log': 'Work log', rules: 'Rules & memory', files: 'Files', computer: 'Computer' }
 function describeTarget(target?: string) {
   if (!target) return ''
   const value = target.replace(/^(kind|label):/, '').replaceAll('_', ' ')
