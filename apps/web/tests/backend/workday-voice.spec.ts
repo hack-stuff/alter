@@ -55,7 +55,7 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
     })
   })
   await page.goto('/')
-  await page.getByRole('button', { name: 'Step into Priya’s day' }).click()
+  await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
   expect(starts.at(-1)?.mode).toBe('chat')
   // Live sometimes speaks a reply without calling its tool. The streaming
@@ -107,14 +107,14 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
           id: 'huddle-question',
           name: 'ask_alter',
           args: {
-            memberId: 'rahul',
-            question: 'Why did Rahul choose one-tap?',
+            memberId: 'siddhi',
+            question: 'Why did Siddhi choose one-tap?',
           },
         },
       ],
     },
   })
   await expect(
-    page.getByRole('article', { name: 'Rahul’s actual answer' }),
+    page.getByRole('article', { name: 'Siddhi’s actual answer' }),
   ).toContainText('October 8')
 })

@@ -3,7 +3,7 @@ from app.auth import Caller
 
 def test_failed_google_setup_retries_without_replacing_workspace(system):
     client, engine = system
-    created = engine.workspaces.create(Caller("owner"), "Priya", "local", demo_day=True)
+    created = engine.workspaces.create(Caller("owner"), "Dev", "local", demo_day=True)
     wid = created["workspaceId"]
     guest = engine.workspaces.join(
         Caller("guest"), "Guest", created["inviteUrl"].split("/")[-1]

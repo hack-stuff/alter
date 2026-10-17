@@ -19,10 +19,10 @@ def test_thirty_question_gate_table():
     cases = json.loads(
         (Path(__file__).parent.parent / "scripts/eval_cases.json").read_text()
     )
-    rules = load_rules("rahul")
+    rules = load_rules("siddhi")
     for question, expected in cases:
         result = enforce(
-            rules, {"alice", "rahul"}, "alice", "rahul", classify(question)
+            rules, {"alice", "siddhi"}, "alice", "siddhi", classify(question)
         )
         assert result.outcome == expected, question
     # An owner toggle cannot permit another member to commit a date.
@@ -31,9 +31,9 @@ def test_thirty_question_gate_table():
     assert (
         enforce(
             [Rule("all", "Share", ("request_commitment",), "allow")],
-            {"alice", "rahul"},
+            {"alice", "siddhi"},
             "alice",
-            "rahul",
+            "siddhi",
             "request_commitment",
         ).outcome
         == "ask"
@@ -110,8 +110,8 @@ def test_calendar_deterministic_event_no_external_invites():
             "title": "Sync",
             "start": now().isoformat(),
             "end": (now() + timedelta(minutes=30)).isoformat(),
-            "attendees": ["alice", "meera"],
-            "attendeeNames": ["Alice", "Meera"],
+            "attendees": ["alice", "kani"],
+            "attendeeNames": ["Alice", "Kani"],
         },
         "operation",
     )
@@ -120,14 +120,14 @@ def test_calendar_deterministic_event_no_external_invites():
     assert len(payload["body"]["id"]) == 64
     assert json.loads(
         payload["body"]["extendedProperties"]["private"]["memberIds"]
-    ) == ["alice", "meera"]
+    ) == ["alice", "kani"]
     service.events().insert().execute.assert_called_once_with(num_retries=0)
 
 
 def test_gmail_current_verified_own_address_only():
     service = MagicMock()
     service.users().messages().send().execute.return_value = {"id": "sent-id"}
-    action = {"to_members": ["alice", "meera"], "subject": "Summary", "body": "Hello"}
+    action = {"to_members": ["alice", "kani"], "subject": "Summary", "body": "Hello"}
     member = {
         "id": "alice",
         "name": "Alice",
@@ -153,7 +153,7 @@ def test_gmail_current_verified_own_address_only():
     )
     payload = service.users().messages().send.call_args.kwargs
     message = message_from_bytes(base64.urlsafe_b64decode(payload["body"]["raw"]))
-    assert message["To"] == "alice@example.com" and "Meera" not in message["To"]
+    assert message["To"] == "alice@example.com" and "Kani" not in message["To"]
     assert message["From"] == "Alter for Alice <demo@example.com>"
     assert result["gmailMessageUrl"].endswith("sent-id")
     service.users().messages().send().execute.assert_called_once_with(num_retries=0)
@@ -179,10 +179,10 @@ def test_director_effect_and_welcome(team):
     e.store.set(root, {**value, "director": True})
     claim = c.post(
         "/v1/director/claim",
-        headers={"X-Dev-Uid": "rahul-director"},
+        headers={"X-Dev-Uid": "siddhi-director"},
         json={
             "workspaceId": r["workspaceId"],
-            "memberId": "rahul",
+            "memberId": "siddhi",
             "key": "director-test",
         },
     )
@@ -190,7 +190,7 @@ def test_director_effect_and_welcome(team):
     context = e.auth.member(Caller("alice"))
     item = e.escalate(
         context.workspace_id,
-        "rahul",
+        "siddhi",
         context.member_id,
         "Confirm date?",
         "Owner call.",
@@ -199,7 +199,7 @@ def test_director_effect_and_welcome(team):
     reply = {"text": "Confirmed for " + (now() + timedelta(days=20)).date().isoformat()}
     response = c.post(
         "/v1/escalations/" + item["id"] + "/respond",
-        headers={"X-Dev-Uid": "rahul-director"},
+        headers={"X-Dev-Uid": "siddhi-director"},
         json=reply,
     )
     assert response.status_code == 200, response.text
@@ -210,7 +210,7 @@ def test_director_effect_and_welcome(team):
     assert (
         c.post(
             "/v1/escalations/" + item["id"] + "/respond",
-            headers={"X-Dev-Uid": "rahul-director"},
+            headers={"X-Dev-Uid": "siddhi-director"},
             json=reply,
         ).status_code
         == 409
@@ -264,7 +264,7 @@ def test_crash_recovery_finishes_inbox_and_receipt(team):
     a = e.proposals.create(
         context,
         "email",
-        {"to_members": ["meera"], "subject": "Summary", "body": "Once"},
+        {"to_members": ["kani"], "subject": "Summary", "body": "Once"},
         "Test",
     )
     root = f"workspaces/{context.workspace_id}"
@@ -279,7 +279,7 @@ def test_crash_recovery_finishes_inbox_and_receipt(team):
         context.caller,
     )
     e.application.recover(context.workspace_id, a["id"])
-    assert e.store.get(root + "/inbox/meera/messages/" + a["id"])["body"] == "Once"
+    assert e.store.get(root + "/inbox/kani/messages/" + a["id"])["body"] == "Once"
     assert e.store.get(root + "/approvals/" + a["id"])["state"] == "applied"
     assert e.store.list(root + "/receipts")
 
@@ -291,8 +291,8 @@ def test_vertex_output_rejects_invented_claims(team, monkeypatch):
 
     c, e, h, r = team
     context = e.auth.member(Caller("alice"))
-    member = e.store.get(f"workspaces/{context.workspace_id}/members/rahul") | {
-        "id": "rahul"
+    member = e.store.get(f"workspaces/{context.workspace_id}/members/siddhi") | {
+        "id": "siddhi"
     }
 
     class FakeRunner:
@@ -464,7 +464,7 @@ def test_agent_escalation_is_not_duplicated(team, monkeypatch):
     async def answer(*args):
         item = e.escalate(
             context.workspace_id,
-            "rahul",
+            "siddhi",
             context.member_id,
             "Why one-tap?",
             "No evidence",
@@ -472,7 +472,7 @@ def test_agent_escalation_is_not_duplicated(team, monkeypatch):
         return {"answer": "Asked owner", "citations": [], "escalationId": item["id"]}
 
     monkeypatch.setattr(e.brain, "answer", answer)
-    result = asyncio.run(e.ask_core(context, "rahul", "Why one-tap?", "one-trace"))
+    result = asyncio.run(e.ask_core(context, "siddhi", "Why one-tap?", "one-trace"))
     assert result["outcome"] == "ask" and result["escalationId"]
     assert len(e.store.list(f"workspaces/{context.workspace_id}/escalations")) == 1
 

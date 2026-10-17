@@ -116,7 +116,7 @@ export default function App() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not reset this Alter. Please try again.') }
     finally { setResetting(false) }
   }
-  if (parameters.get('kiosk') === '1' && (session || parameters.get('director') !== '1')) return <Kiosk memberId={parameters.get('tile') ?? 'rahul'} meetingId={parameters.get('meeting') ?? undefined} />
+  if (parameters.get('kiosk') === '1' && (session || parameters.get('director') !== '1')) return <Kiosk memberId={parameters.get('tile') ?? 'siddhi'} meetingId={parameters.get('meeting') ?? undefined} />
   if (loggingOut) return <main className="join-layout"><p role="status" className="quiet-status">Logging out…</p></main>
   if (restoring) return <main className="join-layout"><p role="status" className="quiet-status"><span className="alter-mark alter-mark-small" aria-hidden="true">✦</span>Opening your Alter…</p></main>
   if (restoreError && !session) return <main className="join-layout"><div className="sheet narrow"><p className="error" role="alert">{restoreError}</p><button className="primary" onClick={() => { setRestoreError(''); setRestoring(true); setRestoreAttempt((value) => value + 1) }}>Retry sign-in</button></div></main>

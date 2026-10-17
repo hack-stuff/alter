@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('logging out switches local identity without deleting saved work', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Step into Priya’s day' }).click()
+  await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
   await expect(page.getByRole('button', { name: 'Log out', exact: true })).toBeVisible()
   const originalUid = await page.evaluate(() => localStorage.getItem('alter.dev.uid'))
   expect(originalUid).toMatch(/^dev_/)
@@ -25,5 +25,5 @@ test('logging out switches local identity without deleting saved work', async ({
     headers: { 'X-Dev-Uid': originalUid! },
   })
   expect(saved.status()).toBe(200)
-  expect((await saved.json()).name).toBe('Priya')
+  expect((await saved.json()).name).toBe('Dev')
 })

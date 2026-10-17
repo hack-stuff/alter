@@ -6,7 +6,7 @@ import type { Answer } from '../api/types'
 import { Citations } from '../components/Citations'
 import { meetingApi } from '../api/meetings'
 
-const names: Record<string, string> = { rahul: 'Rahul', priya: 'Priya', meera: 'Meera', arjun: 'Arjun' }
+const names: Record<string, string> = { siddhi: 'Siddhi', dev: 'Dev', kani: 'Kani', sahil: 'Sahil' }
 export function Kiosk({ memberId, meetingId }: { memberId: string; meetingId?: string }) {
   const [speaking, setSpeaking] = useState(false)
   const [answer, setAnswer] = useState<Answer>()
@@ -51,7 +51,7 @@ export function Kiosk({ memberId, meetingId }: { memberId: string; meetingId?: s
   }
   return <main style={{ '--voice-level': level } as CSSProperties} className={`kiosk ${speaking ? 'is-speaking' : ''} ${clean ? 'clean-kiosk' : ''}`}>
     <div className="alter-cube" aria-hidden="true">{(names[memberId] ?? 'A')[0]}</div>
-    <h1>{names[memberId] ?? 'Teammate'}'s Alter <AlterBadge /></h1><p>{memberId === 'rahul' ? 'Rahul is on leave' : 'AI representative'}</p>
+    <h1>{names[memberId] ?? 'Teammate'}'s Alter <AlterBadge /></h1><p>{memberId === 'siddhi' ? 'Siddhi is on leave' : 'AI representative'}</p>
     <div className="kiosk-operator" hidden={clean}>
       {meetingId && !bound && <form onSubmit={(e) => { e.preventDefault(); sessionStorage.setItem('alter.meeting.room', room.trim()); setRoom(''); setBound(true) }}><label>Short-lived meeting room access<input type="password" autoComplete="off" value={room} onChange={(e) => setRoom(e.target.value)} required /></label><button>Connect this room</button><p className="hint">Generate room access from the organizer's meeting capture screen. This rig can only capture and ask within that meeting.</p></form>}
       {(!meetingId || bound) && <>

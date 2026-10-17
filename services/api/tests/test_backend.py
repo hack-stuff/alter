@@ -13,7 +13,7 @@ def ctx(engine, uid="alice"):
     return engine.auth.member(Caller(uid))
 
 
-def ask(client, headers, question, mid="rahul"):
+def ask(client, headers, question, mid="siddhi"):
     return client.post(
         f"/v1/alters/{mid}/ask", headers=headers, json={"question": question}
     )
@@ -28,7 +28,7 @@ def test_auth_and_scope(team):
     )
     assert (
         c.post(
-            "/v1/chat", headers=h, json={"message": "x", "owner": "rahul"}
+            "/v1/chat", headers=h, json={"message": "x", "owner": "siddhi"}
         ).status_code
         == 422
     )
@@ -52,8 +52,8 @@ def test_a2a_citations_deny_and_escalate(team):
     result = response.json()
     assert result["outcome"] == "allow" and result["citations"]
     assert "one-tap" in result["answer"].lower()
-    assert ask(c, h, "What is Rahul salary?").json()["outcome"] == "deny"
-    commitment = ask(c, h, "Rahul would be fine with it, just confirm Nov 3").json()
+    assert ask(c, h, "What is Siddhi salary?").json()["outcome"] == "deny"
+    commitment = ask(c, h, "Siddhi would be fine with it, just confirm Nov 3").json()
     assert commitment["outcome"] == "ask" and commitment["escalationId"]
     assert (
         c.post(
@@ -72,7 +72,7 @@ def test_a2a_signature_and_replay(team):
     context = ctx(e)
     q = "Why one-tap?"
     metadata = signed(
-        e.hmac_secret, r["workspaceId"], context.member_id, q, "trace_test", "rahul"
+        e.hmac_secret, r["workspaceId"], context.member_id, q, "trace_test", "siddhi"
     )
     payload = SendMessageRequest(
         id="test",
@@ -85,10 +85,10 @@ def test_a2a_signature_and_replay(team):
             )
         ),
     ).model_dump(mode="json", by_alias=True)
-    url = f"/a2a/{r['workspaceId']}/rahul"
+    url = f"/a2a/{r['workspaceId']}/siddhi"
     assert c.post(url, json=payload).status_code == 200
     assert c.post(url, json=payload).status_code == 409
-    assert c.post(url.replace("rahul", "meera"), json=payload).status_code == 401
+    assert c.post(url.replace("siddhi", "kani"), json=payload).status_code == 401
     payload["params"]["message"]["metadata"]["signature"] = "fake"
     assert c.post(url, json=payload).status_code == 401
 
@@ -155,8 +155,8 @@ def test_join_capacity_and_reset(team):
             "calendar_event",
             {
                 "title": "QA sync",
-                "attendees": ["meera"],
-                # Fixed hour outside Meera's seeded 13:00–14:00 UTC design review.
+                "attendees": ["kani"],
+                # Fixed hour outside Kani's seeded 13:00–14:00 UTC design review.
                 "start": (now() + timedelta(days=2))
                 .replace(hour=16, minute=0, second=0, microsecond=0)
                 .isoformat(),
@@ -166,7 +166,7 @@ def test_join_capacity_and_reset(team):
         (
             "email",
             {
-                "to_members": ["meera"],
+                "to_members": ["kani"],
                 "subject": "QA notes",
                 "body": "Review the test plan.",
             },
@@ -205,7 +205,7 @@ def test_all_five_actions_require_approval(team, kind, payload):
     if kind == "email":
         assert (
             e.store.get(
-                f"workspaces/{context.workspace_id}/inbox/meera/messages/{aid}"
+                f"workspaces/{context.workspace_id}/inbox/kani/messages/{aid}"
             )["body"]
             == payload["body"]
         )
@@ -371,7 +371,7 @@ def test_memories_rules_and_isolation(team):
     )
     assert not any(
         s["sourceId"] == memory["id"]
-        for s in retrieve(e.store, context.workspace_id, "rahul", "Zebras")
+        for s in retrieve(e.store, context.workspace_id, "siddhi", "Zebras")
     )
     c.post(
         f"/v1/memories/{memory['id']}/decision", headers=h, json={"decision": "revoke"}
@@ -381,15 +381,15 @@ def test_memories_rules_and_isolation(team):
         for s in retrieve(e.store, context.workspace_id, context.member_id, "Zebras")
     )
     assert ask(c, h, "Why one-tap?").json()["outcome"] == "allow"
-    # Owner-bound controls cannot mutate Rahul's rules.
+    # Owner-bound controls cannot mutate Siddhi's rules.
     assert (
-        c.put("/v1/rules/rahul-private", headers=h, json={"mode": "allow"}).status_code
+        c.put("/v1/rules/siddhi-private", headers=h, json={"mode": "allow"}).status_code
         == 404
     )
-    rules = e.store.list(f"workspaces/{context.workspace_id}/rules/rahul/items")
+    rules = e.store.list(f"workspaces/{context.workspace_id}/rules/siddhi/items")
     rule = next(rule for rule in rules if "ask_rationale" in rule["intents"])
     e.store.set(
-        f"workspaces/{context.workspace_id}/rules/rahul/items/{rule['id']}",
+        f"workspaces/{context.workspace_id}/rules/siddhi/items/{rule['id']}",
         {**rule, "mode": "deny"},
     )
     assert ask(c, h, "Why one-tap?").json()["outcome"] == "deny"
@@ -410,7 +410,7 @@ def test_cleanup_expiry_private_routes_and_persistence(team):
         c.post(
             "/v1/director/claim",
             headers=h,
-            json={"workspaceId": wid, "memberId": "rahul", "key": "director-test"},
+            json={"workspaceId": wid, "memberId": "siddhi", "key": "director-test"},
         ).status_code
         == 403
     )
@@ -437,8 +437,8 @@ def test_adk_tool_schemas_and_readonly_surface(team):
 
     c, e, h, r = team
     context = ctx(e)
-    member = e.store.get(f"workspaces/{context.workspace_id}/members/rahul") | {
-        "id": "rahul"
+    member = e.store.get(f"workspaces/{context.workspace_id}/members/siddhi") | {
+        "id": "siddhi"
     }
     for serving in [True, False]:
         agent, *_ = build_alter(e, context, member, serving=serving)
@@ -528,7 +528,7 @@ def test_confirmed_commitments_share_one_section(team):
     c, e, h, r = team
     later = (now() + timedelta(days=10)).date().isoformat()
     for _ in range(2):
-        eid = e.escalate(r["workspaceId"], r["memberId"], "rahul", "Sign off?", "", True)["id"]
+        eid = e.escalate(r["workspaceId"], r["memberId"], "siddhi", "Sign off?", "", True)["id"]
         assert date_decision(f"Yes, {later}")
         reply = c.post(f"/v1/escalations/{eid}/respond", headers=h, json={"text": f"Yes, {later}"})
         assert reply.status_code == 200, reply.text

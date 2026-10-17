@@ -2,7 +2,7 @@ import json
 from app.config import SEED_DIR
 from app.util import iso
 
-SLOTS = ("qa_lead", "security_engineer", "data_analyst", "qa_lead")
+SLOTS = ("qa_lead", "security_engineer", "ansh", "qa_lead")
 
 
 def load(relative):
@@ -17,7 +17,7 @@ def seed_workspace(tx, wid, human_id, name, uid, slot="qa_lead"):
             f"{prefix}/members/{mid}",
             {k: profile[k] for k in ("name", "role", "status")} | {"kind": "seeded"},
         )
-        rules = load(f"policies/{'rahul' if mid == 'rahul' else 'slot-default'}.json")[
+        rules = load(f"policies/{'siddhi' if mid == 'siddhi' else 'slot-default'}.json")[
             "rules"
         ]
         for rule in rules:

@@ -16,7 +16,7 @@ import type { Answer, Member } from '../api/types'
 type Segment = { id: string; text: string; kind: 'human' | 'alter' }
 export function MeetCompanion({
   members,
-  owner = 'Priya',
+  owner = 'Dev',
   workspaceId,
   memberId,
   onBack,
@@ -195,12 +195,12 @@ export function MeetCompanion({
     )
   }
   const ask = (text: string) =>
-    void action('Checking with Rahul’s Alter…', async () => {
+    void action('Checking with Siddhi’s Alter…', async () => {
       if (!text.trim()) return
       const answer =
         meeting?.state === 'capturing'
           ? await meetingApi.ask(meeting.id, text)
-          : await api.askAlter('rahul', text)
+          : await api.askAlter('siddhi', text)
       setLatest(answer)
       setQuestion('')
       capture(text, 'human')
@@ -223,7 +223,7 @@ export function MeetCompanion({
     }
     onReview(meetingId)
   }
-  const rahul = members.find((m) => m.id === 'rahul')
+  const siddhi = members.find((m) => m.id === 'siddhi')
   const capturing = meeting?.state === 'capturing'
   const meetingAlters = [
     { id: memberId, name: owner, note: 'Your Alter · taking notes and preparing your review' },
@@ -295,7 +295,7 @@ export function MeetCompanion({
               <p className="hint">Capture a real conversation only when the participants agree.</p>
               <label className="check-label"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />The participants consent to transcript capture.</label>
               <button className="primary" disabled={!consent || !!busy || MOCK} onClick={() => void action('Starting your saved meeting…', async () => {
-                const value = await meetingApi.create('Login revamp · team sync', members.filter((m) => ['priya', 'meera', 'arjun'].includes(m.id)).map((m) => m.id), 'rahul')
+                const value = await meetingApi.create('Login revamp · team sync', members.filter((m) => ['dev', 'kani', 'sahil'].includes(m.id)).map((m) => m.id), 'siddhi')
                 sessionStorage.setItem(key, value.id)
                 setMeetingId(value.id)
                 setMeeting(await meetingApi.get(value.id))
@@ -334,7 +334,7 @@ export function MeetCompanion({
               ? <button className="primary" disabled={!!busy} onClick={() => void action('Preparing the meeting follow-up…', finish)}>Meeting finished — prepare my review</button>
               : <button className="primary" onClick={() => onReview(meeting.id)}>Open meeting follow-up</button>)}
           </section>
-          {capturing && meeting && <RoomSetup meetingId={meeting.id} memberId="rahul" />}
+          {capturing && meeting && <RoomSetup meetingId={meeting.id} memberId="siddhi" />}
           <details className="sheet meet-url-box">
             <summary>{meetUrl ? 'Change the linked Google Meet' : 'Link the Google Meet you started'}</summary>
             <form onSubmit={(e) => { e.preventDefault(); void action('Saving the meeting link…', async () => { const value = await dayApi.setMeetUrl(urlDraft); setMeetUrl(value.meetUrl); setMeetError('') }) }}>
@@ -347,28 +347,28 @@ export function MeetCompanion({
         </aside>
       </div>
       <details className="sheet meeting-ask-details" onToggle={(event) => setAskOpen(event.currentTarget.open)}>
-        <summary>Ask Rahul's Alter about the work</summary>
-        <div className="alter-tile" aria-label="Rahul's Alter" data-nav-id="rahul" data-nav-label="Rahul's Alter">
+        <summary>Ask Siddhi's Alter about the work</summary>
+        <div className="alter-tile" aria-label="Siddhi's Alter" data-nav-id="siddhi" data-nav-label="Siddhi's Alter">
           <div className="alter-tile-head">
-            <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Rahul" size="large" away={rahul?.status === 'on_leave' || !rahul} /><AlterMark size="medium" /></span>
-            <div><h2>Rahul’s Alter <AlterBadge /></h2><p className="hint">{rahul?.status === 'on_leave' || !rahul ? 'Rahul is on leave · ' : ''}answers from his permitted notes, and asks Rahul about commitments</p></div>
+            <span className="person-pair person-pair-large" aria-hidden="true"><Avatar name="Siddhi" size="large" away={siddhi?.status === 'on_leave' || !siddhi} /><AlterMark size="medium" /></span>
+            <div><h2>Siddhi’s Alter <AlterBadge /></h2><p className="hint">{siddhi?.status === 'on_leave' || !siddhi ? 'Siddhi is on leave · ' : ''}answers from Siddhi’s permitted notes, and asks Siddhi about commitments</p></div>
           </div>
-          <OnScreenTips title="Ask Rahul’s Alter" tips={[
+          <OnScreenTips title="Ask Siddhi’s Alter" tips={[
             { type: 'say', text: 'Why did we switch to one-tap sign-in?' },
             { type: 'say', text: 'When are we launching the login revamp?' },
             { type: 'say', text: 'Is AUTH-112 approved for production?' },
           ]} onSelectPrompt={ask} />
           <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); ask(question) }}>
-            <label className="sr-only" htmlFor="meeting-question">Question for Rahul’s Alter</label>
-            <input id="meeting-question" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={!!busy} placeholder="Ask Rahul’s Alter…" />
+            <label className="sr-only" htmlFor="meeting-question">Question for Siddhi’s Alter</label>
+            <input id="meeting-question" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={!!busy} placeholder="Ask Siddhi’s Alter…" />
             <button className="primary" disabled={!!busy || !question.trim()}>Ask</button>
           </form>
-          {!MOCK && capturing && meeting && <VoiceControl mode="huddle" targetId="rahul" meetingId={meeting.id} autoStart active={voiceEnabled && active && askOpen} onTextFallback={ask} onState={setVoice} onCapture={capture} onResult={(res) => setLatest(res as Answer)} />}
-          {latest && <article className={`answer answer-${latest.outcome}`} aria-label="Rahul’s actual answer">
-            <p className="eyebrow">{latest.outcome === 'ask' ? '⚑ Owner decision needed' : latest.outcome === 'deny' ? '× Not shared' : '✓ Answer from Rahul’s Alter'}</p>
+          {!MOCK && capturing && meeting && <VoiceControl mode="huddle" targetId="siddhi" meetingId={meeting.id} autoStart active={voiceEnabled && active && askOpen} onTextFallback={ask} onState={setVoice} onCapture={capture} onResult={(res) => setLatest(res as Answer)} />}
+          {latest && <article className={`answer answer-${latest.outcome}`} aria-label="Siddhi’s actual answer">
+            <p className="eyebrow">{latest.outcome === 'ask' ? '⚑ Owner decision needed' : latest.outcome === 'deny' ? '× Not shared' : '✓ Answer from Siddhi’s Alter'}</p>
             <p>{latest.answer}</p>
             <Citations sources={latest.citations} />
-            {latest.escalationId && <p className="escalation-note"><span className="alter-glyph" aria-hidden="true">✦</span>Priority question saved for Rahul. Phone delivery depends on his registered notification device.</p>}
+            {latest.escalationId && <p className="escalation-note"><span className="alter-glyph" aria-hidden="true">✦</span>Priority question saved for Siddhi. Phone delivery depends on Siddhi’s registered notification device.</p>}
             <LiveTrace workspaceId={workspaceId} traceId={latest.traceId} />
           </article>}
         </div>

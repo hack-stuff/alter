@@ -805,7 +805,7 @@ class Engine:
                             ctx.workspace_id,
                             recipient,
                             eid + ":answered",
-                            "Rahul confirmed the launch date"
+                            "Siddhi confirmed the launch date"
                             if decision
                             else "A teammate replied",
                             text,
@@ -963,7 +963,7 @@ class Engine:
 
         if not self.store.atomic(reserve):
             return
-        ctx = MemberContext("service", wid, "priya", Caller("service"))
+        ctx = MemberContext("service", wid, "dev", Caller("service"))
         try:
             await self.transport.ask(
                 ctx, mid, "Is QA signed off for the login revamp?", new_id("trc_")

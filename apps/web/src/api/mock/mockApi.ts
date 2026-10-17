@@ -24,7 +24,7 @@ export const mockApi: Api = {
   startConversation: async () => ({ conversationId: 'conv_01' }),
   chat: async (message) => {
     const generation = mockGeneration()
-    setMockProgress(/why|launch|leave|confirm/i.test(message) ? "Asking Rahul's Alter…" : 'Preparing a preview for your review…')
+    setMockProgress(/why|launch|leave|confirm/i.test(message) ? "Asking Siddhi's Alter…" : 'Preparing a preview for your review…')
     await delay(undefined, 600)
     if (generation !== mockGeneration()) throw new Error('The workspace was reset. Please try again.')
     setMockProgress()

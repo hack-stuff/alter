@@ -101,8 +101,8 @@ def test_workspace_membership_and_huddle_persona_are_checked(client, backend):
     backend.forbidden = False
     assert request(client, {"mode": "huddle", "memberId": "outsider"}).status_code == 403
     assert not backend.reservations
-    assert request(client, {"mode": "huddle", "memberId": "rahul"}).status_code == 200
-    assert backend.mints[-1][1] == "rahul"
+    assert request(client, {"mode": "huddle", "memberId": "siddhi"}).status_code == 200
+    assert backend.mints[-1][1] == "siddhi"
 
 def test_budget_denial_never_mints(client, backend):
     backend.capacity = 0
@@ -130,7 +130,7 @@ def test_concurrent_requests_cannot_exceed_reservation_capacity(client, backend)
 
 @pytest.mark.parametrize("mode, tool", [("chat", "alter_chat"), ("revise", "revise_approval"), ("reply", "respond_escalation"), ("huddle", "ask_alter")])
 def test_locked_configuration_is_valid_sdk_schema_and_never_exposes_approval(mode, tool):
-    config = types.CreateAuthTokenConfig(uses=1, expire_time=datetime.now(timezone.utc) + timedelta(minutes=10), live_connect_constraints={"model": SETTINGS.model, "config": live_config(mode, "rahul" if mode == "huddle" else None)})
+    config = types.CreateAuthTokenConfig(uses=1, expire_time=datetime.now(timezone.utc) + timedelta(minutes=10), live_connect_constraints={"model": SETTINGS.model, "config": live_config(mode, "siddhi" if mode == "huddle" else None)})
     assert config.uses == 1
     live = config.live_connect_constraints.config
     assert live.input_audio_transcription is not None and live.output_audio_transcription is not None

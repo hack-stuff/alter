@@ -147,7 +147,7 @@ export function PlanCanvas({
             </form>
             <OnScreenTips title="Steer this design" tips={[
               { type: 'say', text: 'Add a retry state if sign-in fails and connect it back to one-tap' },
-              { type: 'say', text: "Include Meera's mock-up review checkpoint" },
+              { type: 'say', text: "Include Kani's mock-up review checkpoint" },
               { type: 'say', text: 'Propose a session timeout of 30 minutes' },
             ]} onSelectPrompt={edit} />
           </div>

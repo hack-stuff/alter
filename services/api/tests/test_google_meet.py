@@ -46,8 +46,8 @@ class CalendarService:
 def test_creates_one_google_meet_conference_on_the_workspace_calendar(monkeypatch):
     monkeypatch.setattr("app.google.calendar.time.sleep", lambda _: None)
     service = CalendarService()
-    first = create_meet(service, "calendar-1", "workspace-1", "priya")
-    second = create_meet(service, "calendar-1", "workspace-1", "priya")
+    first = create_meet(service, "calendar-1", "workspace-1", "dev")
+    second = create_meet(service, "calendar-1", "workspace-1", "dev")
     assert first == second == "https://meet.google.com/abc-defg-hij"
     assert len(service.inserts) == 1
     request = service.inserts[0]

@@ -34,7 +34,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
     const { api } = await import(path)
     const chat = api.chat
     api.chat = (...args: unknown[]) => { h.conversations.push(args[1]); return chat(...args) }
-    h.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Why one-tap?', finished: true }, outputTranscription: { text: 'Checking with Rahul.', finished: true } } })
+    h.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Why one-tap?', finished: true }, outputTranscription: { text: 'Checking with Siddhi.', finished: true } } })
     const call = { toolCall: { functionCalls: [{ id: 'call-1', name: 'alter_chat', args: { message: 'Why one-tap?' } }] } }
     h.callbacks.onmessage(call); h.callbacks.onmessage(call)
     h.callbacks.onmessage({ toolCallCancellation: { ids: ['cancelled'] } })
@@ -42,9 +42,9 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   })
   await expect(page.getByRole('log').getByText('The old Google Sign-In button', { exact: false })).toBeVisible()
   await expect(page.getByRole('log').getByText('Why one-tap?', { exact: true })).toHaveCount(1)
-  await expect(page.getByText('Checking with Rahul.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Checking with Siddhi.', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(1)
-  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-2', name: 'alter_chat', args: { message: 'Why is Rahul on leave?' } }] } }))
+  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-2', name: 'alter_chat', args: { message: 'Why is Siddhi on leave?' } }] } }))
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(2)
   expect(await page.evaluate(() => (window as any).liveHarness.conversations)).toEqual([undefined, 'conv_01'])
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'unsafe', name: 'approve', args: {} }] } }))

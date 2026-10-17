@@ -49,7 +49,7 @@ test('taught memories need approval; rules and preferences persist across screen
 test('activity receipt drawer has sources and result; Escape closes it', async ({ page }) => {
   await join(page)
   await navigate(page, 'Work log')
-  await page.getByRole('button', { name: "Rahul's Alter answered you: why one-tap sign-in", exact: false }).click()
+  await page.getByRole('button', { name: "Siddhi's Alter answered you: why one-tap sign-in", exact: false }).click()
   const drawer = page.getByRole('dialog', { name: 'Action receipt' })
   await expect(drawer).toBeVisible()
   await expect(drawer).toContainText('arch-sync-2026-10-08 · 12:04')
@@ -89,9 +89,9 @@ test('invite flow takes the security role and uses a shareable local invite URL'
 })
 
 test('kiosk is an AI-labelled huddle tile and director mode does not bypass authorization', async ({ page }) => {
-  await page.goto('/?kiosk=1&tile=rahul')
-  await expect(page.getByRole('heading', { name: "Rahul's Alter" })).toBeVisible()
-  await expect(page.getByText('Rahul is on leave')).toBeVisible()
+  await page.goto('/?kiosk=1&tile=siddhi')
+  await expect(page.getByRole('heading', { name: "Siddhi's Alter" })).toBeVisible()
+  await expect(page.getByText('Siddhi is on leave')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Talk to this Alter' })).toBeVisible()
   await page.goto('/?director=1')
   await page.getByLabel('Workspace ID').fill('ws_demo')

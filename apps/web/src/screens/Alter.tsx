@@ -23,10 +23,10 @@ const DIRECTIVES: { kind: 'do' | 'say'; text: string; open?: 'meet' | 'plan' }[]
   { kind: 'do', text: 'Join the 2:00 team sync on Meet', open: 'meet' },
   { kind: 'do', text: 'Open the shared plan', open: 'plan' },
   { kind: 'say', text: 'Why did we switch to one-tap sign-in?' },
-  { kind: 'say', text: "Ask Rahul's Alter to confirm the launch date" },
+  { kind: 'say', text: "Ask Siddhi's Alter to confirm the launch date" },
   { kind: 'say', text: 'Add a QA update to the status doc' },
   { kind: 'say', text: 'Add a tracker row for the iOS crash' },
-  { kind: 'say', text: 'Book 30 min with Meera on Thursday' },
+  { kind: 'say', text: 'Book 30 min with Kani on Thursday' },
   { kind: 'say', text: 'Email the team a QA summary' },
   { kind: 'say', text: "What's blocking launch?" },
 ]
@@ -165,7 +165,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   }
 
   const conversation = streamedMessages && streamedMessages.id === conversationId && streamedMessages.items.length ? streamedMessages.items : messages
-  const rahulName = members.find((m) => m.id === 'rahul')?.name ?? 'Rahul'
+  const siddhiName = members.find((m) => m.id === 'siddhi')?.name ?? 'Siddhi'
   const pending = approvals.filter((a) => a.state === 'proposed')
   const tiedIds = new Set(conversation.flatMap((m) => m.approvalIds))
   const waitingDrafts = pending.filter((a) => !tiedIds.has(a.id))
@@ -174,7 +174,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const needsCount = pending.length + asks.length
   const stateLine = busy ? `Working — ${latest ?? 'on it'}` : needsCount ? `${needsCount} thing${needsCount === 1 ? '' : 's'} waiting on you` : 'Here with you'
 
-  const statusText = `Hello ${name}. Your login journey and team follow-up are here. ${rahulName}'s Alter can help with his permitted project knowledge.`
+  const statusText = `Hello ${name}. Your login journey and team follow-up are here. ${siddhiName}'s Alter can help with Siddhi's permitted project knowledge.`
   const workedText = 'Continue the design, ask a teammate’s Alter, or open the team sync. I’ll show you the work before publishing it.'
   const needsText = pending.length && asks.length
     ? `${pending.length} drafts wait for your okay, and the team has a question only you can answer — both are listed below.`
@@ -203,7 +203,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const OFFERS: Offer[] = [
     {
       key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Call linked' : 'Team conversation', title: 'Join the team sync',
-      desc: `Open Google Meet, then review the follow-up with ${rahulName}’s Alter.`,
+      desc: `Open Google Meet, then review the follow-up with ${siddhiName}’s Alter.`,
       go: 'Join the call', hot: /join|sync|meet|room|call/, sayLine: 'Opening the team sync in Google Meet.',
       run: onStartMeeting,
     },
@@ -221,9 +221,9 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     },
     {
       key: 'ask', num: '04', glyph: 'sparkle', kicker: 'One question', title: 'Ask about the launch',
-      desc: `Get a sourced launch update from ${rahulName}’s Alter.`,
+      desc: `Get a sourced launch update from ${siddhiName}’s Alter.`,
       go: 'Ask now', hot: /launch|date|when|ask about/, sayLine: 'Checking with the team now — one moment.',
-      run: () => void send("Ask Rahul's Alter to confirm the launch date"),
+      run: () => void send("Ask Siddhi's Alter to confirm the launch date"),
     },
   ]
   const hot = heard ? OFFERS.find((offer) => offer.hot.test(heard))?.key : undefined
@@ -301,7 +301,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   const QUICK = [
     { label: 'Hear my briefing', run: () => { if (liveVoice) setBriefing((n) => n + 1); else say(greetingText) } },
     { label: 'Continue the login flow', run: () => onOpen('plan') },
-    { label: `Ask ${rahulName}'s Alter why we switched to one-tap sign-in`, run: () => void send("Ask Rahul's Alter why we switched to one-tap sign-in") },
+    { label: `Ask ${siddhiName}'s Alter why we switched to one-tap sign-in`, run: () => void send("Ask Siddhi's Alter why we switched to one-tap sign-in") },
   ]
 
   return <section className={`screen home${opening ? ' is-opening' : ''}`}>

@@ -30,10 +30,10 @@ from googleapiclient.discovery import build
 WORLD = "cold-silicon"
 
 CHARACTERS = [
-    {"key": "priya", "name": "Priya Menon", "title": "Product lead"},
-    {"key": "rahul", "name": "Rahul", "title": "Engineering lead"},
-    {"key": "meera", "name": "Meera Iyer", "title": "Product designer"},
-    {"key": "arjun", "name": "Arjun Rao", "title": "Backend engineer"},
+    {"key": "dev", "name": "Dev", "title": "Product lead"},
+    {"key": "siddhi", "name": "Siddhi", "title": "Engineering lead"},
+    {"key": "kani", "name": "Kani", "title": "Product designer"},
+    {"key": "sahil", "name": "Sahil", "title": "Backend engineer"},
 ]
 
 DOC_KEYS = ("designDoc", "statusDoc", "wiki", "testPlan")
@@ -100,7 +100,7 @@ def share(drive, file_id, email):
 
 
 def ensure_docs(characters, manifest):
-    owner_key = "priya" if "priya" in characters else next(iter(characters))
+    owner_key = "dev" if "dev" in characters else next(iter(characters))
     owner = characters[owner_key]
     drive = service(owner, "drive", "v3")
     docs_service = service(owner, "docs", "v1")
@@ -232,22 +232,22 @@ def ensure_threads(characters, manifest):
         "one-tap", "Login revamp — moving to Google one-tap sign-in",
         [
             {
-                "author": "rahul",
+                "author": "siddhi",
                 "body": "Team — decision from this morning's arch sync: we're replacing the old Google Sign-In\n"
                         "button with Google One-Tap. Google is retiring the old button, and one-tap gets users to a\n"
                         "session faster on mobile. The decision record is in the design doc (working notes), and the\n"
-                        "backend side is tracked under AUTH-112.\n\n— Rahul\n",
+                        "backend side is tracked under AUTH-112.\n\n— Siddhi\n",
             },
             {
-                "author": "priya",
-                "body": "Thanks, Rahul. Meera — can you take one-tap as the primary path and keep email/password as the\n"
+                "author": "dev",
+                "body": "Thanks, Siddhi. Kani — can you take one-tap as the primary path and keep email/password as the\n"
                         "fallback? Mobile mock-ups by Friday would let us plan the review.\n\nI'll fold this decision into\n"
-                        "the status doc so it's not living in this thread.\n\n— Priya\n",
+                        "the status doc so it's not living in this thread.\n\n— Dev\n",
             },
             {
-                "author": "meera",
+                "author": "kani",
                 "body": "On it. One-tap as the primary path, email/password stays as the fallback. I'll have the mobile\n"
-                        "mock-ups by Friday and drop them next to the design doc.\n\n— Meera\n",
+                        "mock-ups by Friday and drop them next to the design doc.\n\n— Kani\n",
             },
         ],
     )
@@ -256,13 +256,13 @@ def ensure_threads(characters, manifest):
         "auth-112", "AUTH-112 — sign-in approved for production",
         [
             {
-                "author": "arjun",
+                "author": "sahil",
                 "body": "Status on AUTH-112: the token auth for one-tap sign-in is approved for production and\n"
-                        "verified live in prod on October 10. No open backend blockers on my side.\n\n— Arjun\n",
+                        "verified live in prod on October 10. No open backend blockers on my side.\n\n— Sahil\n",
             },
             {
-                "author": "priya",
-                "body": "Great — adding this to the status doc today so QA sees it in one place.\n\n— Priya\n",
+                "author": "dev",
+                "body": "Great — adding this to the status doc today so QA sees it in one place.\n\n— Dev\n",
             },
         ],
     )
@@ -271,16 +271,16 @@ def ensure_threads(characters, manifest):
         "handover", "Handover — I'm on leave",
         [
             {
-                "author": "rahul",
+                "author": "siddhi",
                 "body": "Heads up: I'm on leave from today. For anything on the login revamp, my Alter has my notes\n"
                         "and will answer in my place — with sources. Anything that genuinely needs my call (the\n"
                         "launch date is the obvious one) will reach me directly, and I'll turn it around quickly.\n\n"
-                        "— Rahul\n",
+                        "— Siddhi\n",
             },
             {
-                "author": "priya",
+                "author": "dev",
                 "body": "Noted — enjoy the break. We'll route through your Alter where it can, and come to you only\n"
-                        "for the calls.\n\n— Priya\n",
+                        "for the calls.\n\n— Dev\n",
             },
         ],
     )
@@ -289,11 +289,11 @@ def ensure_threads(characters, manifest):
         "qa-signoff", "QA sign-off — can we commit to Oct 30?",
         [
             {
-                "author": "priya",
+                "author": "dev",
                 "body": "Planning question ahead of the launch: can QA commit to sign-off by October 30?\n"
                         "Test plan v1 is in the shared folder. There are 2 open bugs right now, one of them the\n"
                         "iOS sign-in crash. If Oct 30 is realistic I'll put it in the plan; if not, tell me what has\n"
-                        "to close first.\n\n— Priya\n",
+                        "to close first.\n\n— Dev\n",
             },
         ],
     )
@@ -310,15 +310,15 @@ def next_weekday(hour, minute=0):
 
 
 def ensure_calendar(characters, manifest):
-    if "priya" not in characters:
-        print("[calendar] waiting for priya")
+    if "dev" not in characters:
+        print("[calendar] waiting for dev")
         return
-    priya = characters["priya"]
-    calendar = service(priya, "calendar", "v3")
+    dev = characters["dev"]
+    calendar = service(dev, "calendar", "v3")
     events = manifest.setdefault("events", {})
-    others = [c for c in characters.values() if c["key"] != "priya"]
+    others = [c for c in characters.values() if c["key"] != "dev"]
 
-    def ensure_event(key, summary, start, end, attendees, description, transparency=None, owner="priya"):
+    def ensure_event(key, summary, start, end, attendees, description, transparency=None, owner="dev"):
         if events.get(key):
             print(f"[event:{key}] exists")
             return
@@ -358,16 +358,16 @@ def ensure_calendar(characters, manifest):
     )
     review_start = next_weekday(11, 0)
     ensure_event(
-        "mockups", "Meera — sign-in mock-up review", review_start, review_start + timedelta(minutes=30),
-        [c for c in characters.values() if c["key"] in ("priya", "meera") and c["key"] != "priya"] or [],
+        "mockups", "Kani — sign-in mock-up review", review_start, review_start + timedelta(minutes=30),
+        [c for c in characters.values() if c["key"] in ("dev", "kani") and c["key"] != "dev"] or [],
         "Walk through the mobile mock-ups for the one-tap flow.",
     )
-    if "rahul" in characters:
+    if "siddhi" in characters:
         away_start = next_weekday(9, 0)
         ensure_event(
-            "rahul-away", "On leave — login revamp covered by my Alter", away_start, away_start + timedelta(days=5),
+            "siddhi-away", "On leave — login revamp covered by my Alter", away_start, away_start + timedelta(days=5),
             [], "Anything urgent reaches me directly; everything else my Alter answers with sources.",
-            transparency="transparent", owner="rahul",
+            transparency="transparent", owner="siddhi",
         )
 
     def add_missing_attendees(key, wanted):
@@ -388,7 +388,7 @@ def ensure_calendar(characters, manifest):
         print(f"[event:{key}] attendees added: {', '.join(c['email'] for c in missing)}")
 
     add_missing_attendees("sync", others)
-    add_missing_attendees("mockups", [c for c in characters.values() if c["key"] == "meera"])
+    add_missing_attendees("mockups", [c for c in characters.values() if c["key"] == "kani"])
 
 
 def main():
@@ -406,20 +406,20 @@ def main():
 
     if not args.skip_docs:
         ids = ensure_docs(characters, manifest)
-        if "meera" in characters:
+        if "kani" in characters:
             ensure_comment(
-                characters, manifest, "meera", ids["designDoc"], "comment-meera-design",
+                characters, manifest, "kani", ids["designDoc"], "comment-kani-design",
                 "One-tap as the primary path — mock-ups coming Friday. Two questions for the team: "
                 "fallback prominence and whether we show it on iPad. Notes to follow in the doc.",
             )
-        if "arjun" in characters:
+        if "sahil" in characters:
             ensure_comment(
-                characters, manifest, "arjun", ids["statusDoc"], "comment-arjun-status",
+                characters, manifest, "sahil", ids["statusDoc"], "comment-sahil-status",
                 "AUTH-112 is verified in prod — I'll keep the tracker row current as the crash fix lands.",
             )
-        if "priya" in characters:
+        if "dev" in characters:
             ensure_comment(
-                characters, manifest, "priya", ids["statusDoc"], "comment-priya-status",
+                characters, manifest, "dev", ids["statusDoc"], "comment-dev-status",
                 "Status demo is on for Thursday's review — one open question is the QA sign-off date (thread sent).",
             )
     if not args.skip_threads:

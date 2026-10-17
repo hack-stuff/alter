@@ -8,7 +8,7 @@ from app.models import Input, Identifier, Text
 class MeetingCreate(Input):
     title: Annotated[str, Field(min_length=1, max_length=160)]
     participants: Annotated[list[Identifier], Field(min_length=1, max_length=8)]
-    representedMember: Identifier = "rahul"
+    representedMember: Identifier = "siddhi"
     consent: Literal[True]
 
 

@@ -27,7 +27,7 @@ function fresh(): WorkspaceData {
     receipts: [activity.receipt as Receipt],
     memories: [{ id: 'mem_qa', owner: session.memberId, source: 'starter', state: 'approved', content: 'Test plan v1: Android 12+, iOS 16+. Two open bugs; sign-off pending.' }],
     rules: structuredClone(defaults.rules) as WorkspaceData['rules'],
-    inbox: [{ id: 'inbox_welcome', from: 'priya', subject: 'Welcome to the Login revamp team', body: 'Your QA notes are ready. Please review the sign-off question in Waiting on you.', ts: timestamp() }],
+    inbox: [{ id: 'inbox_welcome', from: 'dev', subject: 'Welcome to the Login revamp team', body: 'Your QA notes are ready. Please review the sign-off question in Waiting on you.', ts: timestamp() }],
   }
 }
 let data = fresh()

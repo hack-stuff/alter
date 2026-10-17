@@ -10,7 +10,7 @@ export function parseDecision(input: string): DecisionIntent | undefined {
   const match = command.exec(input.trim().replace(/[.!]+$/, ''))
   if (!match) return
   const [, verb, rest] = match
-  // Longer requests ("send Meera a summary of QA") are new work, not a decision.
+  // Longer requests ("send Kani a summary of QA") are new work, not a decision.
   if (rest.trim().split(/\s+/).filter(Boolean).length > 5 || /\b(to|about|a summary|an email to)\b/i.test(rest) && !/\b(it|that|this)\b/i.test(rest)) return
   const decision = /^(reject|discard|cancel|decline|don'?t send)$/i.test(verb) ? 'reject' : 'approve'
   const kind = /\b(e?mail|summary|message)\b/i.test(rest) || /^send$/i.test(verb) ? 'email'

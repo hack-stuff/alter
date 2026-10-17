@@ -1,22 +1,22 @@
 import { expect, test } from '@playwright/test'
 
-test('Priya edits a persisted design, publishes its reviewed specification, and prepares actual meeting follow-up', async ({
+test('Dev edits a persisted design, publishes its reviewed specification, and prepares actual meeting follow-up', async ({
   page,
 }, info) => {
   await page.setExtraHTTPHeaders({
     'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.42' : '127.0.0.41',
   })
   await page.goto('/')
-  await page.getByRole('button', { name: 'Step into Priya’s day' }).click()
+  await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
   await expect(
-    page.getByRole('heading', { name: "Priya's Alter" }),
+    page.getByRole('heading', { name: "Dev's Alter" }),
   ).toBeVisible()
   await expect(
     page.getByText('Local development · simulated AI', { exact: false }),
   ).toBeVisible()
   await expect(
     page.getByRole('region', { name: 'Your Google Calendar agenda' }),
-  ).toContainText('Review Meera')
+  ).toContainText('Review Kani')
   await expect(page.getByRole('heading', { name: 'Where should we start?' })).toBeVisible()
   const startTop = await page.getByRole('heading', { name: 'Where should we start?' }).evaluate((element) => element.getBoundingClientRect().top)
   const calendarTop = await page.getByRole('region', { name: 'Your Google Calendar agenda' }).evaluate((element) => element.getBoundingClientRect().top)
@@ -34,7 +34,7 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
   await expect(page.getByText('Your saved design · Revision 2')).toBeVisible()
   await page.reload()
   await expect(
-    page.getByRole('heading', { name: "Priya's Alter" }),
+    page.getByRole('heading', { name: "Dev's Alter" }),
   ).toBeVisible()
   await page.getByRole('button', { name: /Shape the login plan/ }).click()
   await expect(
@@ -76,8 +76,8 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
   await page.getByText('Use an existing Meet link').click()
   await page.getByLabel('Google Meet link').fill('https://meet.google.com/abc-defg-hij')
   await page.getByRole('button', { name: 'Save Meet link' }).click()
-  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Priya's Alter")
-  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Rahul's Alter")
+  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Dev's Alter")
+  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Siddhi's Alter")
   await expect(
     page.getByText('No transcript has been recorded here yet.'),
   ).toBeVisible()
@@ -91,24 +91,24 @@ test('Priya edits a persisted design, publishes its reviewed specification, and 
   await expect(
     page.getByRole('button', { name: 'Meeting finished — prepare my review' }),
   ).toBeVisible()
-  await page.getByText("Ask Rahul's Alter about the work").click()
+  await page.getByText("Ask Siddhi's Alter about the work").click()
   await page
     .getByRole('button', { name: /Try saying:.*Why did we switch/ })
     .click()
   await expect(
-    page.getByRole('article', { name: 'Rahul’s actual answer' }),
+    page.getByRole('article', { name: 'Siddhi’s actual answer' }),
   ).toContainText('October 8')
   await page
     .getByRole('button', { name: /Try saying:.*When are we launching/ })
     .click()
   await expect(
-    page.getByRole('article', { name: 'Rahul’s actual answer' }),
+    page.getByRole('article', { name: 'Siddhi’s actual answer' }),
   ).toContainText('Priority question saved')
   await page.getByText('Conversation record', { exact: true }).click()
   await page
     .getByLabel('Add actual meeting transcript')
     .fill(
-      'Meera will update the mock-ups by Friday. Priya will update the status doc.',
+      'Kani will update the mock-ups by Friday. Dev will update the status doc.',
     )
   await page
     .getByRole('button', { name: 'Save transcript', exact: true })

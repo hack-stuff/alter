@@ -16,10 +16,10 @@
     }
   },
   "members": [
-    { "id": "priya", "name": "Priya", "kind": "seeded", "role": "Product lead", "status": "available" },
-    { "id": "rahul", "name": "Rahul", "kind": "seeded", "role": "Engineer · owns login revamp", "status": "on_leave" },
-    { "id": "meera", "name": "Meera", "kind": "seeded", "role": "Designer", "status": "available" },
-    { "id": "arjun", "name": "Arjun", "kind": "seeded", "role": "Engineer", "status": "in_meetings" },
+    { "id": "dev", "name": "Dev", "kind": "seeded", "role": "Product lead", "status": "available" },
+    { "id": "siddhi", "name": "Siddhi", "kind": "seeded", "role": "Engineer · owns login revamp", "status": "on_leave" },
+    { "id": "kani", "name": "Kani", "kind": "seeded", "role": "Designer", "status": "available" },
+    { "id": "sahil", "name": "Sahil", "kind": "seeded", "role": "Engineer", "status": "in_meetings" },
     { "id": "m_judge", "name": "You", "kind": "human", "slot": "qa_lead", "role": "QA lead", "status": "available" }
   ]
 }

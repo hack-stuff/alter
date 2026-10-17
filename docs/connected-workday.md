@@ -4,13 +4,13 @@ The Alter, diagram and meeting review now use the persisted API. This document d
 
 ## What is connected
 
-- **Step into Priya's day** creates a fresh, rate-limited project bound to the current Firebase user as Priya. It does not grant director access or claim an existing person's account. Repeating the request resumes that same run. Existing signed-in projects are preserved.
-- **Calendar** reads the selected project calendar through the Google adapter. New project calendars include Priya's design review and sync. Existing calendars are not silently rewritten. Times are returned with their actual offset; the browser renders them locally.
+- **Step into Dev's day** creates a fresh, rate-limited project bound to the current Firebase user as Dev. It does not grant director access or claim an existing person's account. Repeating the request resumes that same run. Existing signed-in projects are preserved.
+- **Calendar** reads the selected project calendar through the Google adapter. New project calendars include Dev's design review and sync. Existing calendars are not silently rewritten. Times are returned with their actual offset; the browser renders them locally.
 - **Design canvas** has owner-only server storage, numbered revisions, validated graph edits and ten undo steps. Production uses a typed Gemini graph patch; the explicit local AI adapter is used only when `AI_BACKEND=local`. A failed production model call never invokes that adapter.
 - **Review publication** prepares a new Google Docs specification of the graph. It does not edit running authentication configuration or claim to create a native Google Drawing. The exact reviewed graph revision must still be current when approved. The regular write executor provides the result and receipt. **Read back published document** fetches actual provider content.
 - **Meeting questions** use the existing A2A transport and sharing policy. The answer, citations, trace and escalation ID come from the server. Saving a priority question is distinguished from actual phone delivery.
 - **Meet launch and capture** create one Meet conference through the connected Google Calendar account when the owner has no saved link. Saying “start the meeting” or “join the team sync,” typing it, or choosing the team sync card creates or reuses the link and navigates to Google Meet without another click. The review waits for its link check; creation failure opens a retry and existing-link setup screen. A local outbox retains consenting transcript uploads until acknowledged; the existing recording rig can capture actual Meet audio. Finalizing opens the persisted review, approval, continuation and owner-decision workflow in Alter.
-- **Voice** is one chat session that stays on while the Alter moves between screens. On the canvas, spoken edits ("change the timeout to 15 minutes") revise the saved plan and highlight the changed node. A live greeting uses the verified owner's name/context and does not invent completed work. The meeting companion still starts its own scoped huddle session for Rahul's Alter.
+- **Voice** is one chat session that stays on while the Alter moves between screens. On the canvas, spoken edits ("change the timeout to 15 minutes") revise the saved plan and highlight the changed node. A live greeting uses the verified owner's name/context and does not invent completed work. The meeting companion still starts its own scoped huddle session for Siddhi's Alter.
 - **Autonomous Alter.** Doc, sheet and calendar changes the owner's Alter drafts are applied immediately (`Engine.autopilot`) and kept as a before/after record. Emails stay `proposed` until the owner approves them, by button, by typing "send it" / "approve it" / "reject that", or by voice through the Live `decide_proposal` tool.
 - **Navigation** goes through one typed action, `navigateTo(screen, targetElementId?, highlightState?)`, for the nine screens (`home`, `canvas`, `meeting`, `approvals`, `decisions`, `team`, `work-log`, `rules`, `files`). A deterministic parser (`apps/web/src/agent/navigation.ts`) acts on the streaming transcript or typed text before the model answers, and the Live `navigate_to` tool covers everything else; a later tool call for the same screen is skipped. Workday screens stay mounted, so a switch takes one frame, and the target item is scrolled to, focused and pulsed. The Voice Bar shows where the Alter went.
 
@@ -54,7 +54,7 @@ CLI login alone does not refresh the credentials used by Python. A passing Cloud
 
 ## Deploy
 
-Deploy from `main`. Existing browser sessions keep their current role; use a fresh browser profile/incognito session to try the new Priya entry without replacing existing work.
+Deploy from `main`. Existing browser sessions keep their current role; use a fresh browser profile/incognito session to try the new Dev entry without replacing existing work.
 
 Use the existing `infra/deploy-api.sh` exports and ignored `infra/api.env.yaml`. Preserve:
 
@@ -84,7 +84,7 @@ The app creates or reuses a linked Google Meet and opens it by voice. It shows t
 
 1. Verify that the connected Calendar account can create a conference and that the host can admit the external Alter account. A saved link should appear automatically in the review page.
 2. Start a consenting meeting capture in the companion. Expand **Connect the Meet recording rig**, generate room access and open the linked kiosk.
-3. Enter room access on the rig. Join Meet with the separate account named **Rahul's Alter (AI)**, use OBS Virtual Camera for the kiosk and separate BlackHole paths for incoming/outgoing audio. The existing [recording instructions](storyboard-implementation.md#prepare-and-record-the-meet-scene) cover this setup.
+3. Enter room access on the rig. Join Meet with the separate account named **Siddhi's Alter (AI)**, use OBS Virtual Camera for the kiosk and separate BlackHole paths for incoming/outgoing audio. The existing [recording instructions](storyboard-implementation.md#prepare-and-record-the-meet-scene) cover this setup.
 4. Verify that a real attendee's question reaches the Alter and that its answer is audible in Meet. A successful API voice smoke test is insufficient.
 5. Keep the operator and rig available. Existing ten-minute voice sessions and twenty-minute room credentials still require renewal/reconnection; no unattended 24/7 Meet host is supplied by this change.
 6. End room voice, verify transcript uploads and then prepare the review. The server refuses finalization while a meeting voice lease is active.
@@ -93,12 +93,12 @@ The companion's microphone hears its selected device input, not another tab's au
 
 ## Acceptance path
 
-1. Start with a fresh browser session and **Step into Priya's day**. Confirm the correct name, role and calendar. A second evaluator must have different project resources.
+1. Start with a fresh browser session and **Step into Dev's day**. Confirm the correct name, role and calendar. A second evaluator must have different project resources.
 2. Open the plan. Ask for a retry state using the microphone and then with alternate wording. Confirm the saved revision, edges, reload and undo. Unsupported requests must preserve the graph and explain what is needed.
 3. Prepare publication, inspect the specification and approve. Verify the real Google file and readback. Edit the graph after preparing another review; the old review must fail rather than publish stale content. No team notification is asserted for this publication.
 4. Switch between Alter, plan and meeting companion. Confirm one microphone/session at a time and no old session consuming the new question. Confirm mobile permission and recovery behavior.
-5. Start consented capture, ask Rahul's Alter for rationale and a launch date, inspect actual sources/trace and verify one saved escalation. Add actual transcript if needed, finish and open the prepared meeting review.
-6. Complete the existing grouped approval, scoped A2A continuation and Rahul date-reply checks against real Google resources. Background phone delivery additionally requires the public VAPID key and a subscribed device.
+5. Start consented capture, ask Siddhi's Alter for rationale and a launch date, inspect actual sources/trace and verify one saved escalation. Add actual transcript if needed, finish and open the prepared meeting review.
+6. Complete the existing grouped approval, scoped A2A continuation and Siddhi date-reply checks against real Google resources. Background phone delivery additionally requires the public VAPID key and a subscribed device.
 7. Rehearse the external Meet rig and guest admission. Do not describe an unavailable or disconnected call as live.
 
 Local automated tests cover the connected API using simulated Google resources and synthetic model adapters. Paid model access, actual phone notification display and the external Meet audio bridge remain project/device acceptance checks.

@@ -82,7 +82,7 @@ const KIND_TARGETS: [RegExp, string][] = [
   [/\b(?:tracker|sheet|spreadsheet|row)\b/i, 'kind:sheet_update'],
   [/\b(?:status doc|document update|doc update|doc edit)\b/i, 'kind:doc_edit'],
 ]
-const PEOPLE = /\b(meera|arjun|rahul|priya)\b/i
+const PEOPLE = /\b(kani|sahil|siddhi|dev)\b/i
 const NODE_WORDS = /\b(retry|fallback|one-?tap|token|verify|authenticated|launch|timeout|review|home)\b/i
 const NAMED = /\bthe ([a-z0-9-]+(?: [a-z0-9-]+)?) (?:node|step|card|proposal|question|state|screen)\b/i
 

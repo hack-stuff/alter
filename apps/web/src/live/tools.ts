@@ -68,7 +68,7 @@ export async function dispatchLiveTool(name: string, args: Record<string, unknow
       if (!already) go(intent.action, 'voice-tool')
       return { navigation: intent.action.screen, target: intent.action.targetElementId ?? null, alreadyOpen: already, instruction: 'The requested screen has opened. No work was published, sent or approved.' }
     }
-    result = await api.chat(requestedCard(input) === 4 ? "Ask Rahul's Alter to confirm the launch date" : input, context.conversationId, 'voice')
+    result = await api.chat(requestedCard(input) === 4 ? "Ask Siddhi's Alter to confirm the launch date" : input, context.conversationId, 'voice')
     context.conversationId = (result as { conversationId: string }).conversationId
   } else if (name === 'revise_diagram') {
     const id = context.targetId

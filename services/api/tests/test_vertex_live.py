@@ -150,7 +150,7 @@ def test_real_owner_agent_retrieves_citations(vertex_engine):
 def test_real_a2a_receiver_agent(vertex_engine):
     engine, ctx = vertex_engine
     response = asyncio.run(
-        engine.hop(ctx, "rahul", "Why did we switch to one-tap sign-in?")
+        engine.hop(ctx, "siddhi", "Why did we switch to one-tap sign-in?")
     )
     assert response["outcome"] == "allow" and response["citations"], response
     assert "one-tap" in response["answer"].lower(), response

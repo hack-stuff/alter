@@ -3,7 +3,7 @@ import { AlterBadge } from './AlterBadge'
 import { Citations } from './Citations'
 import { AlterMark } from './People'
 
-const names: Record<string, string> = { rahul: 'Rahul', priya: 'Priya', meera: 'Meera', arjun: 'Arjun' }
+const names: Record<string, string> = { siddhi: 'Siddhi', dev: 'Dev', kani: 'Kani', sahil: 'Sahil' }
 
 export function TraceView({ trace }: { trace: A2ATrace }) {
   const from = names[trace.from] ?? 'Your'

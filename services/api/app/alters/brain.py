@@ -98,7 +98,7 @@ class LocalBrain:
                 m["id"]
                 for m in members
                 if m["id"] != ctx.member_id and m["name"].lower() in message.lower()
-            ] or ["meera"]
+            ] or ["kani"]
             start = (now() + timedelta(days=2)).replace(
                 hour=15, minute=0, second=0, microsecond=0
             )
@@ -173,7 +173,7 @@ class LocalBrain:
             if not target and re.search(
                 r"one.?tap|launch|leave|production|why", message, re.I
             ):
-                target = "rahul"
+                target = "siddhi"
             if target:
                 answer = await engine.hop(ctx, target, message)
                 return {

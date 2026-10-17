@@ -77,7 +77,7 @@ def test_publication_is_reviewed_then_read_back(team):
     assert any(s["section"] == "Retry sign-in" for s in published["sections"])
     assert plan(c, h)["approval"]["state"] == "applied"
     root = f"workspaces/{r['workspaceId']}"
-    assert e.store.list(root + "/inbox/meera/messages") == []
+    assert e.store.list(root + "/inbox/kani/messages") == []
 
 
 def test_changed_graph_cannot_publish_an_old_review(team):
@@ -244,7 +244,7 @@ def test_demo_day_is_isolated_resumable_and_not_director(system):
     c, e = system
     first = c.post("/v1/demo/day", headers={"X-Dev-Uid": "judge1"}).json()
     second = c.post("/v1/demo/day", headers={"X-Dev-Uid": "judge2"}).json()
-    assert first["memberId"] == second["memberId"] == "priya"
+    assert first["memberId"] == second["memberId"] == "dev"
     assert first["workspaceId"] != second["workspaceId"]
     assert c.post("/v1/demo/day", headers={"X-Dev-Uid": "judge1"}).json() == first
     e.workspaces.provision(first["workspaceId"])
@@ -257,7 +257,7 @@ def test_demo_day_is_isolated_resumable_and_not_director(system):
     import asyncio
 
     asyncio.run(
-        e.welcome(first["workspaceId"], "priya", root["generation"], delay=False)
+        e.welcome(first["workspaceId"], "dev", root["generation"], delay=False)
     )
     assert e.store.list(f"workspaces/{first['workspaceId']}/escalations") == []
 
@@ -307,10 +307,10 @@ def test_voice_context_tracks_setup_and_verified_workday(system):
     from app.meeting_models import LiveStart
 
     c, e = system
-    joined = e.workspaces.create(Caller("early-voice"), "Priya", "early-voice", demo_day=True)
+    joined = e.workspaces.create(Caller("early-voice"), "Dev", "early-voice", demo_day=True)
     ctx = e.auth.member(Caller("early-voice"))
     context = json.loads(LiveRelay(e).context(ctx, LiveStart(mode="chat")))
-    assert context["owner"] == "Priya"
+    assert context["owner"] == "Dev"
     assert context["setupState"] == "provisioning"
     assert context["workday"]["agenda"] == []
     assert (
@@ -324,6 +324,6 @@ def test_voice_context_tracks_setup_and_verified_workday(system):
     upcoming = [item["title"] for item in ready_context["workday"]["agenda"]]
     assert 1 <= len(upcoming) <= 2
     assert set(upcoming) <= {
-        "Review Meera's login journey",
+        "Review Kani's login journey",
         "Login revamp · team sync",
     }

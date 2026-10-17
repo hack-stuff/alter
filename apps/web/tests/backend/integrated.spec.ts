@@ -27,14 +27,14 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   const resource=await page.request.get(fileUrl!)
   expect(await resource.text()).toContain('iOS regression check')
   await nav('Team')
-  await page.getByRole('button',{name:"Ask Rahul's Alter"}).click()
-  await page.getByLabel("Question for Rahul's Alter").fill('Why one-tap?')
+  await page.getByRole('button',{name:"Ask Siddhi's Alter"}).click()
+  await page.getByLabel("Question for Siddhi's Alter").fill('Why one-tap?')
   await page.getByRole('button',{name:'Send question'}).click()
   await expect(page.getByText('✓ Allowed',{exact:true})).toBeVisible()
   await expect(page.getByRole('region',{name:'Answer'}).getByLabel('Sources', {exact:true}).first()).toBeVisible()
-  await page.getByLabel("Question for Rahul's Alter").fill('Confirm Nov 3')
+  await page.getByLabel("Question for Siddhi's Alter").fill('Confirm Nov 3')
   await page.getByRole('button',{name:'Send question'}).click()
-  await expect(page.getByText('⚑ Asked Rahul',{exact:true})).toBeVisible()
+  await expect(page.getByText('⚑ Asked Siddhi',{exact:true})).toBeVisible()
   await page.getByRole('button',{name:'Copy invite link'}).click()
   const invite=await page.getByLabel('Invite link').inputValue().catch(async()=>{
     // Clipboard succeeds on Chromium; retrieve the same server-created invite from the scoped API.

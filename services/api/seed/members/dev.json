@@ -1,5 +1,5 @@
 {
-  "name": "Priya",
+  "name": "Dev",
   "role": "Product lead",
   "status": "available",
   "sources": [
@@ -7,7 +7,7 @@
       "id": "roadmap",
       "title": "Login revamp roadmap",
       "locator": "Priorities",
-      "text": "Prioritize QA sign-off and the remaining two bugs before the login revamp launch. The status document is owned by Priya.",
+      "text": "Prioritize QA sign-off and the remaining two bugs before the login revamp launch. The status document is owned by Dev.",
       "scope": "work"
     }
   ]

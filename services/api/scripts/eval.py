@@ -32,7 +32,7 @@ with httpx.Client(
     for question, expected in cases:
         started = time.perf_counter()
         response = client.post(
-            args.base + "/alters/rahul/ask", json={"question": question}
+            args.base + "/alters/siddhi/ask", json={"question": question}
         )
         response.raise_for_status()
         result = response.json()

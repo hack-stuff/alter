@@ -24,7 +24,7 @@ class Workspaces:
         wid, mid, code = new_id("ws_"), new_id("m_"), secrets.token_urlsafe(18)
         slot = "product_lead" if demo_day else SLOTS[0]
         if demo_day:
-            mid, name = "priya", "Priya"
+            mid, name = "dev", "Dev"
 
         def create(tx):
             bound = tx.get(f"userBindings/{caller.uid}")

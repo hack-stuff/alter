@@ -27,8 +27,8 @@ def prepare(team):
         headers=h,
         json={
             "title": "Login revamp · 2:00 meeting",
-            "participants": ["priya", "meera", "arjun"],
-            "representedMember": "rahul",
+            "participants": ["dev", "kani", "sahil"],
+            "representedMember": "siddhi",
             "consent": True,
         },
     )
@@ -37,13 +37,13 @@ def prepare(team):
     segments = [
         {
             "id": "s1",
-            "text": "Rahul switched to Google one-tap on October 8.",
+            "text": "Siddhi switched to Google one-tap on October 8.",
             "kind": "alter",
         },
         {"id": "s2", "text": "When are we launching this?", "kind": "human"},
         {
             "id": "s3",
-            "text": "Meera, update the mock-ups. Priya will update the status doc.",
+            "text": "Kani, update the mock-ups. Dev will update the status doc.",
             "kind": "human",
         },
     ]
@@ -65,7 +65,7 @@ def test_capture_is_scoped_deduplicated_and_closed(team):
     assert value["segmentCount"] == 3
     assert (
         value["decisions"][0]["text"]
-        == "Rahul switched to Google one-tap on October 8."
+        == "Siddhi switched to Google one-tap on October 8."
     )
     assert len(value["approvals"]) == 2
     assert len(e.store.list(f"workspaces/{r['workspaceId']}/escalations")) == 1
@@ -92,12 +92,12 @@ def test_bundle_revision_approval_and_continuation(team):
         headers=h,
         json={
             "expectedRevision": value["revision"],
-            "instruction": "Add that Meera's mock-ups are due Friday.",
+            "instruction": "Add that Kani's mock-ups are due Friday.",
         },
     )
     assert response.status_code == 200, response.text
     revised = response.json()
-    assert all(t["due"] == "Friday" for t in revised["tasks"] if t["owner"] == "meera")
+    assert all(t["due"] == "Friday" for t in revised["tasks"] if t["owner"] == "kani")
     bad = c.post(
         f"/v1/meetings/{mid}/approve",
         headers=h,
@@ -123,7 +123,7 @@ def test_bundle_revision_approval_and_continuation(team):
     assert result["continuation"] == "completed", result
     assert all(a["state"] == "applied" for a in result["approvals"])
     root = f"workspaces/{r['workspaceId']}"
-    for member in ["priya", "meera", "arjun"]:
+    for member in ["dev", "kani", "sahil"]:
         assert len(e.store.list(root + f"/inbox/{member}/messages")) == 1
     current = e.apps.read_doc(
         r["workspaceId"], e.store.get(root)["googleIds"]["statusDoc"]
@@ -132,7 +132,7 @@ def test_bundle_revision_approval_and_continuation(team):
     # A delivery retry cannot create more documents or messages.
     for job in e.store.list("workflowJobs"):
         asyncio.run(e.workflows.run(job["id"]))
-    assert len(e.store.list(root + "/inbox/meera/messages")) == 1
+    assert len(e.store.list(root + "/inbox/kani/messages")) == 1
 
 
 def test_segment_ids_cannot_be_replaced(team):
@@ -140,7 +140,7 @@ def test_segment_ids_cannot_be_replaced(team):
     response = c.post(
         "/v1/meetings",
         headers=h,
-        json={"title": "Meeting", "participants": ["priya"], "consent": True},
+        json={"title": "Meeting", "participants": ["dev"], "consent": True},
     )
     mid = response.json()["id"]
     body = {"segments": [{"id": "one", "text": "Original transcript"}]}
@@ -164,13 +164,13 @@ def test_scripted_owner_confirmation_resolves_field_and_notifies_team(team):
     root = f"workspaces/{r['workspaceId']}"
     workspace = e.store.get(root)
     e.store.set(root, {**workspace, "director": True})
-    uid = "rahul-phone"
+    uid = "siddhi-phone"
     claim = c.post(
         "/v1/director/claim",
         headers={"X-Dev-Uid": uid},
         json={
             "workspaceId": r["workspaceId"],
-            "memberId": "rahul",
+            "memberId": "siddhi",
             "key": "director-test",
         },
     )
@@ -187,7 +187,7 @@ def test_scripted_owner_confirmation_resolves_field_and_notifies_team(team):
     current = e.apps.read_doc(r["workspaceId"], workspace["googleIds"]["statusDoc"])
     launch = next(s for s in current["sections"] if s["section"] == "Launch")
     assert "11-03" in launch["lines"][0] and "awaiting" not in launch["lines"][0]
-    for member in ["priya", "meera", "arjun"]:
+    for member in ["dev", "kani", "sahil"]:
         assert e.store.list(root + f"/inbox/{member}/messages")
     assert (
         c.post(
@@ -257,7 +257,7 @@ def test_revoked_continuation_cannot_write(team, monkeypatch, revocation):
     if revocation == "grant":
         e.meetings.revoke(context, mid)
     elif revocation == "sharing":
-        path = f"workspaces/{r['workspaceId']}/rules/rahul/items/share-status"
+        path = f"workspaces/{r['workspaceId']}/rules/siddhi/items/share-status"
         rule = e.store.get(path)
         e.store.set(path, {**rule, "mode": "deny"})
     else:
@@ -305,12 +305,12 @@ def test_saved_job_survives_engine_restart_and_pause(team, monkeypatch):
     mid = c.post(
         "/v1/meetings",
         headers=h,
-        json={"title": "Restart test", "participants": ["meera"], "consent": True},
+        json={"title": "Restart test", "participants": ["kani"], "consent": True},
     ).json()["id"]
     c.post(
         f"/v1/meetings/{mid}/segments",
         headers=h,
-        json={"segments": [{"id": "s1", "text": "Rahul switched to one-tap."}]},
+        json={"segments": [{"id": "s1", "text": "Siddhi switched to one-tap."}]},
     )
     job = c.post(f"/v1/meetings/{mid}/finalize", headers=h).json()["jobId"]
     context = e.auth.member(Caller("alice"))
@@ -352,7 +352,7 @@ def test_explicit_retry_uses_a_new_cloud_task_name(team, monkeypatch):
     mid = c.post(
         "/v1/meetings",
         headers=h,
-        json={"title": "Retry test", "participants": ["meera"], "consent": True},
+        json={"title": "Retry test", "participants": ["kani"], "consent": True},
     ).json()["id"]
     c.post(
         f"/v1/meetings/{mid}/segments",
@@ -373,7 +373,7 @@ def test_room_credentials_are_bound_to_capture_and_cannot_approve(team):
     mid = c.post(
         "/v1/meetings",
         headers=h,
-        json={"title": "Room test", "participants": ["meera"], "consent": True},
+        json={"title": "Room test", "participants": ["kani"], "consent": True},
     ).json()["id"]
     token = c.post(f"/v1/meetings/{mid}/room", headers=h).json()["token"]
     room = {"X-Meeting-Room": token}
@@ -431,7 +431,7 @@ def test_memory_audience_corrections_and_source_versions(team):
             owner,
             "Lighthouse",
             personal=True,
-            requester="priya",
+            requester="dev",
         )
     )
     assert any(

@@ -85,7 +85,7 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   expect(observed.find((ref: any) => ref.path.endsWith('/approvals')).filters).toEqual([{ field: 'owner', op: '==', value: 'm_judge' }])
   await openScreen(page, 'Work log')
   await expect(page.getByText('2026-10-14', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Rahul's Alter answered/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Siddhi's Alter answered/ })).toBeVisible()
   expect(headers.length).toBeGreaterThanOrEqual(3)
   expect(headers.every((h) => h.authorization?.startsWith('Bearer test-token-') && !h['x-dev-uid'])).toBe(true)
   expect(new Set(headers.map((h) => h.authorization)).size).toBe(headers.length)

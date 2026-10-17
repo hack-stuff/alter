@@ -46,18 +46,18 @@ test('chat opens a proposal; repeated revisions survive navigation and approval'
 test('direct questions show allowed, escalated and private outcomes with sample rules', async ({ page }) => {
   await join(page)
   await navigate(page, 'Team')
-  await page.getByRole('button', { name: "Ask Rahul's Alter" }).click()
-  const question = page.getByLabel("Question for Rahul's Alter")
+  await page.getByRole('button', { name: "Ask Siddhi's Alter" }).click()
+  const question = page.getByLabel("Question for Siddhi's Alter")
   const cases = [
     ['Why one-tap?', '✓ Allowed', 'Share project rationale with the team'],
-    ['Confirm launch date?', '⚑ Asked Rahul', 'Ask the owner before committing to dates'],
-    ['Why is Rahul on leave?', '× Not shared', 'Keep personal information private'],
+    ['Confirm launch date?', '⚑ Asked Siddhi', 'Ask the owner before committing to dates'],
+    ['Why is Siddhi on leave?', '× Not shared', 'Keep personal information private'],
   ]
   for (const [text, outcome, rule] of cases) {
     await question.fill(text)
     await page.getByRole('button', { name: 'Send question' }).click()
     await expect(page.getByText(outcome, { exact: true })).toBeVisible()
-    await expect(page.getByText('How Rahul’s Alter', { exact: false })).toBeVisible()
+    await expect(page.getByText('How Siddhi’s Alter', { exact: false })).toBeVisible()
     await expect(page.getByText(rule, { exact: false })).toBeVisible()
   }
 })
@@ -66,10 +66,10 @@ test('calendar proposal can be rejected; reset clears chat and restores proposal
   test.slow()
   await join(page)
   await showMoreRequests(page)
-  await page.getByRole('button', { name: 'Book 30 min with Meera on Thursday' }).click()
+  await page.getByRole('button', { name: 'Book 30 min with Kani on Thursday' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
-  const card = page.getByRole('article', { name: 'QA sync with Meera' })
-  await expect(card.getByText('Attendees: You, Meera')).toBeVisible()
+  const card = page.getByRole('article', { name: 'QA sync with Kani' })
+  await expect(card.getByText('Attendees: You, Kani')).toBeVisible()
   await card.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect(card.getByRole('status')).toHaveText('Rejected')
   await navigate(page, 'Rules')
@@ -83,7 +83,7 @@ test('calendar proposal can be rejected; reset clears chat and restores proposal
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Where should we start?' })).toBeVisible()
   await navigate(page, 'Approvals')
-  await expect(page.getByRole('article', { name: 'QA sync with Meera' }).getByRole('status')).toHaveText('Needs your approval')
+  await expect(page.getByRole('article', { name: 'QA sync with Kani' }).getByRole('status')).toHaveText('Needs your approval')
 })
 
 test('mock API rejects stale decisions and mutations arriving after a reset', async ({ page }) => {

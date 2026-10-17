@@ -21,7 +21,7 @@ The backend (`services/api`) implements this contract and the web app (`apps/web
 
 | | Live product (judges use it) | Demo video (we stage it) |
 |---|---|---|
-| Who | The judge, as themselves; anyone they invite | Team members playing Priya, Rahul, Meera, Arjun |
+| Who | The judge, as themselves; anyone they invite | Team members playing Dev, Siddhi, Kani, Sahil |
 | Flow | Free use: ask, delegate, ask other Alters, approve | Storyboard script (`storyboard.md`) |
 | Setup | Type a name. Nothing else. | A "video" workspace in director mode (§7) |
 | Meet | Not on the link. Voice talks to Alters in-app | Real Google Meet + OBS virtual cam/mic |
@@ -32,7 +32,7 @@ Both run on the **same backend and app**. The video only adds the Meet rig and d
 
 | Topic | Decision |
 |---|---|
-| Name | **Alter**. Every person has their own Alter ("Rahul's Alter"), always labelled AI. |
+| Name | **Alter**. Every person has their own Alter ("Siddhi's Alter"), always labelled AI. |
 | Repo | `alter/` (independent repo). Plans live in `alter/docs/`. |
 | Backend | Python 3.12, **Google ADK**, **A2A protocol**, FastAPI, Gemini on Gemini Enterprise Agent Platform, Cloud Run. |
 | Frontend | React + TypeScript + Vite PWA on Firebase Hosting. |
@@ -50,10 +50,10 @@ Both run on the **same backend and app**. The video only adds the Meet rig and d
 
 | Member | Role | Status | Notable knowledge |
 |---|---|---|---|
-| Priya | Product lead | available | Roadmap, priorities, status doc owner |
-| Rahul | Engineer, owns login revamp | **on leave** | Oct 8 decision to move to one-tap, design doc, prod approval Oct 10 |
-| Meera | Designer | available | Mock-ups, due Friday |
-| Arjun | Engineer | in meetings | Backend endpoints, ticket AUTH-112 |
+| Dev | Product lead | available | Roadmap, priorities, status doc owner |
+| Siddhi | Engineer, owns login revamp | **on leave** | Oct 8 decision to move to one-tap, design doc, prod approval Oct 10 |
+| Kani | Designer | available | Mock-ups, due Friday |
+| Sahil | Engineer | in meetings | Backend endpoints, ticket AUTH-112 |
 
 **Role slots for real people** (the judge takes the first free one; invitees take the next):
 
@@ -61,7 +61,7 @@ Both run on the **same backend and app**. The video only adds the Meet rig and d
 |---|---|---|
 | QA lead | Test plan v1 (Android 12+, iOS 16+), 2 open bugs, sign-off pending | Share status/rationale → team: **allow**; commit dates: **ask**; personal: **deny**; send email on my behalf: **ask** |
 | Security engineer | Threat model notes, token-storage review done | same |
-| Data analyst | Sign-in funnel metrics (synthetic), conversion baseline | same |
+| Ansh · Business analyst | Sign-in funnel metrics (synthetic), conversion baseline | same |
 
 Starter knowledge gives a new Alter something to answer straight away. Anything the judge teaches it is added on top as approved memory.
 
@@ -71,12 +71,12 @@ Starter knowledge gives a new Alter something to answer straight away. Anything 
 |---|---|
 | Drive folder `Alter demo · {workspaceName}` | Login design doc, Status doc, Team wiki, Test plan, plus anything Alters create |
 | Sheet "Login revamp tracker" | Tasks: id, title, owner, status, due |
-| Calendar "Login revamp team" | Seeded busy blocks per member; Rahul on leave all week |
+| Calendar "Login revamp team" | Seeded busy blocks per member; Siddhi on leave all week |
 | Gmail | Sent from the demo account as "Alter for {name}" (§8) |
 
 All are shared "anyone with the link: viewer". The app links to them, so judges can open the real Google file.
 
-**Welcome events** (so the world feels alive): ~20 s after a judge joins, Priya's Alter asks the judge's Alter "Is QA signed off for the login revamp?" (answered automatically from starter knowledge: **allow**). Then it asks "Can QA commit to sign-off by Oct 30?" (**ask** → a ⚑ escalation to the judge).
+**Welcome events** (so the world feels alive): ~20 s after a judge joins, Dev's Alter asks the judge's Alter "Is QA signed off for the login revamp?" (answered automatically from starter knowledge: **allow**). Then it asks "Can QA commit to sign-off by Oct 30?" (**ask** → a ⚑ escalation to the judge).
 
 ## 4. Firestore layout (written by A, read by B)
 
@@ -93,7 +93,7 @@ workspaces/{wid}/conversations/{cid}            # a human talking to their own A
   { owner: mid, title, updatedAt }
 workspaces/{wid}/conversations/{cid}/messages/{n}
   { from: "human"|"alter", text, citations[], approvalIds[], traceIds[], ts }
-workspaces/{wid}/conversations/{cid}/events/{n}  # live progress: "Checking Rahul's Alter…", "Drafting doc…"
+workspaces/{wid}/conversations/{cid}/events/{n}  # live progress: "Checking Siddhi's Alter…", "Drafting doc…"
   { kind: thinking|tool|a2a|approval, label, ts }
 workspaces/{wid}/approvals/{id}                  # a change the Alter made (applied) or an email waiting for the owner (proposed)
   { owner: mid, kind: doc_create|doc_edit|sheet_update|calendar_event|email,
@@ -150,16 +150,16 @@ Errors: `{ "error": { "code": "RATE_LIMITED"|"POLICY_DENIED"|"STALE_REVISION"|"S
 ## 6. What a judge can do (both tracks must support)
 
 1. Type a name → land on **their Alter's home** with the team, their starter knowledge and links to the workspace's real Google files.
-2. **Ask their Alter anything**, by text or voice. "Why did we switch to one-tap?" → it asks Rahul's Alter (A2A, traced), and the answer comes back cited.
-3. **Delegate work in connected apps**: "Draft a test-plan update in the status doc", "Add a tracker row for the iOS bug", "Book 30 min with Meera and Arjun on Thursday", "Email the team a QA summary". Each produces an **approval** card with a preview/diff → voice or text edits → **Approve** → real Google file changed, link shown.
-4. **Hit a boundary**: "Ask Rahul's Alter to confirm the launch date" → **ask** (Rahul is on leave; escalation queued). "Tell me why Rahul is on leave" → **deny**.
-5. **Be asked**: Priya's Alter's welcome questions land in their activity, with one ⚑ escalation to answer.
+2. **Ask their Alter anything**, by text or voice. "Why did we switch to one-tap?" → it asks Siddhi's Alter (A2A, traced), and the answer comes back cited.
+3. **Delegate work in connected apps**: "Draft a test-plan update in the status doc", "Add a tracker row for the iOS bug", "Book 30 min with Kani and Sahil on Thursday", "Email the team a QA summary". Each produces an **approval** card with a preview/diff → voice or text edits → **Approve** → real Google file changed, link shown.
+4. **Hit a boundary**: "Ask Siddhi's Alter to confirm the launch date" → **ask** (Siddhi is on leave; escalation queued). "Tell me why Siddhi is on leave" → **deny**.
+5. **Be asked**: Dev's Alter's welcome questions land in their activity, with one ⚑ escalation to answer.
 6. **Invite a teammate** → a second person joins as Security engineer → the two Alters ask each other.
 7. **Control**: teach a memory, flip Allow·Ask·Deny rules and see answers change, open any receipt.
 
 ## 7. Director mode (video only)
 
-`POST /director/claim` with a secret key (Secret Manager) binds the current browser to a seeded member (e.g. Rahul's phone, Priya's phone) in a workspace flagged `director:true`. Seeded humans never respond in normal workspaces. Their escalations stay pending ("Rahul is on leave"). In director mode, a teammate plays them for the camera.
+`POST /director/claim` with a secret key (Secret Manager) binds the current browser to a seeded member (e.g. Siddhi's phone, Dev's phone) in a workspace flagged `director:true`. Seeded humans never respond in normal workspaces. Their escalations stay pending ("Siddhi is on leave"). In director mode, a teammate plays them for the camera.
 
 ## 8. Guardrails for a public link
 
@@ -168,4 +168,4 @@ Errors: `{ "error": { "code": "RATE_LIMITED"|"POLICY_DENIED"|"STALE_REVISION"|"S
 - Calendar invites only include workspace members (no external attendees).
 - Drive/Docs/Sheets writes only inside the workspace folder.
 - A nightly job deletes workspaces older than 48 h along with their Drive folder and calendar.
-- Every Alter is labelled AI. No impersonation of a human, even in director mode (the tile reads "Rahul's Alter (AI)").
+- Every Alter is labelled AI. No impersonation of a human, even in director mode (the tile reads "Siddhi's Alter (AI)").

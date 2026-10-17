@@ -93,7 +93,7 @@ Extraction prompt (Gemini, structured output) over each meeting transcript/doc:
 ```json
 {"decisions": [{
   "title": "Use Approach B for payment migration",
-  "decided_by": ["rahul"], "date": "2026-10-08",
+  "decided_by": ["siddhi"], "date": "2026-10-08",
   "rationale": "Approach A adds operational complexity",
   "depends_on": ["vendor API v2 GA"],
   "source": {"type": "meeting", "id": "arch-sync-2026-10-08", "quote": "...", "uri": "gs://..."},
@@ -107,7 +107,7 @@ Extraction prompt (Gemini, structured output) over each meeting transcript/doc:
 ### 3.2 Delegation contract
 `contracts/{uid}` (editable in the app, shown as YAML on the slide):
 ```yaml
-owner: rahul
+owner: siddhi
 may_share: [status, decisions, design_docs]
 share_with: [team:payments, team:product]
 never: [commit_dates, approve_spend, share_personal_notes]
@@ -183,7 +183,7 @@ audit_log/{id}            actor(Alter|human), uid, action, contract_outcome, tra
 | Product and model names change (Vertex AI → Gemini Enterprise Agent Platform) | Keep model IDs and endpoints in config |
 
 ## 7. Responsible AI
-- Alters have their own identity and never pose as the human. Messages say "Rahul's Alter".
+- Alters have their own identity and never pose as the human. Messages say "Siddhi's Alter".
 - Meeting ingestion is opt-in. Personal notes are never shared by default.
 - Escalation is the default for anything the contract doesn't cover.
 - Every A2A exchange, contract decision, approval and doc change is logged.

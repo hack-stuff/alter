@@ -75,13 +75,13 @@ Runtime Search can only reorder passages already authorized by the application. 
 
 ## Prepare and record the Meet scene
 
-1. Create a director workspace with `scripts/video_workspace.py`, and claim Priya on her phone and Rahul on his phone. Use the same video workspace; each human has its own authenticated browser session.
-2. On Priya's Work screen create the meeting, choose Meera and Arjun as summary recipients, and acknowledge capture consent. Rahul's Alter is the represented colleague, not the authenticated organizer.
-3. Expand **Connect the Meet recording rig**, generate 20-minute room access, and open the linked kiosk on the Mac recording rig. Enter the room access in its password field. Keep the access code and director key outside the recording. The rig does not claim Rahul's owner role.
-4. Join Google Meet from a dedicated account named **Rahul's Alter (AI)**. Capture the kiosk window with OBS Virtual Camera. Route Meet output through one BlackHole path into the kiosk input, and kiosk output through another path into Meet's microphone. Avoid returning the generated voice to its input; all human participants use headphones.
+1. Create a director workspace with `scripts/video_workspace.py`, and claim Dev on one phone and Siddhi on the other. Use the same video workspace; each human has its own authenticated browser session.
+2. On Dev's Work screen create the meeting, choose Kani and Sahil as summary recipients, and acknowledge capture consent. Siddhi's Alter is the represented colleague, not the authenticated organizer.
+3. Expand **Connect the Meet recording rig**, generate 20-minute room access, and open the linked kiosk on the Mac recording rig. Enter the room access in its password field. Keep the access code and director key outside the recording. The rig does not claim Siddhi's owner role.
+4. Join Google Meet from a dedicated account named **Siddhi's Alter (AI)**. Capture the kiosk window with OBS Virtual Camera. Route Meet output through one BlackHole path into the kiosk input, and kiosk output through another path into Meet's microphone. Avoid returning the generated voice to its input; all human participants use headphones.
 5. Refresh/select devices before starting audio. Use the clean recording view after starting the session; Escape restores operator controls. Test the unaddressed rationale question, irrelevant conversation, launch escalation, source evidence and audible turn-taking before filming.
-6. End the rig's voice after the meeting. Confirm all transcript segments uploaded. Priya then prepares the review from her phone. Finalization refuses an active relay room.
-7. Run the review/continuation/Rahul-return scenes. Priya's spoken “Approve” accompanies the visible review control. Rahul's voice creates a draft; he reviews the parsed full date and sends it through the explicit control.
+6. End the rig's voice after the meeting. Confirm all transcript segments uploaded. Dev then prepares the review from the phone. Finalization refuses an active relay room.
+7. Run the review/continuation/Siddhi-return scenes. Dev's spoken “Approve” accompanies the visible review control. Siddhi's voice creates a draft; Siddhi reviews the parsed full date and sends it through the explicit control.
 8. Record the actual notification, before/after artifact, trace and Google document. Add only disclosed editorial overlays/captions and replace the mock rehearsal footage. The final video is an external recording task, not a generated claim of live behavior.
 
 ## Remaining acceptance and broader product scope

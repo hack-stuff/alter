@@ -197,7 +197,7 @@ def create_app(settings=None, engine=None):
                 ctx.workspace_id, ctx.member_id, "product_lead", current["inviteCode"]
             )
         result = await run_in_threadpool(
-            engine.workspaces.create, user, "Priya", ip(request), False, True
+            engine.workspaces.create, user, "Dev", ip(request), False, True
         )
         engine.schedule(provision(result["workspaceId"], result["memberId"]))
         return result

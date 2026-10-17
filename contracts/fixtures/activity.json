@@ -2,16 +2,16 @@
   "escalation": {
     "id": "esc_02",
     "owner": "m_judge",
-    "fromAlter": "priya",
-    "askedBy": "priya",
+    "fromAlter": "dev",
+    "askedBy": "dev",
     "question": "Can QA commit to sign-off by Oct 30?",
-    "context": "Priya's Alter is planning the launch. Test plan v1 has 2 open bugs.",
+    "context": "Dev's Alter is planning the launch. Test plan v1 has 2 open bugs.",
     "state": "pending"
   },
   "a2aTrace": {
     "id": "trc_01",
     "from": "m_judge",
-    "to": "rahul",
+    "to": "siddhi",
     "request": "Is the sign-in setup approved for production?",
     "policyChecks": [
       {
@@ -35,9 +35,9 @@
     "answer": "Approved Oct 10. Live in production.",
     "outcome": "allow",
     "steps": [
-      "Your Alter → Rahul's Alter",
+      "Your Alter → Siddhi's Alter",
       "request: \"Is the sign-in setup approved for production?\"",
-      "Rahul's sharing rules: project status → team ✓",
+      "Siddhi's sharing rules: project status → team ✓",
       "sources: Login design doc §4 · ticket AUTH-112",
       "answer: \"Approved Oct 10. Live in production.\"",
       "Answer returned with sources",
@@ -48,9 +48,9 @@
     {
       "id": "act_1",
       "ts": "2026-10-14T14:12:00Z",
-      "actor": "rahul",
+      "actor": "siddhi",
       "kind": "answered",
-      "summary": "Rahul's Alter answered you: why one-tap sign-in",
+      "summary": "Siddhi's Alter answered you: why one-tap sign-in",
       "receiptId": "rcp_01",
       "visibleTo": [
         "m_judge"
@@ -59,9 +59,9 @@
     {
       "id": "act_2",
       "ts": "2026-10-14T14:13:00Z",
-      "actor": "priya",
+      "actor": "dev",
       "kind": "escalated",
-      "summary": "Priya's Alter asked you: can QA commit to sign-off by Oct 30?",
+      "summary": "Dev's Alter asked you: can QA commit to sign-off by Oct 30?",
       "receiptId": "rcp_02",
       "visibleTo": [
         "m_judge"
@@ -72,7 +72,7 @@
       "ts": "2026-10-14T14:31:00Z",
       "actor": "m_judge",
       "kind": "answered",
-      "summary": "Your Alter answered Priya's Alter: QA status",
+      "summary": "Your Alter answered Dev's Alter: QA status",
       "receiptId": "rcp_04",
       "visibleTo": [
         "m_judge"
@@ -93,7 +93,7 @@
   "receipt": {
     "id": "rcp_01",
     "actor": {
-      "alter": "rahul"
+      "alter": "siddhi"
     },
     "action": "answer_question",
     "sourcesUsed": [

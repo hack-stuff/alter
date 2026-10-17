@@ -383,7 +383,7 @@ class Meetings:
         if launch:
             for section in content:
                 if section["section"].casefold() == "launch":
-                    section["lines"] = ["Launch date: waiting on Rahul's confirmation."]
+                    section["lines"] = ["Launch date: waiting on Siddhi's confirmation."]
         recipients = [p for p in meeting["participants"] if p != ctx.member_id]
         doc = self.stable_proposal(
             ctx,
@@ -404,7 +404,7 @@ class Meetings:
             "\n".join(
                 [f["text"] for f in facts]
                 + [f"{t['title']} · {t['due']}" for t in tasks]
-                + (["Launch date: waiting on Rahul."] if launch else [])
+                + (["Launch date: waiting on Siddhi."] if launch else [])
             )
             or "No confirmed decisions. Review the transcript before sharing."
         )
@@ -530,7 +530,7 @@ class Meetings:
         tasks = deepcopy(value["tasks"])
         if re.search(r"\bfriday\b", request.instruction, re.I):
             for task in tasks:
-                if task["owner"] == "meera" or "mock" in task["title"].lower():
+                if task["owner"] == "kani" or "mock" in task["title"].lower():
                     task["due"] = "Friday"
                     task["reviewInstruction"] = request.instruction
 
@@ -582,9 +582,9 @@ class Meetings:
                 "Production evidence: " + value["followupAnswer"]["answer"][:1000]
             )
         for task in value["tasks"]:
-            if task["owner"] == "meera" and task["due"] != "Unconfirmed":
+            if task["owner"] == "kani" and task["due"] != "Unconfirmed":
                 details.append(
-                    "Meera's mock-ups: "
+                    "Kani's mock-ups: "
                     + task["due"]
                     + (" (draft review)" if value["state"] == "ready" else "")
                 )
@@ -791,7 +791,7 @@ class Meetings:
         self.event(
             ctx,
             mid,
-            "Asking Rahul's Alter about production readiness",
+            "Asking Siddhi's Alter about production readiness",
             "a2a",
             "followup",
         )
@@ -888,7 +888,7 @@ class Meetings:
             ctx.member_id,
             mid + ":followup",
             "Your Alter resolved the dependency",
-            "Rahul's Alter supplied the evidence. The status doc is updated.",
+            "Siddhi's Alter supplied the evidence. The status doc is updated.",
             "?meeting=" + mid,
         )
 
@@ -912,7 +912,7 @@ class Meetings:
             self.store.atomic(
                 lambda tx: tx.set(path, {**tx.get(path), "meetingId": mid})
             )
-        self.event(ctx, mid, "Rahul's Alter answered a meeting question", "a2a")
+        self.event(ctx, mid, "Siddhi's Alter answered a meeting question", "a2a")
         return answer
 
     def failed(self, ctx, mid):

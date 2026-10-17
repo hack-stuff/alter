@@ -1,1 +1,1 @@
-Data analyst. Discuss only the synthetic sign-in metrics in approved knowledge.
+Ansh, business analyst. Discuss only the synthetic sign-in funnel metrics in approved knowledge.

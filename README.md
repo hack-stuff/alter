@@ -22,8 +22,8 @@ What's new:
 - **Instant navigation by voice or text.** "Open approvals", "show me the calendar proposal" or
   "show the retry node on the canvas" switch screens as soon as the words are recognised, and
   highlight the item. The voice session stays on while it moves you between screens.
-- **The guided workday.** You step into Priya's day as product lead, hear a spoken briefing, edit a
-  login-flow design by voice, join a team meeting with Rahul's Alter and send the follow-up.
+- **The guided workday.** You step into Dev's day as product lead, hear a spoken briefing, edit a
+  login-flow design by voice, join a team meeting with Siddhi's Alter and send the follow-up.
   [docs/connected-workday.md](docs/connected-workday.md) describes how this works and how to set it up.
 
 ## Description
@@ -33,7 +33,7 @@ zone. Alter gives each person an AI representative that can answer for them, but
 rules they set.
 
 - **Ask a teammate's Alter.** "Why did we switch to one-tap sign-in?" gets an answer with sources
-  from Rahul's notes, even while Rahul is on leave.
+  from Siddhi's notes, even while Siddhi is on leave.
 - **Delegate work.** Ask your Alter to update the status doc, add a tracker row or book a meeting,
   and it does it, leaving a before/after record you can inspect. Emails to the team are drafted
   and wait for you: press **Approve** or say "send it".
@@ -55,9 +55,9 @@ rules they set.
 - **Notifications.** Questions that need a person show up in an in-app inbox, and optionally as
   phone notifications.
 
-Every new visitor gets a private workspace: a copy of a seeded team (Priya, Rahul, Meera and
-Arjun, working on a "Login revamp" project), with its own Drive folder, spreadsheet and calendar.
-Select **Step into Priya's day** to start the guided workday as Priya, or type a name to join as a
+Every new visitor gets a private workspace: a copy of a seeded team (Dev, Siddhi, Kani and
+Sahil, working on a "Login revamp" project), with its own Drive folder, spreadsheet and calendar.
+Select **Step into Dev's day** to start the guided workday as Dev, or type a name to join as a
 new member. An invite link lets others join the same workspace.
 
 **How it's built:** Python 3.12, FastAPI and [Google ADK](https://google.github.io/adk-docs/)
@@ -127,7 +127,7 @@ VITE_MOCK=0 VITE_DEV_AUTH=1 VITE_API_BASE=http://127.0.0.1:8080/v1 \
   npm --prefix apps/web run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173) and select **Step into Priya's day**. Workspaces are saved in
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) and select **Step into Dev's day**. Workspaces are saved in
 `/tmp/alter.sqlite3` (change it with `DATABASE_PATH`). Each browser profile acts as a separate
 person, so use a second profile or a private window to try an invite link or a fresh workday.
 
@@ -168,7 +168,7 @@ cost, and apply per workspace.
 
 ## Usage
 
-After joining, you're one member of the seeded team. If you chose **Step into Priya's day**,
+After joining, you're one member of the seeded team. If you chose **Step into Dev's day**,
 your Alter greets you by voice with your calendar and any pending work (allow microphone access, or
 select **Enable voice** if the browser blocks sound). The Alter screen offers four starting points:
 join the team sync, shape the login plan on the canvas, see what needs you, and ask about the
@@ -177,9 +177,9 @@ launch. You can also type or say these:
 | Try                                            | What happens                                                                                                     |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | "Why did we switch to one-tap sign-in?"        | Your Alter answers with links to its sources.                                                                    |
-| "Ask Rahul's Alter to confirm the launch date" | Rahul is on leave and committing to a date is his call, so his Alter asks him instead of answering.              |
+| "Ask Siddhi's Alter to confirm the launch date" | Siddhi is on leave and committing to a date is Siddhi's call, so Siddhi's Alter asks Siddhi instead of answering.              |
 | "Add a QA update to the status doc"            | The status doc is updated right away; the change and its before/after record appear in the conversation.        |
-| "Book 30 min with Meera on Thursday"           | The event is added to the team calendar. It's refused if either of you is already busy then.                     |
+| "Book 30 min with Kani on Thursday"           | The event is added to the team calendar. It's refused if either of you is already busy then.                     |
 | "Email the team a QA summary"                  | An email draft to teammates' inboxes. Say "send it" or press **Approve** to send. External addresses are blocked. |
 | "Open approvals" / "show the retry node"       | The screen switches immediately and the item is highlighted.                                                      |
 
@@ -191,7 +191,7 @@ your Alter to open any of them:
 
 - **Home:** your Alter, today's agenda, what's waiting on you, and the ask bar
 - **Canvas:** the login-flow design canvas
-- **Meeting:** the meeting companion. It asks Rahul's Alter questions, records the
+- **Meeting:** the meeting companion. It asks Siddhi's Alter questions, records the
   conversation, opens a saved Google Meet link and connects a recording rig. Its **Meetings** tab
   lists recorded meetings and their prepared follow-up
 - **Approvals:** drafts waiting for you (emails) and a record of changes your Alter made
@@ -201,7 +201,7 @@ your Alter to open any of them:
 - **Rules & memory:** what your Alter knows, what it may share, your email and phone notifications
 - **Files:** the workspace's Google files and your team inbox
 
-Opening a link in Google Meet does not put an AI into the call. Joining Meet as "Rahul's Alter"
+Opening a link in Google Meet does not put an AI into the call. Joining Meet as "Siddhi's Alter"
 needs the OBS and audio-routing setup in
 [docs/storyboard-implementation.md](docs/storyboard-implementation.md#prepare-and-record-the-meet-scene).
 

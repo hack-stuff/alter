@@ -160,12 +160,12 @@ class Plans:
                 Operation(op="connect", nodeId="fallback", targetId="biometric"),
                 Operation(op="connect", nodeId="biometric", targetId="success"),
             ]
-        elif "meera" in text or "mock-up" in text:
+        elif "kani" in text or "mock-up" in text:
             ops = [
                 Operation(
                     op="add",
                     nodeId="design_review",
-                    label="Meera's design review",
+                    label="Kani's design review",
                     category="review",
                     description="Review the mock-ups before rollout.",
                 ),
@@ -185,7 +185,7 @@ class Plans:
             ]
         else:
             return Patch(
-                explanation="Try adding a retry state, a biometric design proposal, Meera's review, or a session timeout. No changes were made."
+                explanation="Try adding a retry state, a biometric design proposal, Kani's review, or a session timeout. No changes were made."
             )
         existing = {n["id"] for n in nodes}
         ops = [op for op in ops if op.op != "add" or op.nodeId not in existing]
