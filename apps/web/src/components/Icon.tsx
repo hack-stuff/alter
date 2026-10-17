@@ -25,6 +25,8 @@ const paths: Record<string, string> = {
   check: 'm5 12 4 4L19 6',
   clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
   more: 'M4 12h1m6 0h1m6 0h1',
+  sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z',
   logout: 'M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M13 8l4 4-4 4M7 12h10',
   close: 'm6 6 12 12M6 18 18 6',
   undo: 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
@@ -34,6 +36,8 @@ const paths: Record<string, string> = {
   external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
   send: 'M4 12 20 4l-6 16-3-7Z',
   copy: 'M8 8h12v12H8ZM4 16V4h12',
+  video: 'M3 7h12v10H3ZM15 10l6-3v10l-6-3',
+  videoOff: 'M3 3l18 18M15 10l6-3v10l-6-3M3 7h4M11 7h4v4M15 15v2H3V7',
 }
 
 export function Icon({ name, size = 20, className = '', style }: { name: string; size?: number; className?: string; style?: CSSProperties }) {

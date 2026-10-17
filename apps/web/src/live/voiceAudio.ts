@@ -2,9 +2,18 @@
 // later voice sessions and navigation. Microphone streams still end on stop.
 let output: AudioContext | undefined
 
+let speaker: GainNode | undefined
+
 export function voiceAudio(): AudioContext {
-  if (!output || output.state === 'closed') output = new AudioContext()
+  if (!output || output.state === 'closed') { output = new AudioContext(); speaker = undefined }
   return output
+}
+
+/** Where Alter speech plays. A meeting room also taps it to send the Alter's voice to everyone. */
+export function voiceSpeaker(): GainNode {
+  const context = voiceAudio()
+  if (!speaker) { speaker = context.createGain(); speaker.connect(context.destination) }
+  return speaker
 }
 
 export function unlockVoiceAudio() {

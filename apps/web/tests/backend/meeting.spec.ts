@@ -7,7 +7,7 @@ test('meeting review: transcript, mobile cards, edit, approved work and backgrou
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
   await page.getByLabel('Your name').fill('Dev demo')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: "Dev demo's Alter" })).toBeVisible()
   await openMeetings(page)
   await page.getByRole('button', { name: 'New meeting' }).click()

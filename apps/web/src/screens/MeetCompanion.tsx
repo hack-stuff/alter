@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, MOCK, ApiError } from '../api/client'
-import { dayApi } from '../api/day'
+import { roomApi, roomLink } from '../api/rooms'
+import { unlockVoiceAudio } from '../live/voiceAudio'
+import { MeetingRoom, MeetingSummary } from './MeetingRoom'
 import { meetingApi, type MeetingDetail } from '../api/meetings'
 import { AlterBadge } from '../components/AlterBadge'
 import { AppIcon } from '../components/AppIcon'
@@ -10,7 +12,6 @@ import { OnScreenTips } from '../components/OnScreenTips'
 import { VoiceControl } from '../components/VoiceControl'
 import { Citations } from '../components/Citations'
 import { LiveTrace } from '../components/LiveTrace'
-import { RoomSetup } from '../components/RoomSetup'
 import type { Answer, Member } from '../api/types'
 
 type Segment = { id: string; text: string; kind: 'human' | 'alter' }
@@ -42,7 +43,6 @@ export function MeetCompanion({
   )
   const [meeting, setMeeting] = useState<MeetingDetail>()
   const [meetError, setMeetError] = useState('')
-  const [consent, setConsent] = useState(false)
   const [question, setQuestion] = useState('')
   const [transcript, setTranscript] = useState('')
   const [latest, setLatest] = useState<Answer>()
@@ -57,21 +57,57 @@ export function MeetCompanion({
   const queue = useRef<Segment[]>([])
   const upload = useRef<Promise<void> | undefined>(undefined)
   const launching = useRef(false)
-  async function launchMeet() {
+  const [roomCode, setRoomCode] = useState(() => {
+    const saved = sessionStorage.getItem(key)
+    return saved ? sessionStorage.getItem(`alter.room.${saved}`) ?? '' : ''
+  })
+  const [inRoom, setInRoom] = useState(false)
+  const [copied, setCopied] = useState(false)
+  /** Start the recorded team sync in Alter's own room. Siddhi's Alter speaks there from this page. */
+  async function joinMeeting() {
     if (launching.current) return
     launching.current = true
     setMeetError('')
+    setError('')
+    // Inside the click, so the browser lets the Alter's voice play.
+    unlockVoiceAudio()
     try {
-      const value = await dayApi.createMeet()
-      window.location.assign(value.meetUrl)
+      let id = meetingId
+      if (!id || meeting?.state !== 'capturing') {
+        const value = await meetingApi.create('Login revamp · team sync', members.filter((m) => m.id !== memberId && m.id !== 'siddhi').map((m) => m.id), 'siddhi')
+        sessionStorage.setItem(key, value.id)
+        setMeetingId(value.id)
+        setMeeting(await meetingApi.get(value.id))
+        id = value.id
+      }
+      let code = sessionStorage.getItem(`alter.room.${id}`) ?? ''
+      if (!code) {
+        code = (await roomApi.create(id)).code
+        sessionStorage.setItem(`alter.room.${id}`, code)
+      }
+      setRoomCode(code)
+      setInRoom(true)
     } catch (e) {
-      setMeetError(e instanceof Error ? e.message : 'Google Meet could not create an open room. Retry after checking Meet access.')
+      setMeetError(e instanceof Error ? e.message : 'The meeting room could not open. Please retry.')
+    } finally {
       launching.current = false
     }
   }
+  const [summaryCode, setSummaryCode] = useState('')
+  function endMeeting() {
+    if (roomCode) void roomApi.end(roomCode).catch(() => {})
+    // Leaving the room ends the Alter's voice session, so the review can start.
+    setInRoom(false)
+    setSummaryCode(roomCode)
+    if (meetingId) sessionStorage.removeItem(`alter.room.${meetingId}`)
+    setRoomCode('')
+    void action('Preparing the meeting follow-up…', () => finish(false))
+  }
+  const startByVoice = useRef(() => {})
+  useEffect(() => { startByVoice.current = () => { if (!MOCK) void joinMeeting() } })
   useEffect(() => {
     if (startRequest <= 0) return
-    const timer = window.setTimeout(() => void launchMeet(), 0)
+    const timer = window.setTimeout(() => startByVoice.current(), 0)
     return () => window.clearTimeout(timer)
   }, [startRequest])
   useEffect(() => {
@@ -180,7 +216,7 @@ export function MeetCompanion({
       capture(text, 'human')
       capture(answer.answer, 'alter')
     })
-  async function finish() {
+  async function finish(openReview = true) {
     setVoiceEnabled(false)
     // Let microphone cleanup flush the last utterance and the server release its lease.
     await new Promise((resolve) => setTimeout(resolve, 400))
@@ -190,19 +226,18 @@ export function MeetCompanion({
         await meetingApi.finish(meetingId)
         break
       } catch (e) {
-        if (!(e instanceof ApiError) || e.status !== 409 || attempt >= 3)
+        // Siddhi's Alter leaves the call first; its voice session takes a moment to close.
+        if (!(e instanceof ApiError) || e.status !== 409 || attempt >= 8)
           throw e
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 750))
       }
     }
-    onReview(meetingId)
+    if (openReview) onReview(meetingId)
   }
   const siddhi = members.find((m) => m.id === 'siddhi')
   const capturing = meeting?.state === 'capturing'
-  const meetingAlters = [
-    { id: memberId, name: owner, note: 'Your Alter · taking notes and preparing your review' },
-    ...members.filter((member) => member.id !== memberId && (member.status === 'on_leave' || member.status === 'away' || member.status === 'in_meetings')).slice(0, 2).map((member) => ({ id: member.id, name: member.name, note: member.status === 'on_leave' ? 'Covering while away' : 'Available while busy' })),
-  ]
+  const others = members.filter((m) => m.id !== memberId && m.id !== 'siddhi')
+  const alterStatus = inRoom ? 'In the meeting' : capturing && roomCode ? 'Waiting in the room' : 'Joins with you'
   if (active && !ready) return (
     <section className="screen meeting-screen meeting-preflight" aria-label="Preparing your meeting">
       <div className="opening-card">
@@ -213,14 +248,26 @@ export function MeetCompanion({
       </div>
     </section>
   )
-  if (active && meetError) return (
+  if (active && summaryCode) return (
+    <MeetingSummary code={summaryCode} onReview={() => { setSummaryCode(''); onReview(meetingId) }} onClose={() => setSummaryCode('')} />
+  )
+  if (active && inRoom && roomCode && meeting) return (
+    <MeetingRoom code={roomCode} name={owner} onLeave={() => setInRoom(false)} host={{
+      meetingId: meeting.id,
+      alterId: 'siddhi',
+      alterName: siddhi?.name ?? 'Siddhi',
+      onCapture: capture,
+      onEnd: endMeeting,
+    }} />
+  )
+  if (active && meetError && !meetingId) return (
     <section className="screen meeting-screen meeting-preflight" aria-label="Meeting setup">
       <div className="sheet meeting-setup-card">
-        <AppIcon app="meet" size={28} />
+        <Icon name="video" size={28} />
         <p className="eyebrow">Team sync</p>
-        <h1>Open Google Meet needs attention</h1>
+        <h1>The meeting room needs attention</h1>
         <p role="alert" className="hint">{meetError}</p>
-        <button type="button" className="primary" onClick={() => void launchMeet()}>Retry with a new room</button>
+        <button type="button" className="primary" onClick={() => void joinMeeting()}>Try again</button>
         <button type="button" className="ghost" onClick={onBack}>Back to your Alter</button>
       </div>
     </section>
@@ -229,19 +276,27 @@ export function MeetCompanion({
     <section className="screen meeting-screen">
       <header className="meeting-head meeting-review-head">
         <div className="meeting-title">
-          <AppIcon app="meet" size={24} />
+          <span className="meeting-title-icon" aria-hidden="true"><Icon name="video" size={22} /></span>
           <div>
-            <p className="eyebrow">Meeting review</p>
+            <p className="eyebrow">Scheduled · Today</p>
             <h1>Team sync</h1>
           </div>
         </div>
-        <button type="button" className="primary meet-launch" onClick={() => void launchMeet()}><AppIcon app="meet" />Start a new Google Meet ↗</button>
       </header>
-      <p className="hint meeting-note">Each start creates a new open room in Google Meet. Return here to capture a consenting conversation and review what your Alter prepares.</p>
-      <div className="meeting-review-steps" aria-label="Meeting workflow"><span><strong>1</strong> Meet in Google Meet</span><span><strong>2</strong> Capture with consent</span><span><strong>3</strong> Review before sharing</span></div>
-      <section className="sheet meeting-alter-lineup" aria-label="Alters ready for the demo">
-        <div><p className="eyebrow">Ready in Alter</p><h2>Your meeting team</h2><p className="hint">These Alters are available here. Google Meet participants are separate; connect the room audio below to bring an Alter into the call.</p></div>
-        <div className="meeting-alter-list">{meetingAlters.map((item) => <div className="meeting-alter-person" key={item.id}><AlterMark name={item.name} size="small" /><span><strong>{item.name}'s Alter</strong><small>{item.note}</small></span></div>)}</div>
+      <section className="sheet team-sync" aria-label="Team sync">
+        <p className="team-sync-need"><span className="alter-glyph" aria-hidden="true">✦</span>The launch date and AUTH-112 need Siddhi. She’s on leave, so her Alter joins in her place.</p>
+        <h2 className="eyebrow">Attendees</h2>
+        <ul className="attendees" aria-label="Attendees">
+          <li><PersonWithAlter name={owner} size="small" /><span><strong>{owner} (you)</strong><small>Organizer · your Alter takes notes, off screen</small></span></li>
+          {others.map((member) => <li key={member.id}><PersonWithAlter name={member.name} size="small" status={member.status} /><span><strong>{member.name}</strong><small>{member.role}</small></span></li>)}
+          <li className={`is-alter${inRoom ? ' is-in_call' : ''}`} data-nav-id="siddhi" data-nav-label="Siddhi's Alter"><AlterMark name="Siddhi" size="medium" /><span><strong>Siddhi’s Alter <AlterBadge /></strong><small>{siddhi?.status === 'on_leave' || !siddhi ? 'For Siddhi, on leave · ' : ''}{alterStatus}</small></span></li>
+        </ul>
+        <div className="actions">
+          <button type="button" className="primary" disabled={MOCK} onClick={() => void joinMeeting()}><Icon name="video" size={18} />{capturing && roomCode ? 'Rejoin meeting' : 'Join meeting'}</button>
+          {capturing && roomCode && <button type="button" onClick={() => { void navigator.clipboard.writeText(roomLink(roomCode)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }).catch(() => setError(roomLink(roomCode))) }}><Icon name={copied ? 'check' : 'link'} size={16} />{copied ? 'Link copied' : 'Copy invite link'}</button>}
+        </div>
+        {capturing && roomCode && <p className="hint">Anyone with <span className="mono">{roomLink(roomCode)}</span> can join and talk to Siddhi’s Alter.</p>}
+        {meetError && meetingId && <p role="alert" className="hint">{meetError} You can still ask Siddhi’s Alter here.</p>}
       </section>
       {error && <p role="alert" className="notice is-error">{error}</p>}
       {busy && <p role="status" className="thinking"><span className="alter-glyph" aria-hidden="true">✦</span>{busy}</p>}
@@ -250,23 +305,12 @@ export function MeetCompanion({
           <section className="sheet meeting-review-panel" aria-label="Meeting review status">
             <p className="eyebrow">Your review</p>
             <h2>{!meeting ? 'The review begins after your call.' : capturing ? 'Your meeting is being captured.' : 'Your follow-up is ready to review.'}</h2>
-            <p className="hint">{!meeting ? 'Start a consenting session to save the conversation. Your Alter will prepare the status doc, team summary, and tasks.' : capturing ? `${meeting.segmentCount} transcript segments saved. Finish the meeting to prepare a review.` : 'Inspect the proposed changes and approve them before anything is shared.'}</p>
-            {capturing && <span className="badge-consent"><span className="rec-dot" aria-hidden="true" />Consented transcript</span>}
+            <p className="hint">{!meeting ? 'Join the meeting to record it. Your Alter will prepare the status doc, team summary, and tasks.' : capturing ? `${meeting.segmentCount} transcript segments saved. Finish the meeting to prepare a review.` : 'Inspect the proposed changes and approve them before anything is shared.'}</p>
+            {capturing && <span className="badge-consent"><span className="rec-dot" aria-hidden="true" />Recording transcript</span>}
             {meeting && !capturing && <button className="primary" onClick={() => onReview(meeting.id)}>Open prepared review <Icon name="arrow" size={16} /></button>}
           </section>
           <details key={meeting?.id ?? 'new'} className="sheet transcript-sheet" aria-label="Meeting transcript" open={!meeting}>
             <summary className="sheet-head"><strong>Conversation record</strong><span className="source-pill is-quiet">{meeting?.segmentCount ?? 0} saved</span></summary>
-            {!meetingId && <div className="consent-start">
-              <p className="hint">Capture a real conversation only when the participants agree.</p>
-              <label className="check-label"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />The participants consent to transcript capture.</label>
-              <button className="primary" disabled={!consent || !!busy || MOCK} onClick={() => void action('Starting your saved meeting…', async () => {
-                const value = await meetingApi.create('Login revamp · team sync', members.filter((m) => ['dev', 'kani', 'sahil'].includes(m.id)).map((m) => m.id), 'siddhi')
-                sessionStorage.setItem(key, value.id)
-                setMeetingId(value.id)
-                setMeeting(await meetingApi.get(value.id))
-                setVoiceEnabled(true)
-              })}>Start consenting session</button>
-            </div>}
             {meeting && <>
               <p className="eyebrow mono">{meeting.state} · {meeting.segmentCount} saved transcript segments{unsaved ? ` · ${unsaved} waiting to upload` : ''}</p>
               <ol className="transcript-feed">
@@ -299,7 +343,6 @@ export function MeetCompanion({
               ? <button className="primary" disabled={!!busy} onClick={() => void action('Preparing the meeting follow-up…', finish)}>Meeting finished — prepare my review</button>
               : <button className="primary" onClick={() => onReview(meeting.id)}>Open meeting follow-up</button>)}
           </section>
-          {capturing && meeting && <RoomSetup meetingId={meeting.id} memberId="siddhi" />}
           <button type="button" className="ghost" onClick={onBack}><Icon name="back" size={16} />Back to your Alter</button>
         </aside>
       </div>

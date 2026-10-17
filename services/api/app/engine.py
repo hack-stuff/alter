@@ -67,6 +67,9 @@ class Engine:
         from app.notifications import Notifications
 
         self.meetings = Meetings(self)
+        from app.rooms import Rooms
+
+        self.rooms = Rooms(self)
         self.workflows = Workflows(self)
         self.notifications = Notifications(self)
         from app.plans import Plans

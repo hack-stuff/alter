@@ -13,6 +13,8 @@ interface Props {
   conversationId?: string
   meetingId?: string
   inputDeviceId?: string
+  /** Listen to this stream instead of the microphone (a meeting room mix). */
+  inputStream?: MediaStream
   outputDeviceId?: string
   context?: string
   draftOnly?: boolean
@@ -30,6 +32,8 @@ interface Props {
   onActive?: (active: boolean) => void
   onLevel?: (level: number) => void
   autoStart?: boolean
+  /** How long to wait after the page is ready before an automatic start. */
+  startDelay?: number
   active?: boolean
   greet?: boolean
   onState?: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
@@ -104,9 +108,9 @@ export function VoiceControl(props: Props) {
   useEffect(() => {
     if (props.active === false) { session.current?.stop(); started.current = false; return }
     if (!props.autoStart || started.current) return
-    const timer = setTimeout(() => { started.current = true; startRef.current() }, 700)
+    const timer = setTimeout(() => { started.current = true; startRef.current() }, props.startDelay ?? 700)
     return () => clearTimeout(timer)
-  }, [props.autoStart, props.active])
+  }, [props.autoStart, props.active, props.startDelay])
   const briefing = useRef(props.briefing ?? 0)
   useEffect(() => {
     if (!props.briefing || props.briefing === briefing.current) return

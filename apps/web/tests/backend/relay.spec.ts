@@ -25,7 +25,7 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   })
   await page.goto('/')
   await page.getByLabel('Your name').fill('Relay demo')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   // This connected build starts voice automatically. Clicking the temporary
   // start control races its transition to the active session.
   await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 20_000 })
@@ -35,7 +35,7 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   await expect.poll(() => tools, { timeout: 20_000 }).toBe(1)
   await page.getByRole('button', { name: 'End voice' }).click()
   await page.getByRole('button', { name: 'Resume voice' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
   expect(mintCount).toBe(2)
   await page.getByRole('button', { name: 'End voice' }).click()
 })

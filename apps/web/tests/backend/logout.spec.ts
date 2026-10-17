@@ -3,16 +3,19 @@ import { expect, test } from '@playwright/test'
 test('logging out switches local identity without deleting saved work', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
-  await expect(page.getByRole('button', { name: 'Log out', exact: true })).toBeVisible()
+  const account = page.getByRole('button', { name: /^Account:/ })
+  await expect(account).toBeVisible()
   const originalUid = await page.evaluate(() => localStorage.getItem('alter.dev.uid'))
   expect(originalUid).toMatch(/^dev_/)
 
+  await account.click()
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Log out?' })
   await expect(dialog).toContainText('browser-only identity')
   await dialog.getByRole('button', { name: 'Cancel' }).click()
-  await expect(page.getByRole('button', { name: 'Log out', exact: true })).toBeVisible()
+  await expect(account).toBeVisible()
 
+  await account.click()
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await dialog.getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(page.getByLabel('Your name')).toBeVisible()

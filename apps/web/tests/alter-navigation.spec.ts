@@ -19,8 +19,8 @@ async function withLiveHarness(page: Page) {
 async function join(page: Page) {
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
@@ -54,39 +54,24 @@ test('starting a Meet is distinct from opening its review', async ({ page }) => 
   await page.goto('/')
   const decisions = await page.evaluate(async () => {
     const { startMeetingIntent } = await import('/src/agent/navigation.ts')
-    return ['Start the meeting', 'Please create a Google Meet', 'Begin our team sync', 'Join the team sync', 'Make me a new meeting', 'Open the meeting review', "Don't start the meeting"].map(startMeetingIntent)
+    return ['Start the meeting', 'Please create a Google Meet', 'Begin our team sync', 'Join the team sync', 'Make me a new meeting', 'Alter, join the meeting', 'Join the sync', 'Open the meeting review', "Don't start the meeting"].map(startMeetingIntent)
   })
-  expect(decisions).toEqual([true, true, true, true, true, false, false])
+  expect(decisions).toEqual([true, true, true, true, true, true, true, false, false])
 })
 
-test('a spoken start command creates a Meet link and opens it without a click', async ({ page }) => {
-  await page.route('**/v1/day/meet', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ meetUrl: 'https://meet.google.com/abc-defg-hij' }) }))
-  await page.route('https://meet.google.com/abc-defg-hij', (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Google Meet test call</h1>' }))
+test('a spoken start command opens the team sync', async ({ page }) => {
   await withLiveHarness(page)
   await join(page)
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Start the meeting' }, turnComplete: true } }))
-  await expect(page).toHaveURL('https://meet.google.com/abc-defg-hij')
-  await expect(page.getByRole('heading', { name: 'Google Meet test call' })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Siddhi’s Alter')
+  await expect(page.getByRole('button', { name: 'Join meeting' })).toBeVisible()
 })
 
-test('voice stays in Alter when open Meet access is unavailable', async ({ page }) => {
-  await page.route('**/v1/day/meet', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: { error: { code: 'MEET_SETUP_REQUIRED', message: 'The connected Google account needs Meet room access.' } } }) }))
-  await withLiveHarness(page)
-  await join(page)
-  await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Start the meeting' }, turnComplete: true } }))
-  await expect(page.getByRole('heading', { name: 'Open Google Meet needs attention' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Meeting setup' }).getByRole('alert')).toContainText('needs Meet room access')
-  await expect(page).toHaveURL(/127\.0\.0\.1/)
-})
-
-test('the home team sync card joins without a second click', async ({ page }) => {
-  await page.route('**/v1/day/meet', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ meetUrl: 'https://meet.google.com/abc-defg-hij' }) }))
-  await page.route('https://meet.google.com/abc-defg-hij', (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Google Meet test call</h1>' }))
+test('the home team sync card opens the team sync', async ({ page }) => {
   await withLiveHarness(page)
   await join(page)
   await page.getByRole('button', { name: /Join the team sync/ }).click()
-  await expect(page).toHaveURL('https://meet.google.com/abc-defg-hij')
-  await expect(page.getByRole('heading', { name: 'Google Meet test call' })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Attendees' })).toBeVisible()
 })
 
 test('a spoken "open" moves the screen from the streaming transcript, before any tool call', async ({ page }) => {

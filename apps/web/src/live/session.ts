@@ -4,7 +4,7 @@ import { dispatchLiveTool } from './tools'
 import type { ToolContext } from './tools'
 import { pcm16Resampler, pcmBase64, decodeAudio } from './audio'
 import { connectRelay } from './relay'
-import { startVoiceAudio, pauseVoiceAudio } from './voiceAudio'
+import { startVoiceAudio, pauseVoiceAudio, voiceSpeaker } from './voiceAudio'
 import { parseNavigation } from '../agent/navigation'
 
 export interface LiveOptions extends ToolContext {
@@ -13,6 +13,8 @@ export interface LiveOptions extends ToolContext {
   greet?: boolean
   inputDeviceId?: string
   outputDeviceId?: string
+  /** Listen to this stream (for example, a meeting room's mix) instead of the microphone. */
+  inputStream?: MediaStream
   onState: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
   onTranscript: (text: string, speaker: 'user' | 'alter', final: boolean) => void
   onError: (message: string) => void
@@ -63,7 +65,7 @@ export class LiveSession {
         if (!audio.setSinkId) throw new Error('Choose the output device in your operating system audio routing settings.')
         await audio.setSinkId(this.options.outputDeviceId)
       }
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: this.options.mode !== 'huddle', noiseSuppression: this.options.mode !== 'huddle', autoGainControl: this.options.mode !== 'huddle', channelCount: 1, ...(this.options.inputDeviceId ? { deviceId: { exact: this.options.inputDeviceId } } : {}) }, video: false })
+      this.stream = this.options.inputStream ? new MediaStream(this.options.inputStream.getAudioTracks().map((track) => track.clone())) : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: this.options.mode !== 'huddle', noiseSuppression: this.options.mode !== 'huddle', autoGainControl: this.options.mode !== 'huddle', channelCount: 1, ...(this.options.inputDeviceId ? { deviceId: { exact: this.options.inputDeviceId } } : {}) }, video: false })
       if (this.stopped) { this.stop(); return }
       let connection: Session
       this.deadline = setTimeout(() => this.stop(), 10 * 60_000)
@@ -190,7 +192,7 @@ export class LiveSession {
     let energy = 0
     for (let i = 0; i < samples.length; i++) energy += samples[i] * samples[i]
     this.options.onLevel?.(Math.min(1, Math.sqrt(energy / Math.max(1, samples.length)) * 5))
-    const node = this.audio.createBufferSource(); node.buffer = buffer; node.connect(this.audio.destination)
+    const node = this.audio.createBufferSource(); node.buffer = buffer; node.connect(voiceSpeaker())
     this.playAt = Math.max(this.playAt, this.audio.currentTime)
     node.start(this.playAt); this.playAt += buffer.duration; this.players.add(node)
     if (!this.firstSpeech) { this.firstSpeech = true; this.options.onFirstSpeech?.() }
@@ -203,7 +205,7 @@ export class LiveSession {
   mute(value: boolean) { this.muted = value; if (value) this.connection?.sendRealtimeInput({ audioStreamEnd: true }) }
   greet() {
     if (this.stopped || this.options.mode !== 'chat') return
-    this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Bring me into the work already moving. If the verified agenda has two upcoming items, link them in order; otherwise mention the next item or saved work. Ask which thread we should pick up. Only mention pending decisions if the context lists them. Do not introduce the product or list capabilities.' }] }], turnComplete: true })
+    this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: 'Start by saying hello to me by my first name and welcoming me to the day, in one short warm sentence. Then bring me into the work already moving. If the verified agenda has two upcoming items, link them in order; otherwise mention the next item or saved work. Ask which thread we should pick up. Only mention pending decisions if the context lists them. Do not introduce the product or list capabilities.' }] }], turnComplete: true })
   }
   correct(text: string) { if (!this.stopped && text.trim()) this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Correction to my last transcript: ${text.trim()}` }] }], turnComplete: true }) }
   stop() {

@@ -5,7 +5,7 @@ test('source and memory controls preserve review and audience through correction
   await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.7' : '127.0.0.6' })
   await page.goto('/')
   await page.getByLabel('Your name').fill('Knowledge demo')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await openScreen(page, 'Rules')
   await page.getByLabel('Teach your Alter something').fill('Lighthouse uses the blue checklist.')
   await expect(page.getByLabel('Use new guidance')).toHaveValue('owner')

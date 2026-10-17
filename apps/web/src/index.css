@@ -39,8 +39,35 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --desk: #111110;
+    --sheet: #1c1c1a;
+    --sheet-2: #181816;
+    --ink: #f2f1ed;
+    --ink-2: #cfcdc6;
+    --muted: #a3a19a;
+    --line: #2e2d2a;
+    --line-strong: #44423e;
+    --hover: #262523;
+    --alter: #f59e0b;
+    --alter-ink: #fbbf5a;
+    --alter-soft: #2a1f0e;
+    --alter-line: #6b4a14;
+    --alter-border: #f59e0b;
+    --approve: #16a34a;
+    --approve-edge: #0f6b31;
+    --approve-soft: #11281a;
+    --reject: #ef4444;
+    --reject-soft: #2c1414;
+    --slate: #b6c0cf;
+    --slate-soft: #222831;
+    --focus: #f2f1ed;
+    --shadow-sheet: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 30%);
+    --shadow-float: 0 2px 6px rgb(0 0 0 / 50%), 0 16px 40px rgb(0 0 0 / 50%);
+  }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --desk: #111110;
     --sheet: #1c1c1a;

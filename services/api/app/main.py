@@ -18,6 +18,7 @@ from app.plans import PlanEdit, PlanRevision
 from app.day import MeetLink, day, validate_meet_url
 from app.google import meet_join
 from app.rate_limits import take
+from app.rooms import RoomCreate, RoomJoin, RoomLeave, RoomPoll, RoomSignal
 from app.util import identifier, now
 
 
@@ -279,6 +280,39 @@ def create_app(settings=None, engine=None):
             return url
 
         return {"meetUrl": engine.store.atomic(save)}
+
+    # Alter's own meeting rooms. Guests only need to be signed in (anonymously).
+    @app.post("/v1/rooms", status_code=201)
+    def create_room(req: RoomCreate, ctx=Depends(member)):
+        return engine.rooms.create(ctx, identifier(req.meetingId))
+
+    @app.get("/v1/rooms/{code}")
+    def room_info(code: str, user=Depends(caller)):
+        return engine.rooms.info(code)
+
+    @app.post("/v1/rooms/{code}/join")
+    def join_room(code: str, req: RoomJoin, user=Depends(caller)):
+        return engine.rooms.join(user, code, req.name)
+
+    @app.post("/v1/rooms/{code}/poll")
+    def poll_room(code: str, req: RoomPoll, user=Depends(caller)):
+        return engine.rooms.poll(user, code, identifier(req.peerId), req.after)
+
+    @app.post("/v1/rooms/{code}/signal")
+    def signal_room(code: str, req: RoomSignal, user=Depends(caller)):
+        return engine.rooms.signal(user, code, identifier(req.peerId), identifier(req.to), req.kind, req.data)
+
+    @app.post("/v1/rooms/{code}/leave")
+    def leave_room(code: str, req: RoomLeave, user=Depends(caller)):
+        return engine.rooms.leave(user, code, identifier(req.peerId))
+
+    @app.get("/v1/rooms/{code}/summary")
+    def room_summary(code: str, user=Depends(caller)):
+        return engine.rooms.summary(code)
+
+    @app.post("/v1/rooms/{code}/end")
+    def end_room(code: str, ctx=Depends(member)):
+        return engine.rooms.end(ctx, code)
 
     @app.get("/v1/plans/{pid}")
     def get_plan(pid: str, ctx=Depends(member)):

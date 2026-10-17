@@ -45,7 +45,8 @@ def main():
         port=0,
         access_type="offline",
         prompt="consent",
-        authorization_prompt_message="Open the authorization URL in the local browser to authorize the demo account.",
+        authorization_prompt_message="Open this URL in your browser and sign in as the demo account:\n{url}",
+        open_browser=False,
     )
     if not credentials.refresh_token:
         raise RuntimeError(

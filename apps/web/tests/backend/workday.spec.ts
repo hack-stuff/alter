@@ -72,16 +72,13 @@ test('Dev edits a persisted design, publishes its reviewed specification, and pr
     .first()
     .click()
   await page.getByRole('button', { name: 'Meeting', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Start a new Google Meet' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Dev's Alter")
-  await expect(page.getByRole('region', { name: 'Alters ready for the demo' })).toContainText("Siddhi's Alter")
+  await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Dev (you)')
+  await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Siddhi’s Alter')
   await expect(
     page.getByText('No transcript has been recorded here yet.'),
   ).toBeVisible()
-  await page
-    .getByLabel('The participants consent to transcript capture.')
-    .check()
-  await page.getByRole('button', { name: 'Start consenting session' }).click()
+  await page.getByRole('button', { name: 'Join meeting' }).click()
+  await page.getByRole('main', { name: 'Team sync meeting' }).getByRole('button', { name: 'Leave' }).click()
   await expect(
     page.getByRole('button', { name: 'Meeting finished — prepare my review' }),
   ).toBeVisible()

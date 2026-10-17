@@ -4,8 +4,7 @@ import { openScreen, showMoreRequests } from './nav'
 async function join(page: Page) {
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Enter without voice' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
 
@@ -119,11 +118,10 @@ test('join and chat failures preserve input and allow retry', async ({ page }) =
     api.createWorkspace = async (...args: unknown[]) => { api.createWorkspace = create; throw new Error(`Could not join ${args[0]}. Try again.`) }
   })
   await page.getByLabel('Your name').fill('Alex')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('alert')).toContainText('Could not join Alex')
   await expect(page.getByLabel('Your name')).toHaveValue('Alex')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Enter without voice' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.evaluate(async () => {
     const modulePath = '/src/api/client.ts'

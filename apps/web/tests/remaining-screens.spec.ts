@@ -4,8 +4,7 @@ import { openScreen, showMoreRequests } from './nav'
 async function join(page: Page, path = '/') {
   await page.goto(path)
   await page.getByLabel('Your name').fill('Alex')
-  await page.getByRole('button', { name: 'Get my Alter' }).click()
-  await page.getByRole('button', { name: 'Enter without voice' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
 const navigate = openScreen

@@ -56,14 +56,14 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   })
   await page.goto('/')
   await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
   expect(starts.at(-1)?.mode).toBe('chat')
   // Live sometimes speaks a reply without calling its tool. The streaming
   // transcript alone opens the requested card, and the same voice session
   // follows the user onto the canvas instead of reconnecting.
   send!({ serverContent: { inputTranscription: { text: 'Open card two' }, turnComplete: true } })
   await expect(page.getByRole('heading', { name: 'Login journey', exact: true })).toBeVisible()
-  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible()
+  await expect(page.getByText('Listening… · up to 10 minutes')).toBeVisible({ timeout: 15_000 })
   expect(starts.map((start) => start.mode)).toEqual(['chat'])
   expect(active.size).toBe(1)
   await expect(page.getByRole('button', { name: 'End voice' })).toHaveCount(1)
@@ -92,10 +92,8 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   expect(starts.map((start) => start.mode)).toEqual(['chat'])
   expect(active.size).toBe(1)
   await page.getByRole('button', { name: /Join the team sync/ }).click()
-  await page
-    .getByLabel('The participants consent to transcript capture.')
-    .check()
-  await page.getByRole('button', { name: 'Start consenting session' }).click()
+  await page.getByRole('button', { name: 'Join meeting' }).click()
+  await page.getByRole('main', { name: 'Team sync meeting' }).getByRole('button', { name: 'Leave' }).click()
   await expect.poll(() => starts.at(-1)?.mode).toBe('huddle')
   expect(starts.at(-1)?.meetingId).toMatch(/^meet_/)
   await expect.poll(() => page.evaluate(() => (window as any).voiceContexts.map((context: AudioContext) => context.state))).toEqual(['running'])

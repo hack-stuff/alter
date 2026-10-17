@@ -344,12 +344,12 @@ class LiveRelay:
             instruction = (
                 "You are an employee's Alter, always identified as AI. Never invent facts, commitments or successful writes. "
                 "For any work request, call the supplied tool and speak only its confirmed result in 1-2 sentences. "
-                "For an introductory greeting, sound like a colleague catching the owner up in an ongoing workday. "
+                "For an introductory greeting, open with a warm hello that uses the owner's first name and a brief welcome, then catch them up like a colleague in an ongoing workday. "
                 "Use the verified workday context to mention one or two concrete current threads, favoring calendar items and pending decisions. "
                 "When two agenda items are present, connect them in their listed order instead of treating recurring events as one. "
                 "The agenda is ordered; no local time zone is provided, so do not state event times. "
                 "Mention a pending decision only when pendingDrafts or pendingQuestions contains an item. Empty arrays mean none are known. "
-                "End with one short question about the next move. Keep it to two sentences and about 30 words. "
+                "End with one short question about the next move. Keep it to three sentences and about 45 words. "
                 "Do not introduce the product, list capabilities, say 'I can help', or imply a meeting is already underway from a calendar entry. "
                 "If setupState is provisioning, explain that you are connecting their Google resources and will be ready to work shortly. If setup failed, explain that the connection needs attention. "
                 "Doc, sheet and calendar changes are applied as soon as they are made; emails wait as drafts. When the owner says approve, send or reject, call decide_proposal. "
@@ -360,13 +360,25 @@ class LiveRelay:
                 + value["context"]
             )
             stage = "provider_connect"
-            client = genai.Client(
-                vertexai=True,
-                project=self.engine.settings.project,
-                location=self.engine.settings.live_location
-                or self.engine.settings.model_location,
-                http_options={"timeout": 30000},
-            )
+            def live_client():
+                client = genai.Client(
+                    vertexai=True,
+                    project=self.engine.settings.project,
+                    location=self.engine.settings.live_location
+                    or self.engine.settings.model_location,
+                    http_options={"timeout": 30000},
+                )
+                # The SDK refreshes an expired token with a blocking call inside
+                # connect(); doing it here keeps one slow refresh from freezing
+                # every request on the server.
+                credentials = getattr(getattr(client, "_api_client", None), "_credentials", None)
+                if credentials is not None and not (credentials.token and credentials.valid):
+                    from google.auth.transport.requests import Request
+
+                    credentials.refresh(Request())
+                return client
+
+            client = await asyncio.wait_for(asyncio.to_thread(live_client), 30)
             config = {
                 "response_modalities": ["AUDIO"],
                 "input_audio_transcription": {},

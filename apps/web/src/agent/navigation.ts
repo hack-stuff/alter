@@ -62,7 +62,7 @@ const verb = /^(?:(?:hey|ok|okay|so)[, ]+)?(?:alter[, ]+)?(?:(?:please|can you|c
 const negation = /\b(?:don'?t|do not|never|not now|no need|stop|cancel)\b/i
 export function startMeetingIntent(input: string): boolean {
   const text = input.trim()
-  return text.length <= 160 && !negation.test(text) && /\b(?:start|create|launch|begin|set up|join|make)\s+(?:(?:me|a|the|our|my|new)\s+)*(?:google\s+)?(?:meet(?:ing)?|call|team sync)\b/i.test(text)
+  return text.length <= 160 && !negation.test(text) && /\b(?:start|create|launch|begin|set up|join|make)\s+(?:(?:me|a|the|our|my|new|team|today'?s|siddhi'?s)\s+)*(?:google\s+)?(?:meet(?:ing)?|call|sync|room)\b/i.test(text)
 }
 // Order matters: more specific screens first ("team decisions" before "team").
 const SCREEN_WORDS: [ScreenId, RegExp][] = [

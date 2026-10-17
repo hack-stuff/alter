@@ -2,7 +2,7 @@ import json
 from app.config import SEED_DIR
 from app.util import iso
 
-SLOTS = ("qa_lead", "security_engineer", "ansh", "qa_lead")
+SLOTS = ("qa_lead", "security_engineer", "data_analyst", "qa_lead")
 
 
 def load(relative):

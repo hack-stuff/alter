@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AccountMenu } from './components/AccountMenu'
 import { api, MOCK, ApiError, httpCall } from './api/client'
 import { useWorkspace } from './api/useWorkspace'
 import type { Approval, JoinResult } from './api/types'
@@ -15,11 +16,12 @@ import { Files } from './screens/Files'
 import { Kiosk } from './screens/Kiosk'
 import { Director } from './screens/Director'
 import { Icon } from './components/Icon'
-import { Avatar } from './components/People'
 import { Work } from './screens/Work'
 import { Notifications } from './components/Notifications'
 import { useAlterNavigation, type View } from './agent/useAlterNavigation'
 import { navigateTo as navAction, type ScreenId } from './agent/navigation'
+import { GuestRoom } from './screens/MeetingRoom'
+import { roomCodeFromPath } from './api/rooms'
 import './App.css'
 
 type NavItem = { id: ScreenId; label: string; icon: string; count?: 'approvals' | 'escalations'; also?: View[] }
@@ -41,6 +43,7 @@ const SECONDARY: NavItem[] = [
 
 export default function App() {
   const parameters = new URLSearchParams(location.search)
+  const roomCode = roomCodeFromPath()
   const inviteCode = location.pathname.match(/^\/join\/([A-Za-z0-9_-]+)$/)?.[1]
   const [session, setSession] = useState<{ join: JoinResult; name: string }>()
   const canRestore = !MOCK && (!!import.meta.env.VITE_FIREBASE_CONFIG || import.meta.env.VITE_DEV_AUTH === '1') && parameters.get('director') !== '1' && parameters.get('kiosk') !== '1'
@@ -116,6 +119,7 @@ export default function App() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not reset this Alter. Please try again.') }
     finally { setResetting(false) }
   }
+  if (roomCode) return <GuestRoom code={roomCode} />
   if (parameters.get('kiosk') === '1' && (session || parameters.get('director') !== '1')) return <Kiosk memberId={parameters.get('tile') ?? 'siddhi'} meetingId={parameters.get('meeting') ?? undefined} />
   if (loggingOut) return <main className="join-layout"><p role="status" className="quiet-status">Logging out…</p></main>
   if (restoring) return <main className="join-layout"><p role="status" className="quiet-status"><span className="alter-mark alter-mark-small" aria-hidden="true">✦</span>Opening your Alter…</p></main>
@@ -152,7 +156,6 @@ export default function App() {
 
   return <div className="shell">
     <nav className={`rail${more ? ' is-open' : ''}`} aria-label="Alter">
-      <button type="button" className="rail-brand" aria-label="Alter home" onClick={() => go('home')}><span className="brand-mark" aria-hidden="true">A</span></button>
       <div className="rail-primary">{PRIMARY.map(navButton)}</div>
       <div className="rail-divider" aria-hidden="true" />
       <div className={`rail-secondary${more ? ' is-open' : ''}`}>{SECONDARY.map(navButton)}</div>
@@ -161,8 +164,7 @@ export default function App() {
       </button>
       <div className="rail-foot">
         <Notifications items={data.notifications ?? []} onOpen={(path) => { const params = new URL(path, location.origin).searchParams; go(params.has('meeting') ? 'meetings' : params.has('decision') ? 'decisions' : 'files'); if (params.has('meeting')) { sessionStorage.setItem('alter.open.meeting', params.get('meeting')!); setGeneration((g) => g + 1) } }} />
-        <span className="rail-me" title={session.name}><Avatar name={session.name} size="small" /></span>
-        <button type="button" className="rail-logout" aria-label="Log out" title="Log out" onClick={() => { setLogoutError(''); setConfirmLogout(true) }}><Icon name="logout" size={19} /><span>Log out</span></button>
+        <AccountMenu name={session.name} onLogout={() => { setLogoutError(''); setConfirmLogout(true) }} />
       </div>
     </nav>
     <dialog ref={logoutDialog} className="logout-dialog" aria-labelledby="logout-title" onCancel={() => setConfirmLogout(false)}>
