@@ -204,8 +204,8 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     {
       key: 'meet', num: '01', glyph: 'work', kicker: day?.meetUrl ? 'Call linked' : 'Team conversation', title: 'Join the team sync',
       desc: `Open Google Meet, then review the follow-up with ${rahulName}’s Alter.`,
-      go: 'Open meeting', hot: /join|sync|meet|room|call/, sayLine: 'Opening your meeting review. Join the call in Google Meet.',
-      run: () => onOpen('meet'),
+      go: 'Join the call', hot: /join|sync|meet|room|call/, sayLine: 'Opening the team sync in Google Meet.',
+      run: onStartMeeting,
     },
     {
       key: 'plan', num: '02', glyph: 'files', kicker: 'On the canvas', title: 'Shape the login plan',

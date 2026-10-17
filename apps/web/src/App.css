@@ -331,6 +331,11 @@ html { scroll-padding-bottom: 96px; }
 .meeting-title { display: flex; align-items: center; gap: 12px; }
 .meeting-title h1 { font-size: 24px; }
 .meet-launch { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; border-radius: 10px; background: var(--ink); color: var(--sheet); text-decoration: none; font-size: 13.5px; font-weight: 650; }
+.meeting-preflight { min-height: min(70vh, 620px); display: grid; place-items: center; text-align: center; }
+.meeting-setup-card { width: min(100%, 460px); display: grid; justify-items: center; gap: 12px; padding: 36px; }
+.meeting-setup-card h1 { margin: 0; }
+.meeting-setup-card .hint { margin: 0 0 8px; }
+.meeting-setup-card .meet-url-box { width: 100%; text-align: left; }
 .meet-launch:hover { background: var(--ink-2); color: var(--sheet); }
 .meeting-review-steps { display: flex; flex-wrap: wrap; gap: 8px; }
 .meeting-review-steps span { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); color: var(--ink-2); font-size: 12px; }

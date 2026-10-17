@@ -229,6 +229,36 @@ export function MeetCompanion({
     { id: memberId, name: owner, note: 'Your Alter · taking notes and preparing your review' },
     ...members.filter((member) => member.id !== memberId && (member.status === 'on_leave' || member.status === 'away' || member.status === 'in_meetings')).slice(0, 2).map((member) => ({ id: member.id, name: member.name, note: member.status === 'on_leave' ? 'Covering while away' : 'Available while busy' })),
   ]
+  if (active && (meetChecking || !ready)) return (
+    <section className="screen meeting-screen meeting-preflight" aria-label="Preparing your meeting">
+      <div className="opening-card">
+        <span className="opening-mark is-connecting" aria-hidden="true">✦</span>
+        <p className="eyebrow">Team sync</p>
+        <h1>Getting your meeting ready</h1>
+        <p role="status" className="hint">{!ready ? 'Connecting your Google workspace…' : 'Checking your Google Meet link…'}</p>
+      </div>
+    </section>
+  )
+  if (active && !meetUrl) return (
+    <section className="screen meeting-screen meeting-preflight" aria-label="Meeting setup">
+      <div className="sheet meeting-setup-card">
+        <AppIcon app="meet" size={28} />
+        <p className="eyebrow">Team sync</p>
+        <h1>Google Meet needs attention</h1>
+        <p className="hint">{meetError || 'A Meet link is needed before the review opens.'}</p>
+        <button type="button" className="primary" onClick={() => void launchMeet()}>Retry and open Google Meet</button>
+        <details className="meet-url-box">
+          <summary>Use an existing Meet link</summary>
+          <form onSubmit={(e) => { e.preventDefault(); void action('Saving the meeting link…', async () => { const value = await dayApi.setMeetUrl(urlDraft); setMeetUrl(value.meetUrl); setMeetError('') }) }}>
+            <label>Google Meet link<input value={urlDraft} onChange={(e) => setUrlDraft(e.target.value)} placeholder="https://meet.google.com/abc-defg-hij" /></label>
+            <button disabled={!!busy}>Save Meet link</button>
+          </form>
+        </details>
+        {error && <p role="alert" className="error">{error}</p>}
+        <button type="button" className="ghost" onClick={onBack}>Back to your Alter</button>
+      </div>
+    </section>
+  )
   return (
     <section className="screen meeting-screen">
       <header className="meeting-head meeting-review-head">
