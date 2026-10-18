@@ -1,5 +1,6 @@
 from hashlib import sha256
 import json
+import time
 from app.google.drive import run
 
 
@@ -12,6 +13,33 @@ def calendars(service):
         token = page.get("nextPageToken")
         if not token:
             return result
+
+
+def ensure_public_reader(service, calendar_id):
+    # A new calendar can appear in CalendarList before its ACL endpoint is ready.
+    # Read the ACL before each retry so an uncertain insert is never repeated blindly.
+    for delay in (0, 1, 2, 4, 8):
+        if delay:
+            time.sleep(delay)
+        try:
+            acl = run(service.acl().list(calendarId=calendar_id)).get("items", [])
+            if any(
+                item.get("scope", {}).get("type") == "default"
+                and item.get("role") == "reader"
+                for item in acl
+            ):
+                return
+            run(
+                service.acl().insert(
+                    calendarId=calendar_id,
+                    body={"scope": {"type": "default"}, "role": "reader"},
+                    sendNotifications=False,
+                )
+            )
+            return
+        except Exception as exc:
+            if getattr(getattr(exc, "resp", None), "status", None) != 404 or delay == 8:
+                raise
 
 
 def provision(service, wid, time_zone="UTC"):
@@ -35,16 +63,7 @@ def provision(service, wid, time_zone="UTC"):
         )
     )
     cid = calendar["id"]
-    acl = run(service.acl().list(calendarId=cid)).get("items", [])
-    if not any(
-        item.get("scope", {}).get("type") == "default" and item.get("role") == "reader"
-        for item in acl
-    ):
-        run(
-            service.acl().insert(
-                calendarId=cid, body={"scope": {"type": "default"}, "role": "reader"}
-            )
-        )
+    ensure_public_reader(service, cid)
     from app.workspaces.seed import calendar_events
 
     for event in calendar_events(time_zone):

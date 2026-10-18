@@ -151,6 +151,25 @@ def test_google_calendar_seeds_local_hours_and_role_slots():
     assert start.strftime("%H:%M") == "11:30"
 
 
+def test_new_calendar_acl_404_is_read_back_before_retry(monkeypatch):
+    service = MagicMock()
+    service.calendarList().list().execute.return_value = {
+        "items": [{"id": "cal", "description": "Alter workspace w1"}]
+    }
+    service.acl().list().execute.side_effect = [
+        {"items": []},
+        {"items": [{"scope": {"type": "default"}, "role": "reader"}]},
+    ]
+    not_found = RuntimeError("calendar ACL is not visible yet")
+    not_found.resp = MagicMock(status=404)
+    service.acl().insert().execute.side_effect = not_found
+    delays = []
+    monkeypatch.setattr(calendar.time, "sleep", delays.append)
+    calendar.provision(service, "w1")
+    assert delays == [1]
+    assert service.acl().insert().execute.call_count == 1
+
+
 def test_gemini_quote_with_a_mislabelled_locator_is_cited_from_its_real_source(kolkata, monkeypatch):
     from types import SimpleNamespace
     from google.adk import runners
