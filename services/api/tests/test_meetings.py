@@ -1,6 +1,7 @@
 """Connected storyboard paths and failure/security boundaries using local adapters."""
 
 import asyncio
+import json
 import pytest
 from dataclasses import replace
 from time import sleep
@@ -98,6 +99,8 @@ def test_bundle_revision_approval_and_continuation(team):
     assert response.status_code == 200, response.text
     revised = response.json()
     assert all(t["due"] == "Friday" for t in revised["tasks"] if t["owner"] == "kani")
+    email = next(a for a in revised["approvals"] if a["kind"] == "email")
+    assert "Mock-ups due Friday · Kani" in json.dumps(email, ensure_ascii=False)
     bad = c.post(
         f"/v1/meetings/{mid}/approve",
         headers=h,
@@ -582,3 +585,31 @@ def test_vertex_relay_releases_server_session_and_forwards_audio(team, monkeypat
         sleep(0.01)
     assert received[0]["audio"]["mime_type"] == "audio/pcm;rate=16000"
     assert not e.store.list(f"workspaces/{r['workspaceId']}/liveRelaySessions")
+
+
+def test_friday_edit_moves_only_the_named_task(team):
+    c, e, h, r = team
+    mid, value = prepare(team)
+    response = c.post(
+        f"/v1/meetings/{mid}/revise",
+        headers=h,
+        json={"expectedRevision": value["revision"], "instruction": "Move Dev's status doc to Friday."},
+    )
+    assert response.status_code == 200, response.text
+    due = {t["owner"]: t["due"] for t in response.json()["tasks"]}
+    assert due["dev"] == "Friday" and due["kani"] != "Friday"
+
+
+def test_meeting_launch_answer_is_not_reused_after_it_is_answered(team):
+    c, e, h, r = team
+    mid, value = prepare(team)
+    first = c.post(f"/v1/meetings/{mid}/ask", headers=h, json={"question": "When are we launching?"})
+    assert first.status_code == 200, first.text
+    asked = first.json().get("escalationId")
+    assert asked
+    path = f"workspaces/{r['workspaceId']}/escalations/{asked}"
+    assert c.post(f"/v1/meetings/{mid}/ask", headers=h, json={"question": "Is the launch date set?"}).json().get("escalationId") == asked
+    e.store.set(path, {**e.store.get(path), "state": "answered"})
+    again = c.post(f"/v1/meetings/{mid}/ask", headers=h, json={"question": "Is the launch date set?"})
+    assert again.status_code == 200, again.text
+    assert again.json().get("escalationId") != asked

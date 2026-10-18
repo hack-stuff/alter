@@ -13,7 +13,8 @@ export interface ToolContext { mode: LiveMode; targetId?: string; conversationId
 // or rejects a proposal on the user's behalf from navigation: those stay on-screen buttons.
 const allowed: Record<LiveMode, readonly string[]> = { chat: ['alter_chat', 'navigate_to', 'decide_proposal'], revise: ['revise_approval'], reply: ['respond_escalation'], huddle: ['ask_alter'], review: ['revise_meeting'], diagram: ['revise_diagram'] }
 const highlights: HighlightState[] = ['pulse', 'focus', 'none']
-const reviewEdit = /\b(add|remove|delete|change|edit|update|mention|include|insert|put|make|say|note|replace|rename)\b/i
+// An edit is an instruction that starts a sentence ("Looks good. Just add that…"), never a verb inside a question ("What did Siddhi say?").
+const reviewEdit = /(?:^|[.!;]\s*)(?:(?:please|just|also|and|now|then|so|ok(?:ay)?|(?:can|could|would) you)[,\s]+)*(?:add|remove|delete|change|edit|update|mention|include|insert|put|make|say|note|replace|rename)\b/i
 
 /** Which node a revision added, or else the first one it changed. */
 function changedNode(before: Plan, after: Plan): string | undefined {
@@ -29,11 +30,11 @@ function text(args: Record<string, unknown>, key: string) {
 /** An edit said or typed while a meeting review is open changes that review, never the chat. */
 export async function reviseOpenReview(text: string) {
   const review = openReview.get()
-  if (!review || !reviewEdit.test(text) || parseNavigation(text)) return undefined
+  if (!review || !reviewEdit.test(text.trim()) || parseNavigation(text)) return undefined
   const updated = await meetingApi.revise(review.meetingId, review.revision, text)
   return { revision: updated.revision, instruction: 'The edit is applied to the meeting review on screen. Nothing is approved, sent or published until the owner taps approve.' }
 }
-export const isReviewEdit = (text: string) => !!openReview.get() && reviewEdit.test(text) && !parseNavigation(text)
+export const isReviewEdit = (text: string) => !!openReview.get() && reviewEdit.test(text.trim()) && !parseNavigation(text)
 
 export async function dispatchLiveTool(name: string, args: Record<string, unknown>, context: ToolContext): Promise<unknown> {
   if (!allowed[context.mode].includes(name)) throw new Error('This voice session cannot perform that action.')

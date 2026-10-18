@@ -512,6 +512,24 @@ class Meetings:
                 "Review the latest meeting bundle before editing.",
             )
         cards = [self.engine.proposals.owned(ctx, aid) for aid in value["approvalIds"]]
+        # A Friday edit moves only the tasks it names: by owner, or mock-ups by title.
+        edit = request.instruction.lower()
+        tasks = deepcopy(value["tasks"])
+        due_lines = []
+        if re.search(r"\bfriday\b", edit):
+            for task in tasks:
+                named = re.search(rf"\b{re.escape(task['owner'])}\b", edit)
+                mockups = "mock" in edit and "mock" in task["title"].lower()
+                if named or mockups:
+                    task["due"] = "Friday"
+                    task["reviewInstruction"] = request.instruction
+                    owner = self.store.get(
+                        f"workspaces/{ctx.workspace_id}/members/{task['owner']}"
+                    ) or {}
+                    label = "Mock-ups" if "mock" in task["title"].lower() else task["title"][:60]
+                    due_lines.append(
+                        f"{label} due Friday · {owner.get('name', task['owner']).split(' ')[0]}"
+                    )
         revised = []
         for card in cards:
             if card["state"] != "proposed":
@@ -521,6 +539,12 @@ class Meetings:
             payload = self.engine.brain.planner(ctx).revise(card, request.instruction)
             if card["kind"] == "doc_edit":
                 payload["baseRevision"] = card["action"]["requiredRevisionId"]
+            if card["kind"] == "email" and due_lines:
+                # The summary email must show the new due date even when the planner leaves it out.
+                body = payload.get("body", "")
+                missing = [line for line in due_lines if line.lower() not in body.lower()]
+                if missing:
+                    payload["body"] = body.rstrip() + "\n" + "\n".join(missing)
             next_card = self.engine.proposals.build(
                 ctx, card["kind"], payload, card["reason"], card["citations"]
             )
@@ -530,12 +554,6 @@ class Meetings:
                 createdAt=card["createdAt"],
             )
             revised.append((card, next_card))
-        tasks = deepcopy(value["tasks"])
-        if re.search(r"\bfriday\b", request.instruction, re.I):
-            for task in tasks:
-                if task["owner"] == "kani" or "mock" in task["title"].lower():
-                    task["due"] = "Friday"
-                    task["reviewInstruction"] = request.instruction
 
         def save(tx):
             current = tx.get(path)
@@ -900,7 +918,12 @@ class Meetings:
         meeting = self.owned(ctx, mid)
         previous = meeting.get("latestEscalationAnswer")
         if previous and re.search(r"\b(launch(?:ing)?|release date)\b", question, re.I):
-            return {**previous, "question": question}
+            # Reuse the earlier answer only while its priority question is still unanswered.
+            asked = self.store.get(
+                f"workspaces/{ctx.workspace_id}/escalations/{previous['escalationId']}"
+            )
+            if asked and asked.get("state") == "pending":
+                return {**previous, "question": question}
         answer = await self.engine.hop(ctx, meeting["representedMember"], question)
         if answer.get("escalationId"):
             self._patch(

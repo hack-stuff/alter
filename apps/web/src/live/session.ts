@@ -44,7 +44,7 @@ export class LiveSession {
   private pending = new Set<string>()
   private handled = new Set<string>()
   private cancelled = new Set<string>()
-  private recentTools = new Map<string, { at: number; calls: number; result: Promise<unknown> }>()
+  private recentTools = new Map<string, { at: number; calls: number; failed: boolean; result: Promise<unknown> }>()
   private release?: () => void
   private firstSpeech = false
   private toolCalled = false
@@ -161,11 +161,17 @@ export class LiveSession {
     for (const call of message.toolCall?.functionCalls ?? []) {
       if (!call.id || !call.name || this.cancelled.has(call.id) || this.pending.has(call.id) || this.handled.has(call.id)) continue
       const id = call.id
+      const name = call.name
       this.pending.add(id)
       try {
         const key = `${call.name}:${JSON.stringify(call.args ?? {})}`
         const at = Date.now()
         for (const [oldKey, old] of this.recentTools) if (at - old.at > 15_000) this.recentTools.delete(oldKey)
+        const dispatch = (entry: { failed: boolean; result: Promise<unknown> }) => {
+          entry.failed = false
+          entry.result = dispatchLiveTool(name, call.args ?? {}, { ...this.options, onResult: (value, tool, input) => { if (!this.stopped && !this.cancelled.has(id)) this.options.onResult(value, tool, input) } })
+          entry.result.catch(() => { entry.failed = true })
+        }
         let recent = this.recentTools.get(key)
         if (recent) {
           recent.calls++
@@ -174,12 +180,11 @@ export class LiveSession {
             this.stop()
             return
           }
+          // A repeat after a failure tries again instead of returning the old error.
+          if (recent.failed) dispatch(recent)
         } else {
-          recent = {
-            at,
-            calls: 1,
-            result: dispatchLiveTool(call.name, call.args ?? {}, { ...this.options, onResult: (value, tool, input) => { if (!this.stopped && !this.cancelled.has(id)) this.options.onResult(value, tool, input) } }),
-          }
+          recent = { at, calls: 1, failed: false, result: Promise.resolve() }
+          dispatch(recent)
           this.recentTools.set(key, recent)
         }
         const result = await recent.result

@@ -518,7 +518,7 @@ class LiveRelay:
                                 accepted = []
                                 for call in message.tool_call.function_calls:
                                     if req["mode"] == "huddle" and not re.search(
-                                        r"\b(login|sign[- ]?in|one.?tap|backend|production|launch(?:ing)?|mock.?ups|design|old button)\b",
+                                        r"\b(login|sign[- ]?in|one.?tap|backend|production|launch(?:ing)?|mock.?ups?|design|old button)\b",
                                         str((call.args or {}).get("question", "")),
                                         re.I,
                                     ):

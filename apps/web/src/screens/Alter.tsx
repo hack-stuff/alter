@@ -170,13 +170,16 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     }
     if (isReviewEdit(text)) {
       setBusy(true); setError('')
-      try {
-        await reviseOpenReview(text)
+      let revised: unknown
+      try { revised = await reviseOpenReview(text) }
+      catch (e) { setError(e instanceof Error ? e.message : 'Could not edit the review. Please try again.'); setDraft(text); return false }
+      finally { setBusy(false) }
+      // If the review closed since the check, the message goes to chat below.
+      if (revised) {
         setMessages((m) => [...m, { from: 'human', text: text.trim(), citations: [], approvalIds: [], traceIds: [], ts: timestamp() }, { from: 'alter', text: 'Done. I’ve added that to the meeting review on screen.', citations: [], approvalIds: [], traceIds: [], ts: timestamp() }])
         setDraft('')
         return true
-      } catch (e) { setError(e instanceof Error ? e.message : 'Could not edit the review. Please try again.'); setDraft(text); return false }
-      finally { setBusy(false) }
+      }
     }
     // Fast path: a clear "open X" never waits on the model.
     const intent = parseNavigation(text)
