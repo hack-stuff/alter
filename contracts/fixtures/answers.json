@@ -4,7 +4,7 @@
     "asker": "m_judge",
     "question": "Why did we move to Google one-tap sign-in?",
     "outcome": "allow",
-    "answer": "The old Google Sign-In button is being retired, so Siddhi switched us to one-tap on October 8. It's also faster for users.",
+    "answer": "Siddhi chose One Tap on the login page on October 8 to reduce sign-in friction. That decision is in the arch sync and login design doc.",
     "citations": [
       { "sourceId": "arch-sync-2026-10-08", "title": "Arch sync · Oct 8", "locator": "12:04" },
       { "sourceId": "login-design-doc", "title": "Login design doc", "locator": "§2" }

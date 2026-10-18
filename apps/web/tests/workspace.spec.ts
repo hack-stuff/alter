@@ -134,6 +134,6 @@ test('join and chat failures preserve input and allow retry', async ({ page }) =
   await expect(page.getByRole('alert').filter({ hasText: 'Rate limited' })).toBeVisible()
   await expect(page.getByLabel('Type to your Alter')).toHaveValue('Why one-tap?')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log').getByText('The old Google Sign-In button', { exact: false })).toBeVisible()
+  await expect(page.getByRole('log').getByText('Siddhi chose One Tap on the login page', { exact: false })).toBeVisible()
   await expect(page.getByRole('log').getByText('Why one-tap?', { exact: true })).toHaveCount(1)
 })

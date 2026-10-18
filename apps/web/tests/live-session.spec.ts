@@ -58,7 +58,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
     h.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'cancelled', name: 'alter_chat', args: { message: 'Do not run this' } }] } })
   })
   await page.clock.runFor(chatReply)
-  await expect(page.getByRole('log').getByText('The old Google Sign-In button', { exact: false })).toBeVisible()
+  await expect(page.getByRole('log').getByText('Siddhi chose One Tap on the login page', { exact: false })).toBeVisible()
   await expect(page.getByRole('log').getByText('Why one-tap?', { exact: true })).toHaveCount(1)
   await expect(page.getByText('Checking with Siddhi.', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(1)

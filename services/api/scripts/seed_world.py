@@ -233,10 +233,10 @@ def ensure_threads(characters, manifest):
         [
             {
                 "author": "siddhi",
-                "body": "Team — decision from this morning's arch sync: we're replacing the old Google Sign-In\n"
-                        "button with Google One-Tap. Google is retiring the old button, and one-tap gets users to a\n"
-                        "session faster on mobile. The decision record is in the design doc (working notes), and the\n"
-                        "backend side is tracked in the one-tap sign-in backend ticket.\n\n— Siddhi\n",
+                "body": "Team — decision from this morning's arch sync: I've chosen Google One Tap for the login\n"
+                        "page to reduce sign-in friction. The decision record is in the design doc (working notes), and\n"
+                        "the backend side is tracked in the one-tap sign-in backend ticket. The user rollout date is\n"
+                        "still open; I'll confirm it.\n\n— Siddhi\n",
             },
             {
                 "author": "dev",
