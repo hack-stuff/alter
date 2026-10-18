@@ -1,8 +1,24 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 test.use({ launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } })
 
+// Joining and connecting voice is wall-clock work (loading the app and the voice SDK from Vite) that
+// a loaded machine can stretch past 15s, so these tests are slow() and allow it 30s.
+const connectTimeout = 30_000
+
+// The mock api.chat answers a "why"/"launch" question after two page timers (600ms, then 1500ms).
+const chatReply = 600 + 1_500
+
+// Freeze page time once voice is running, so the mock chat only answers when a test advances the
+// clock by chatReply instead of racing expect's 5s budget on a loaded machine. Pausing a little
+// ahead only runs timers a slow machine would reach anyway.
+async function pauseClock(page: Page) {
+  await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 1_000)
+}
+
 test('Live session handles transcripts, tools, duplicate calls, interruption and cleanup', async ({ page }) => {
+  test.slow()
+  await page.clock.install()
   await page.route('**/src/firebase-auth.ts', (route) => route.fulfill({ contentType: 'application/javascript', body: "export async function firebaseIdToken(){return 'test-firebase-token'}" }))
   await page.route('**/v1/live/token', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ token: 'fake-ephemeral-token', model: 'test-live-model', expiresAt: new Date(Date.now() + 600_000).toISOString() }) }))
   await page.route('**/node_modules/.vite/deps/@google_genai.js*', (route) => route.fulfill({ contentType: 'application/javascript', body: `
@@ -23,10 +39,11 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: connectTimeout })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.audio)).toBeGreaterThan(0)
+  await pauseClock(page)
   await page.evaluate(async () => {
     const h = (window as any).liveHarness
     h.conversations = []
@@ -40,11 +57,13 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
     h.callbacks.onmessage({ toolCallCancellation: { ids: ['cancelled'] } })
     h.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'cancelled', name: 'alter_chat', args: { message: 'Do not run this' } }] } })
   })
+  await page.clock.runFor(chatReply)
   await expect(page.getByRole('log').getByText('The old Google Sign-In button', { exact: false })).toBeVisible()
   await expect(page.getByRole('log').getByText('Why one-tap?', { exact: true })).toHaveCount(1)
   await expect(page.getByText('Checking with Siddhi.', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(1)
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-2', name: 'alter_chat', args: { message: 'Why is Siddhi on leave?' } }] } }))
+  await page.clock.runFor(chatReply)
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(2)
   expect(await page.evaluate(() => (window as any).liveHarness.conversations)).toEqual([undefined, 'conv_01'])
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'unsafe', name: 'approve', args: {} }] } }))
@@ -67,6 +86,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
 })
 
 test('a rejected token request releases the microphone and returns to text controls', async ({ page }) => {
+  test.slow()
   await page.route('**/src/firebase-auth.ts', (route) => route.fulfill({ contentType: 'application/javascript', body: "export async function firebaseIdToken(){return 'test-firebase-token'}" }))
   await page.route('**/v1/live/token', (route) => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ detail: { error: { code: 'RATE_LIMITED', message: 'Your voice budget is used for now.' } } }) }))
   await page.addInitScript(() => {
@@ -76,13 +96,15 @@ test('a rejected token request releases the microphone and returns to text contr
   await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('alert')).toContainText('Your voice budget is used for now', { timeout: 15_000 })
+  await expect(page.getByRole('alert')).toContainText('Your voice budget is used for now', { timeout: connectTimeout })
   await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeEnabled()
   expect(await page.evaluate(() => (window as any).testStream.getTracks()[0].readyState)).toBe('ended')
 })
 
 test('voice follows the typed conversation, reports a server close and releases its lock', async ({ page }) => {
+  test.slow()
   const releases: unknown[] = []
+  await page.clock.install()
   await page.route('**/src/firebase-auth.ts', (route) => route.fulfill({ contentType: 'application/javascript', body: "export async function firebaseIdToken(){return 'test-firebase-token'}" }))
   await page.route('**/v1/live/token', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ token: 'fake-ephemeral-token', model: 'test-live-model', expiresAt: new Date(Date.now() + 600_000).toISOString(), sessionId: 'a'.repeat(32) }) }))
   await page.route('**/v1/live/release', (route) => { releases.push(route.request().postDataJSON()); return route.fulfill({ contentType: 'application/json', body: '{"released":true}' }) })
@@ -96,7 +118,7 @@ test('voice follows the typed conversation, reports a server close and releases 
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: connectTimeout })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.evaluate(async () => {
@@ -107,10 +129,13 @@ test('voice follows the typed conversation, reports a server close and releases 
     const chat = api.chat
     api.chat = (...args: unknown[]) => { h.conversations.push(args[1]); return chat(...args) }
   })
+  await pauseClock(page)
   // A suggestion chip starts a text conversation; the voice tool call then continues it.
   await page.getByRole('button', { name: "Ask Siddhi's Alter why we switched to one-tap sign-in" }).click()
+  await page.clock.runFor(chatReply)
   await expect(page.getByRole('log').getByText("Ask Siddhi's Alter why we switched to one-tap sign-in")).toBeVisible()
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-1', name: 'alter_chat', args: { message: 'And the launch date?' } }] } }))
+  await page.clock.runFor(chatReply)
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.responses.length)).toBe(1)
   expect(await page.evaluate(() => (window as any).liveHarness.conversations)).toEqual([undefined, 'conv_01'])
   await page.evaluate(() => (window as any).liveHarness.callbacks.onclose())
