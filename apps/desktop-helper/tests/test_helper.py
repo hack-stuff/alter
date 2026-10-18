@@ -249,3 +249,16 @@ def test_http_screenshot_act_and_stop(server):
     assert call(port, "POST", "/v1/resume", {}, token=token)[0] == 200
     assert call(port, "POST", "/v1/unpair", {}, token=token)[0] == 200
     assert call(port, "POST", "/v1/screenshot", {}, token=token)[0] == 401
+
+
+def test_setup_finds_python_in_either_venv_layout(tmp_path, monkeypatch):
+    assert h.venv_python(tmp_path) is None
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin/python.exe").touch()  # MSYS2 on Windows.
+    assert h.venv_python(tmp_path) == tmp_path / "bin/python.exe"
+    (tmp_path / "Scripts").mkdir()
+    (tmp_path / "Scripts/python.exe").touch()  # python.org on Windows.
+    assert h.venv_python(tmp_path) == tmp_path / "Scripts/python.exe"
+    monkeypatch.setattr(h.sys, "executable", r"C:\msys64\mingw64\bin\python.exe")
+    message = h.setup_failed(FileNotFoundError("missing"), tmp_path)
+    assert "MSYS2" in message and "python.org" in message and str(tmp_path) in message

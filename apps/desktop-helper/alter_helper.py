@@ -22,6 +22,7 @@ import secrets
 import string
 import subprocess
 import sys
+import sysconfig
 import threading
 import time
 import types
@@ -89,6 +90,25 @@ def load_pyautogui():
     return pyautogui
 
 
+def venv_python(venv):
+    # python.org builds on Windows put it in Scripts; MSYS2 and every other system use bin.
+    for name in ("Scripts/python.exe", "bin/python.exe", "bin/python"):
+        if (venv / name).exists():
+            return venv / name
+    return None
+
+
+def setup_failed(exc, venv):
+    lines = [f"Could not set up the helper: {exc}"]
+    if "mingw" in sysconfig.get_platform() or "msys" in sys.executable.lower():
+        lines.append(
+            f"This Python ({sys.executable}) comes from MSYS2, where pip usually cannot install Pillow. Install Python "
+            "from https://www.python.org/downloads/ and run the helper with it, for example: py -3.12 alter_helper.py"
+        )
+    lines.append(f"If it keeps failing, delete {venv} and try again.")
+    return "\n".join(lines)
+
+
 def ensure_dependencies(argv):
     try:
         import PIL  # noqa: F401
@@ -102,16 +122,22 @@ def ensure_dependencies(argv):
     if os.environ.get("ALTER_HELPER_BOOTSTRAPPED") or "--no-install" in argv:
         sys.exit("Missing packages. Install them with: python -m pip install " + " ".join(REQUIREMENTS))
     venv = HOME / "venv"
-    python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    if not python.exists():
-        print("First run: setting up the helper's own Python environment in", venv)
-        subprocess.check_call([sys.executable, "-m", "venv", str(venv)])
-    present = "import importlib.util as u, sys; sys.exit(0 if u.find_spec('pyautogui') and u.find_spec('PIL') else 1)"
-    if subprocess.call([str(python), "-c", present]) != 0:
-        print("Installing pyautogui and Pillow…")
-        subprocess.check_call(
-            [str(python), "-m", "pip", "install", "--quiet", "--disable-pip-version-check", *REQUIREMENTS]
-        )
+    python = venv_python(venv)
+    try:
+        if not python:
+            print("First run: setting up the helper's own Python environment in", venv)
+            subprocess.check_call([sys.executable, "-m", "venv", str(venv)])
+            python = venv_python(venv)
+            if not python:
+                raise OSError(f"No Python was created in {venv}")
+        present = "import importlib.util as u, sys; sys.exit(0 if u.find_spec('pyautogui') and u.find_spec('PIL') else 1)"
+        if subprocess.call([str(python), "-c", present]) != 0:
+            print("Installing pyautogui and Pillow…")
+            subprocess.check_call(
+                [str(python), "-m", "pip", "install", "--quiet", "--disable-pip-version-check", *REQUIREMENTS]
+            )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        sys.exit(setup_failed(exc, venv))
     env = dict(os.environ, ALTER_HELPER_BOOTSTRAPPED="1")
     sys.exit(subprocess.call([str(python), os.path.abspath(__file__), *argv], env=env))
 

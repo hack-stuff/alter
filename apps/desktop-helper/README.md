@@ -22,7 +22,7 @@ Download `alter_helper.py` from the Computer page (or use this folder), then:
 
 | System | Command | Notes |
 | --- | --- | --- |
-| Windows | `py alter_helper.py` | With the Microsoft Store Python, use `python alter_helper.py`. |
+| Windows | `py alter_helper.py` | Use Python from python.org or the Microsoft Store (then `python alter_helper.py`). MSYS2's Python can't install Pillow. |
 | macOS | `python3 alter_helper.py` | Allow your terminal under **Privacy & Security → Accessibility** and **Screen Recording**, then start it again. |
 | Linux | `python3 alter_helper.py` | Needs an X11 session (not Wayland). Install `xclip` to type text with accents or emoji. |
 
