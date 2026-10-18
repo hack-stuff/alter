@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { MOCK } from './client'
+import { loadSubscriptions } from './subscriptions'
 import { mockSnapshot, subscribeMock } from './mock/workspace'
 import { emptyWorkspace } from './types'
 import type { JoinResult, WorkspaceData } from './types'
@@ -13,7 +14,7 @@ export function useWorkspace(join?: JoinResult) {
     if (!join || MOCK) return
     let stopped = false
     let unsubscribe: (() => void) | undefined
-    void (import.meta.env.VITE_DEV_AUTH === '1' ? import('../api/polling') : import('../firebase')).then(({ watchWorkspace }) => {
+    void loadSubscriptions().then(({ watchWorkspace }) => {
       if (stopped) return
       unsubscribe = watchWorkspace(join, (data) => setRemote({ workspaceId: join.workspaceId, data, error: '' }), () => setRemote((state) => ({ ...state, workspaceId: join.workspaceId, error: 'Your Alter’s updates are unavailable. Check your connection and try again.' })))
     }).catch(() => { if (!stopped) setRemote({ workspaceId: join.workspaceId, data: emptyWorkspace, error: 'Could not load your Alter. Please try again.' }) })

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { alterNav } from '../agent/navigator'
 import { parseDecision, pickApproval, type DecisionIntent } from '../agent/decisions'
 import { api, MOCK, httpCall } from '../api/client'
+import { loadSubscriptions } from '../api/subscriptions'
 import { dayApi, type Day } from '../api/day'
 import { canvasEdit, desktopTask, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
 import { requestDesktopTask, sendDesktopVoice } from '../api/desktop'
@@ -122,7 +123,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     if (MOCK || !conversationId) return
     let stopped = false
     const unsubscribe: (() => void)[] = []
-    void (import.meta.env.VITE_DEV_AUTH === '1' ? import('../api/polling') : import('../firebase')).then(({ watchEvents, watchMessages }) => {
+    void loadSubscriptions().then(({ watchEvents, watchMessages }) => {
       if (stopped) return
       unsubscribe.push(watchEvents(workspaceId, conversationId, setLiveEvents, () => setLiveEvents([])))
       unsubscribe.push(watchMessages(workspaceId, conversationId, (items) => setStreamedMessages({ id: conversationId, items }), () => setStreamedMessages({ id: conversationId, items: [] })))

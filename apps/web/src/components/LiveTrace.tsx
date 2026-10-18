@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MOCK } from '../api/client'
+import { loadSubscriptions } from '../api/subscriptions'
 import { mockTrace } from '../api/mock/traces'
 import type { A2ATrace } from '../api/types'
 import { TraceView } from './TraceView'
@@ -10,7 +11,7 @@ export function LiveTrace({ workspaceId, traceId }: { workspaceId: string; trace
     if (MOCK) return
     let stopped = false
     let unsubscribe: (() => void) | undefined
-    void (import.meta.env.VITE_DEV_AUTH === '1' ? import('../api/polling') : import('../firebase')).then(({ watchTrace }) => {
+    void loadSubscriptions().then(({ watchTrace }) => {
       if (!stopped) unsubscribe = watchTrace(workspaceId, traceId, (trace) => setRemote({ id: traceId, trace }), () => setRemote({ id: traceId }))
     }).catch(() => { if (!stopped) setRemote({ id: traceId }) })
     return () => { stopped = true; unsubscribe?.() }
