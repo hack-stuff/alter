@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { BrandMark } from '../components/BrandMark'
 import { roomApi, roomLink, type RoomInfo, type RoomSummary } from '../api/rooms'
 import { Icon } from '../components/Icon'
+import { AlterBadge } from '../components/AlterBadge'
 import { Avatar, AlterAvatar } from '../components/People'
 import { VoiceControl } from '../components/VoiceControl'
 import { voiceAudio, voiceSpeaker } from '../live/voiceAudio'
@@ -162,7 +163,7 @@ export function MeetingRoom({ code, name, host, onLeave }: { code: string; name:
         <AlterAvatar name={alterName} variant="alter-only" size="xl" voiceState={voiceState} />
         {alter.caption && <p className="room-caption">{alter.caption}</p>}
         {host && alter.state === 'closed' && <button type="button" className="room-reconnect" onClick={() => { setAlter({ state: 'connecting' }); setVoiceKey((key) => key + 1) }}>Reconnect {alterName}’s Alter</button>}
-        <span className="room-tile-name">{alterName}’s Alter<span className="room-for"> · speaking for {alterName}</span></span>
+        <span className="room-tile-name">{alterName}’s Alter <AlterBadge /><span className="room-for"> · speaking for {alterName}</span></span>
       </div>
       {peers.map((peer) => <Tile key={peer.id} stream={peer.stream} owner={peer.name} name={peer.connected ? peer.name : `${peer.name} · connecting…`} />)}
       {samples.map((sample) => <Tile key={`sample-${sample}`} owner={sample} name={sample} sample />)}

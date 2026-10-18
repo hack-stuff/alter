@@ -1,6 +1,7 @@
 """Meeting capture, evidence-backed review and narrowly authorized continuation."""
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import replace
 from datetime import timedelta
@@ -263,7 +264,8 @@ class Meetings:
             response = self.engine.model_client.models.generate_content(
                 model=self.engine.settings.model_fast,
                 contents=json.dumps(
-                    {"participants": meeting["participants"], "segments": segments}
+                    {"participants": meeting["participants"], "segments": segments},
+                    ensure_ascii=False,
                 ),
                 config={
                     "response_mime_type": "application/json",
@@ -530,21 +532,25 @@ class Meetings:
                     due_lines.append(
                         f"{label} due Friday · {owner.get('name', task['owner']).split(' ')[0]}"
                     )
-        revised = []
-        for card in cards:
-            if card["state"] != "proposed":
-                raise error(
-                    409, "ALREADY_DECIDED", "This bundle has already been reviewed."
+        if any(card["state"] != "proposed" for card in cards):
+            raise error(409, "ALREADY_DECIDED", "This bundle has already been reviewed.")
+        # Each card is one model call; running them together keeps a spoken edit quick.
+        with ThreadPoolExecutor(max_workers=max(1, len(cards))) as pool:
+            payloads = list(
+                pool.map(
+                    lambda card: self.engine.brain.planner(ctx).revise(card, request.instruction),
+                    cards,
                 )
-            payload = self.engine.brain.planner(ctx).revise(card, request.instruction)
+            )
+        revised = []
+        for card, payload in zip(cards, payloads):
             if card["kind"] == "doc_edit":
                 payload["baseRevision"] = card["action"]["requiredRevisionId"]
             if card["kind"] == "email" and due_lines:
                 # The summary email must show the new due date even when the planner leaves it out.
                 body = payload.get("body", "")
-                missing = [line for line in due_lines if line.lower() not in body.lower()]
-                if missing:
-                    payload["body"] = body.rstrip() + "\n" + "\n".join(missing)
+                if "friday" not in body.lower():
+                    payload["body"] = body.rstrip() + "\n" + "\n".join(due_lines)
             next_card = self.engine.proposals.build(
                 ctx, card["kind"], payload, card["reason"], card["citations"]
             )
