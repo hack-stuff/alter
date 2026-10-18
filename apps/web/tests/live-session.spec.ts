@@ -80,7 +80,7 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   await expect(page.getByText('Your Alter is speaking…', { exact: true })).toBeVisible()
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { interrupted: true } }))
   await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'End voice' }).click()
+  await page.getByRole('button', { name: 'Stop voice' }).click()
   await expect(page.getByRole('button', { name: 'Resume voice' })).toBeVisible()
   const cleaned = await page.evaluate(() => ({ closed: (window as any).liveHarness.closed, tracks: (window as any).testStreams.flatMap((s: MediaStream) => s.getTracks().map((t) => t.readyState)), contexts: (window as any).testAudio.map((a: AudioContext) => a.state) }))
   expect(cleaned.closed).toBe(1)

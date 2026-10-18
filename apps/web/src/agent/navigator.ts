@@ -41,6 +41,13 @@ export const planUpdates = {
   subscribe(fn: (plan: Plan) => void) { planListeners.add(fn); return () => { planListeners.delete(fn) } },
 }
 
+/** The meeting review on screen, so an edit said or typed to the voice bar revises it. */
+let review: { meetingId: string; revision: number } | undefined
+export const openReview = {
+  get: () => review,
+  set(value: { meetingId: string; revision: number }) { review = value; return () => { if (review === value) review = undefined } },
+}
+
 /** True when the same screen and target were opened within `windowMs`. */
 export function recentlyOpened(action: NavigationAction, windowMs = 8000) {
   const previous = last

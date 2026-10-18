@@ -8,7 +8,7 @@ import { dayApi, type Day } from '../api/day'
 import { canvasEdit, desktopTask, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
 import { requestDesktopTask, sendDesktopVoice } from '../api/desktop'
 import { voiceHold } from '../live/dock'
-import { dispatchLiveTool } from '../live/tools'
+import { dispatchLiveTool, isReviewEdit, reviseOpenReview } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
 import { VoiceControl } from '../components/VoiceControl'
@@ -168,6 +168,16 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
       onNavigate(navigateTo('computer'), 'text'); requestDesktopTask(task); setDraft('')
       return true
     }
+    if (isReviewEdit(text)) {
+      setBusy(true); setError('')
+      try {
+        await reviseOpenReview(text)
+        setMessages((m) => [...m, { from: 'human', text: text.trim(), citations: [], approvalIds: [], traceIds: [], ts: timestamp() }, { from: 'alter', text: 'Done. I’ve added that to the meeting review on screen.', citations: [], approvalIds: [], traceIds: [], ts: timestamp() }])
+        setDraft('')
+        return true
+      } catch (e) { setError(e instanceof Error ? e.message : 'Could not edit the review. Please try again.'); setDraft(text); return false }
+      finally { setBusy(false) }
+    }
     // Fast path: a clear "open X" never waits on the model.
     const intent = parseNavigation(text)
     if (intent?.confidence === 'high') { onNavigate(intent.action, 'text'); setDraft(''); return true }
@@ -184,7 +194,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   }
 
   async function recoverSpokenAction(text: string) {
-    if (!parseNavigation(text) && !parseDecision(text) && !canvasEdit(text, alterNav.current()) && requestedCard(text) !== 4) return
+    if (!parseNavigation(text) && !parseDecision(text) && !canvasEdit(text, alterNav.current()) && !isReviewEdit(text) && requestedCard(text) !== 4) return
     setError('')
     try {
       await dispatchLiveTool('alter_chat', { message: text }, {

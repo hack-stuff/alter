@@ -66,7 +66,7 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
   expect(starts.map((start) => start.mode)).toEqual(['chat'])
   expect(active.size).toBe(1)
-  await expect(page.getByRole('button', { name: 'End voice' })).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Stop voice' })).toHaveCount(1)
   send!({
     toolCall: {
       functionCalls: [
@@ -98,7 +98,7 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   await expect.poll(() => starts.at(-1)?.mode).toBe('huddle')
   expect(starts.at(-1)?.meetingId).toMatch(/^meet_/)
   await expect.poll(() => page.evaluate(() => (window as any).voiceContexts.map((context: AudioContext) => context.state))).toEqual(['running'])
-  await expect(page.getByRole('button', { name: 'End voice' })).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Stop voice' })).toHaveCount(1)
   send!({
     toolCall: {
       functionCalls: [

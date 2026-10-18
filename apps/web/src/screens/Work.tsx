@@ -8,6 +8,7 @@ import { Citations } from '../components/Citations'
 import { Icon, Avatar } from '../components/Icon'
 import { VoiceControl } from '../components/VoiceControl'
 import { RoomSetup } from '../components/RoomSetup'
+import { openReview } from '../agent/navigator'
 
 const states: Record<string, string> = { capturing: 'Capturing meeting', preparing: 'Preparing your review', ready: 'Ready for your review', applying: 'Applying reviewed changes', completed: 'Reviewed work completed', needs_attention: 'Needs attention', cancelled: 'Cancelled', paused: 'Work paused' }
 type Upload = { id: string; text: string; kind: 'human' | 'alter' }
@@ -55,6 +56,11 @@ export function Work({ members, memberId, initialId }: { members: Member[]; memb
     void update()
     return () => { stopped = true; clearTimeout(timer) }
   }, [selected])
+
+  // While the review is open, the voice bar's edits ("Add that Kani's mock-ups are due Friday") revise it.
+  const reviewing = detail?.state === 'ready' ? detail.id : undefined
+  const reviewRevision = detail?.revision ?? 0
+  useEffect(() => reviewing ? openReview.set({ meetingId: reviewing, revision: reviewRevision }) : undefined, [reviewing, reviewRevision])
 
   useEffect(() => {
     currentId.current = selected

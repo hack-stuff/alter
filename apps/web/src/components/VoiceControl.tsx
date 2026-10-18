@@ -144,6 +144,7 @@ export function VoiceControl(props: Props) {
   const failed = state === 'closed' && !!error && !needsEnable
   const visual = state === 'connecting' ? 'connecting' : state === 'speaking' ? 'speaking' : state === 'listening' ? (muted ? 'muted' : 'listening') : failed ? 'failed' : 'off'
   const status = state === 'connecting' ? 'Connecting voice…' : state === 'speaking' ? 'Your Alter is speaking…' : muted ? 'Microphone muted' : 'Listening…'
+  const stopped = state === 'closed' && ended && !error
   const startLabel = needsEnable ? 'Enable voice' : props.mode === 'chat' && ended && !error ? 'Resume voice' : startLabels[props.mode] ?? 'Talk to your Alter'
   const startButton = <button type="button" className={`voice-start${needsEnable ? ' is-enable' : ''}`} onClick={() => { unlockVoiceAudio(); setEnded(false); start() }}><Icon name="mic" size={16} />{startLabel}</button>
   const indicator = <span className={`voice-indicator is-${visual}`} aria-hidden="true">
@@ -160,7 +161,7 @@ export function VoiceControl(props: Props) {
   const controls = state === 'closed' ? startButton : <>
     {props.mode === 'chat' && !props.dock && state !== 'connecting' && <button type="button" className="ghost" onClick={() => { unlockVoiceAudio(); session.current?.greet() }}>Hear my briefing</button>}
     {props.mode === 'reply' ? holdToTalk : <button type="button" className="ghost" aria-pressed={muted} onClick={() => { const value = !muted; setMuted(value); session.current?.mute(value) }}><Icon name={muted ? 'mic' : 'micOff'} size={16} /><span className="voice-btn-label">{muted ? 'Unmute' : 'Mute mic'}</span></button>}
-    <button type="button" className="ghost voice-end" aria-label="End voice" onClick={() => { recoveryPending.current = false; clearTimeout(recoveryTimer.current); recoveryTimer.current = undefined; setError(''); session.current?.stop() }}><Icon name="stop" size={14} /><span className="voice-btn-label">End voice</span></button>
+    <button type="button" className="ghost voice-end" aria-label="Stop voice" onClick={() => { recoveryPending.current = false; clearTimeout(recoveryTimer.current); recoveryTimer.current = undefined; setError(''); session.current?.stop() }}><Icon name="stop" size={14} /><span className="voice-btn-label">Stop</span></button>
   </>
   /** Typed text goes to the running voice session exactly like speech; with voice off it uses the text path or starts voice. */
   function sendTyped(text: string) {
@@ -199,7 +200,8 @@ export function VoiceControl(props: Props) {
       </div>}
       <form className="voice-dock-bar" onSubmit={submitTyped}>
         {state !== 'closed' && indicator}
-        {textField}
+        {/* Once voice is stopped, the bar offers only Resume voice; typing returns with voice. */}
+        {!stopped && textField}
         <div className="voice-dock-actions">{controls}</div>
       </form>
     </div>

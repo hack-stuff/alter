@@ -605,3 +605,22 @@ def test_every_alter_has_its_own_voice():
     # Anyone else keeps the same spare voice every time, never a team member's.
     assert voice_for("Priya Shah") == voice_for("priya") in SPARE_VOICES
     assert not set(SPARE_VOICES) & set(VOICES.values())
+
+
+def test_demo_switch_lifts_usage_limits(monkeypatch):
+    from fastapi import HTTPException
+    from app.rate_limits import take
+
+    class Tx(dict):
+        get = dict.get
+
+        def set(self, key, value):
+            self[key] = value
+
+    tx = Tx()
+    take(tx, "demo-check", 1)
+    with pytest.raises(HTTPException):
+        take(tx, "demo-check", 1)
+    monkeypatch.setenv("DEMO_UNLIMITED", "1")
+    for _ in range(5):
+        take(tx, "demo-check", 1)

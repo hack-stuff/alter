@@ -71,7 +71,7 @@ function FloatPanel(props: { voice: DockSnapshot; running: boolean; ready: boole
     <div className="float-actions">
       {voice.state === 'closed' ? <button type="button" onClick={() => voiceDock.start()}><Icon name="mic" size={14} />Start voice</button> : <>
         <button type="button" aria-pressed={voice.muted} onClick={() => voiceDock.mute(!voice.muted)}><Icon name={voice.muted ? 'mic' : 'micOff'} size={14} />{voice.muted ? 'Unmute' : 'Mute'}</button>
-        <button type="button" onClick={() => voiceDock.end()}>End voice</button>
+        <button type="button" onClick={() => voiceDock.end()}>Stop</button>
       </>}
       {props.running && <button type="button" className="reject" onClick={props.onStop}><Icon name="stop" size={12} />Stop task</button>}
     </div>

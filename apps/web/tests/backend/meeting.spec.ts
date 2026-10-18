@@ -20,8 +20,9 @@ test('meeting review: transcript, mobile cards, edit, approved work and backgrou
   await page.getByRole('button', { name: 'Prepare my review' }).click()
   await expect(page.getByRole('tab', { name: 'Status doc' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Login revamp — status' })).toBeVisible()
-  await page.getByLabel('One more thing to change?').fill("Add that Kani's mock-ups are due Friday.")
-  await page.getByRole('button', { name: 'Apply edit', exact: true }).click()
+  // Scene 2: the edit goes to the voice bar, not a field on the review, and still revises the review.
+  await page.getByLabel('Type to your Alter').fill("Add that Kani's mock-ups are due Friday.")
+  await page.getByLabel('Type to your Alter').press('Enter')
   await page.getByRole('tab', { name: 'Task board' }).click()
   await expect(page.getByText('Kani · Friday', { exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Status doc' }).click()

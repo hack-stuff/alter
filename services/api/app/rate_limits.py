@@ -1,4 +1,5 @@
 import hashlib
+import os
 from datetime import timedelta
 from app.util import now
 from app.errors import error
@@ -11,6 +12,9 @@ def take(
     window=3600,
     message="This workspace is busy. Please try again later.",
 ):
+    # For a live demo, DEMO_UNLIMITED=1 lifts every usage limit. Remove it afterwards to restore them.
+    if os.getenv("DEMO_UNLIMITED") == "1":
+        return
     instant = now()
     key = hashlib.sha256(scope.encode()).hexdigest()
     path = f"rateLimits/{key}"
