@@ -67,11 +67,10 @@ html { scroll-padding-bottom: 96px; }
 .shell { min-height: 100vh; }
 .rail { position: fixed; z-index: 30; inset: 0 auto 0 0; width: 72px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; overflow-y: auto; scrollbar-width: none; background: var(--desk); border-right: 1px solid var(--line); }
 .brand-mark { display: block; flex-shrink: 0; overflow: visible; }
-.brand-mark-person { fill: var(--ink); }
-.brand-mark-rim { fill: var(--desk); }
-.brand-mark-key { fill: var(--alter); }
-.brand-mark-spark { fill: #fff; }
-.sheet .brand-mark-rim { fill: var(--sheet); }
+.brand-mark-base { fill: color-mix(in srgb, var(--alter) 83%, #000); }
+.brand-mark-well, .brand-mark-letter { fill: var(--alter); }
+.brand-mark-inner { stroke: var(--alter); }
+.brand-mark-glyph, .brand-mark-letter { stroke: #fff9ed; }
 .rail-primary, .rail-secondary { display: flex; flex-direction: column; gap: 2px; }
 .rail-divider { width: 32px; height: 1px; background: var(--line-strong); margin: 8px 0; }
 .rail-more { display: none; }
@@ -202,11 +201,8 @@ html { scroll-padding-bottom: 96px; }
 .opening-card { display: grid; justify-items: center; gap: 14px; text-align: center; max-width: 520px; }
 .opening-mark { position: relative; display: grid; place-items: center; width: 88px; height: 88px; }
 .restore-status { display: grid; justify-items: center; gap: 14px; }
-.opening-mark .brand-mark-alter { transform-box: view-box; transform-origin: 27.5px 25.5px; }
-.opening-mark.is-connecting .brand-mark-alter { animation: alter-step 1.8s ease-in-out infinite; }
-@keyframes alter-step { 50% { transform: translate(2px, 1.5px) scale(1.06); } }
 .opening-mark.is-connecting::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--alter) 55%, transparent); animation: orbit 6s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .opening-mark.is-connecting::after, .opening-mark.is-connecting .brand-mark-alter { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .opening-mark.is-connecting::after { animation: none; } }
 /* The opening screen covers the whole window, so the voice bar centres on it rather than beside the rail. */
 @media (min-width: 721px) { body:has(.alter-opening) .voice-dock { left: 50%; } }
 @keyframes orbit { to { transform: rotate(360deg); } }
