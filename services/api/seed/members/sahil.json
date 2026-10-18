@@ -6,8 +6,8 @@
     {
       "id": "backend-notes",
       "title": "Backend handoff",
-      "locator": "AUTH-112",
-      "text": "Sahil maintains the sign-in backend endpoints. AUTH-112 is approved for production.",
+      "locator": "LOGIN-7",
+      "text": "Sahil maintains the sign-in backend endpoints. LOGIN-7 is approved for production.",
       "scope": "work"
     }
   ]

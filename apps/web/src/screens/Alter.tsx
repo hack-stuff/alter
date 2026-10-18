@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { BrandMark } from '../components/BrandMark'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { alterNav } from '../agent/navigator'
 import { parseDecision, pickApproval, type DecisionIntent } from '../agent/decisions'
@@ -7,6 +6,7 @@ import { api, MOCK, httpCall } from '../api/client'
 import { dayApi, type Day } from '../api/day'
 import { canvasEdit, desktopTask, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
 import { requestDesktopTask, sendDesktopVoice } from '../api/desktop'
+import { voiceHold } from '../live/dock'
 import { dispatchLiveTool } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
@@ -216,6 +216,8 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
 
   const opening = active && liveVoice && !opened && (MOCK || day?.voiceConfigured !== false)
   const autoVoice = liveVoice && ready
+  // A meeting takes the microphone; the voice bar steps aside and comes back after.
+  const held = useSyncExternalStore(voiceHold.subscribe, voiceHold.get)
   useEffect(() => {
     if (!opening) return
     const timer = window.setTimeout(() => setOpeningSlow(true), 8000)
@@ -332,7 +334,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
   return <section className={`screen home${opening ? ' is-opening' : ''}`}>
     {opening && <div className="alter-opening" aria-label="Opening your workday">
       <div className="opening-card">
-        <span className="opening-mark is-connecting" aria-hidden="true"><BrandMark size={72} /></span>
+        <span className="opening-mark is-connecting" aria-hidden="true"><PersonWithAlter name={name} size="large" /></span>
         <p className="eyebrow">{name}&apos;s Alter · Workday</p>
         <h1>Your day is already in motion.</h1>
         <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : `Welcome, ${name}.`}</p>
@@ -427,6 +429,6 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     </section>
 
     {/* The Voice Bar lives on the page, not on Home, so the Alter keeps talking while it moves between screens. */}
-    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { sendDesktopVoice(text); if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
+    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready && !held} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { sendDesktopVoice(text); if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
   </section>
 }

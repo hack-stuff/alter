@@ -6,7 +6,7 @@
       "text": "I drafted a QA update for the status doc using the test plan and Siddhi's prod approval. Take a look before I apply it.",
       "citations": [
         { "sourceId": "test-plan", "title": "Test plan v1", "locator": "§3" },
-        { "sourceId": "ticket-AUTH-112", "title": "AUTH-112", "locator": "status" }
+        { "sourceId": "ticket-LOGIN-7", "title": "LOGIN-7", "locator": "status" }
       ],
       "approvalIds": ["apr_doc"],
       "traceIds": ["trc_04"],

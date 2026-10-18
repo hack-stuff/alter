@@ -11,10 +11,10 @@
       "scope": "work"
     },
     {
-      "id": "ticket-AUTH-112",
-      "title": "AUTH-112",
+      "id": "ticket-LOGIN-7",
+      "title": "LOGIN-7",
       "locator": "status",
-      "text": "The sign-in infrastructure was approved for production on October 10 under AUTH-112. This approval covers infrastructure readiness; it does not set a user-facing rollout date.",
+      "text": "The sign-in infrastructure was approved for production on October 10 under LOGIN-7. This approval covers infrastructure readiness; it does not set a user-facing rollout date.",
       "scope": "work"
     }
   ]

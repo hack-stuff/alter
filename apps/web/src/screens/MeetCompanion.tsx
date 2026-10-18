@@ -10,6 +10,7 @@ import { Icon } from '../components/Icon'
 import { AlterMark, PersonWithAlter } from '../components/People'
 import { OnScreenTips } from '../components/OnScreenTips'
 import { VoiceControl } from '../components/VoiceControl'
+import { voiceHold } from '../live/dock'
 import { Citations } from '../components/Citations'
 import { LiveTrace } from '../components/LiveTrace'
 import type { Answer, Member } from '../api/types'
@@ -237,6 +238,9 @@ export function MeetCompanion({
   const siddhi = members.find((m) => m.id === 'siddhi')
   const capturing = meeting?.state === 'capturing'
   const others = members.filter((m) => m.id !== memberId && m.id !== 'siddhi')
+  // Asking Siddhi's Alter here also takes the microphone from the owner's own Alter.
+  const asking = !MOCK && capturing && !!meeting && voiceEnabled && active && askOpen
+  useEffect(() => asking ? voiceHold.take('meeting-ask') : undefined, [asking])
   const alterStatus = inRoom ? 'In the meeting' : capturing && roomCode ? 'Waiting in the room' : 'Joins with you'
   if (active && !ready) return (
     <section className="screen meeting-screen meeting-preflight" aria-label="Preparing your meeting">
@@ -258,6 +262,7 @@ export function MeetCompanion({
       alterName: siddhi?.name ?? 'Siddhi',
       onCapture: capture,
       onEnd: endMeeting,
+      others: others.map((member) => member.name),
     }} />
   )
   if (active && meetError && !meetingId) return (
@@ -284,7 +289,7 @@ export function MeetCompanion({
         </div>
       </header>
       <section className="sheet team-sync" aria-label="Team sync">
-        <p className="team-sync-need"><span className="alter-glyph" aria-hidden="true">✦</span>The launch date and AUTH-112 need Siddhi. She’s on leave, so her Alter joins in her place.</p>
+        <p className="team-sync-need"><span className="alter-glyph" aria-hidden="true">✦</span>The launch date and LOGIN-7 need Siddhi. She’s on leave, so her Alter joins in her place.</p>
         <h2 className="eyebrow">Attendees</h2>
         <ul className="attendees" aria-label="Attendees">
           <li><PersonWithAlter name={owner} size="small" /><span><strong>{owner} (you)</strong><small>Organizer · your Alter takes notes, off screen</small></span></li>
@@ -344,7 +349,7 @@ export function MeetCompanion({
           <OnScreenTips title="Ask Siddhi’s Alter" tips={[
             { type: 'say', text: 'Why did we switch to one-tap sign-in?' },
             { type: 'say', text: 'When are we launching the login revamp?' },
-            { type: 'say', text: 'Is AUTH-112 approved for production?' },
+            { type: 'say', text: 'Is LOGIN-7 approved for production?' },
           ]} onSelectPrompt={ask} />
           <form className="ask-bar" onSubmit={(e) => { e.preventDefault(); ask(question) }}>
             <label className="sr-only" htmlFor="meeting-question">Question for Siddhi’s Alter</label>

@@ -29,3 +29,24 @@ export const voiceDock = {
   /** Has the Alter say a short update out loud, when voice is on. */
   announce: (text: string) => { if (snapshot.state !== 'closed') controls?.announce(text) },
 }
+
+// A meeting holds the voice bar: only one voice session can use the microphone, and in a
+// meeting the represented teammate's Alter must be the one listening. It resumes after.
+const holds = new Set<string>()
+const holdListeners = new Set<() => void>()
+export const voiceHold = {
+  get: () => holds.size > 0,
+  subscribe(listener: () => void) {
+    holdListeners.add(listener)
+    return () => { holdListeners.delete(listener) }
+  },
+  /** Holds the voice bar until the returned function is called. */
+  take(key: string) {
+    holds.add(key)
+    holdListeners.forEach((listener) => listener())
+    return () => {
+      holds.delete(key)
+      holdListeners.forEach((listener) => listener())
+    }
+  },
+}

@@ -21,7 +21,7 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   const fileUrl=await card.getByRole('link',{name:'Open updated file'}).getAttribute('href')
   expect(fileUrl).toContain('/local/files/')
   const resource=await page.request.get(fileUrl!)
-  expect(await resource.text()).toContain('AUTH-112')
+  expect(await resource.text()).toContain('LOGIN-7')
   await nav('Team')
   await page.getByRole('button',{name:"Ask Siddhi's Alter"}).click()
   await page.getByLabel("Question for Siddhi's Alter").fill('Why one-tap?')

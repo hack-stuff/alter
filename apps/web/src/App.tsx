@@ -17,6 +17,7 @@ import { Computer } from './screens/Computer'
 import { Kiosk } from './screens/Kiosk'
 import { Director } from './screens/Director'
 import { Icon } from './components/Icon'
+import { PersonWithAlter } from './components/People'
 import { Work } from './screens/Work'
 import { Notifications } from './components/Notifications'
 import { useAlterNavigation, type View } from './agent/useAlterNavigation'
@@ -43,6 +44,8 @@ const SECONDARY: NavItem[] = [
   { id: 'computer', label: 'Computer', icon: 'computer' },
 ]
 
+const NAME_KEY = 'alter.lastName'
+
 export default function App() {
   const parameters = new URLSearchParams(location.search)
   const roomCode = roomCodeFromPath()
@@ -50,6 +53,9 @@ export default function App() {
   const [session, setSession] = useState<{ join: JoinResult; name: string }>()
   const canRestore = !MOCK && (!!import.meta.env.VITE_FIREBASE_CONFIG || import.meta.env.VITE_DEV_AUTH === '1') && parameters.get('director') !== '1' && parameters.get('kiosk') !== '1'
   const [restoring, setRestoring] = useState(canRestore)
+  // Remembered so the very first loading screen already shows this person's avatar.
+  const [knownName] = useState(() => { try { return localStorage.getItem(NAME_KEY) ?? '' } catch { return '' } })
+  useEffect(() => { if (session?.name) try { localStorage.setItem(NAME_KEY, session.name) } catch { /* only a nicer loading screen */ } }, [session?.name])
   const [restoreError, setRestoreError] = useState('')
   const [restoreAttempt, setRestoreAttempt] = useState(0)
   useEffect(() => {
@@ -97,6 +103,7 @@ export default function App() {
         else await (await import('./firebase-auth')).firebaseSignOut()
       }
       for (const key of Object.keys(sessionStorage)) if (key.startsWith('alter.')) sessionStorage.removeItem(key)
+      localStorage.removeItem(NAME_KEY)
       window.location.replace('/')
     } catch (e) {
       setLogoutError(e instanceof Error ? e.message : 'Could not log out. Please try again.')
@@ -124,7 +131,9 @@ export default function App() {
   if (roomCode) return <GuestRoom code={roomCode} />
   if (parameters.get('kiosk') === '1' && (session || parameters.get('director') !== '1')) return <Kiosk memberId={parameters.get('tile') ?? 'siddhi'} meetingId={parameters.get('meeting') ?? undefined} />
   if (loggingOut) return <main className="join-layout"><p role="status" className="quiet-status">Logging out…</p></main>
-  if (restoring) return <main className="join-layout"><p role="status" className="quiet-status"><span className="alter-mark alter-mark-small" aria-hidden="true">✦</span>Opening your Alter…</p></main>
+  if (restoring) return <main className="join-layout">{knownName
+    ? <div className="restore-status"><span className="opening-mark is-connecting" aria-hidden="true"><PersonWithAlter name={knownName} size="large" /></span><p role="status" className="quiet-status">Opening {knownName}’s Alter…</p></div>
+    : <p role="status" className="quiet-status"><span className="alter-mark alter-mark-small" aria-hidden="true">✦</span>Opening your Alter…</p>}</main>
   if (restoreError && !session) return <main className="join-layout"><div className="sheet narrow"><p className="error" role="alert">{restoreError}</p><button className="primary" onClick={() => { setRestoreError(''); setRestoring(true); setRestoreAttempt((value) => value + 1) }}>Retry sign-in</button></div></main>
   if (!session) return <main className="join-layout">{parameters.get('director') === '1' ? <Director onJoined={joined} /> : <Join inviteCode={inviteCode} onJoined={joined} />}</main>
 

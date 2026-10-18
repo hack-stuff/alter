@@ -75,8 +75,14 @@ test('Dev edits a persisted design, publishes its reviewed specification, and pr
   await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Dev (you)')
   await expect(page.getByRole('list', { name: 'Attendees' })).toContainText('Siddhi’s Alter')
   await expect(page.getByText('Conversation record', { exact: true })).toHaveCount(0)
+  await expect(page.getByLabel('Type to your Alter')).toBeVisible()
   await page.getByRole('button', { name: 'Join meeting' }).click()
-  await page.getByRole('main', { name: 'Team sync meeting' }).getByRole('button', { name: 'Leave' }).click()
+  // Nobody else has joined, so teammates sit in as samples; the owner's own Alter steps aside.
+  const room = page.getByRole('main', { name: 'Team sync meeting' })
+  await expect(room.getByRole('region', { name: 'Participants' })).toContainText('Kani · sample')
+  await expect(page.getByLabel('Type to your Alter')).toHaveCount(0)
+  await room.getByRole('button', { name: 'Leave' }).click()
+  await expect(page.getByLabel('Type to your Alter')).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Finish and prepare review' }),
   ).toBeVisible()

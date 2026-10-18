@@ -236,7 +236,7 @@ def ensure_threads(characters, manifest):
                 "body": "Team — decision from this morning's arch sync: we're replacing the old Google Sign-In\n"
                         "button with Google One-Tap. Google is retiring the old button, and one-tap gets users to a\n"
                         "session faster on mobile. The decision record is in the design doc (working notes), and the\n"
-                        "backend side is tracked under AUTH-112.\n\n— Siddhi\n",
+                        "backend side is tracked under LOGIN-7.\n\n— Siddhi\n",
             },
             {
                 "author": "dev",
@@ -253,11 +253,11 @@ def ensure_threads(characters, manifest):
     )
 
     run_thread(
-        "auth-112", "AUTH-112 — sign-in approved for production",
+        "login-7", "LOGIN-7 — sign-in approved for production",
         [
             {
                 "author": "sahil",
-                "body": "Status on AUTH-112: the token auth for one-tap sign-in is approved for production and\n"
+                "body": "Status on LOGIN-7: the token auth for one-tap sign-in is approved for production and\n"
                         "verified live in prod on October 10. No open backend blockers on my side.\n\n— Sahil\n",
             },
             {
@@ -415,7 +415,7 @@ def main():
         if "sahil" in characters:
             ensure_comment(
                 characters, manifest, "sahil", ids["statusDoc"], "comment-sahil-status",
-                "AUTH-112 is verified in prod — I'll keep the tracker row current as the crash fix lands.",
+                "LOGIN-7 is verified in prod — I'll keep the tracker row current as the crash fix lands.",
             )
         if "dev" in characters:
             ensure_comment(

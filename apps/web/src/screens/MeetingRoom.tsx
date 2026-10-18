@@ -6,9 +6,10 @@ import { Avatar, AlterAvatar } from '../components/People'
 import { VoiceControl } from '../components/VoiceControl'
 import { voiceAudio, voiceSpeaker } from '../live/voiceAudio'
 import { RoomConnection, type AlterUpdate, type RemotePeer } from '../room/connection'
+import { voiceHold } from '../live/dock'
 
 // Demo prompts for the represented teammate's Alter, shown at the top of the room.
-const QUESTIONS = ['when are we launching the login revamp?', 'why did we switch to one-tap sign-in?', 'is AUTH-112 approved for production?']
+const QUESTIONS = ['when are we launching the login revamp?', 'why did we switch to one-tap sign-in?', 'is LOGIN-7 approved for production?']
 
 export interface RoomHost {
   meetingId: string
@@ -17,6 +18,8 @@ export interface RoomHost {
   onCapture: (text: string, kind: 'human' | 'alter') => void
   /** End the meeting for everyone and prepare the review. */
   onEnd: () => void
+  /** Teammates shown as sample attendees until a real person joins. */
+  others?: string[]
 }
 
 /** Everyone brings their Alter: a small window in the corner of their tile. */
@@ -27,18 +30,18 @@ function AlterPip({ owner }: { owner: string }) {
   </div>
 }
 
-function Tile({ stream, name, owner, muted = false, mirrored = false, camera = true }: { stream?: MediaStream; name: string; owner: string; muted?: boolean; mirrored?: boolean; camera?: boolean }) {
+function Tile({ stream, name, owner, muted = false, mirrored = false, camera = true, sample = false }: { stream?: MediaStream; name: string; owner: string; muted?: boolean; mirrored?: boolean; camera?: boolean; sample?: boolean }) {
   const video = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     if (video.current && video.current.srcObject !== (stream ?? null)) video.current.srcObject = stream ?? null
   }, [stream])
   const showVideo = camera && !!stream?.getVideoTracks().length
-  return <div className="room-tile">
+  return <div className={`room-tile${sample ? ' is-sample' : ''}`}>
     {/* Remote audio plays through this element even while the picture is hidden. */}
     <video ref={video} autoPlay playsInline muted={muted} className={mirrored ? 'is-mirrored' : undefined} hidden={!showVideo} />
     {!showVideo && <Avatar name={owner} size="large" />}
     <AlterPip owner={owner} />
-    <span className="room-tile-name">{name}</span>
+    <span className="room-tile-name">{name}{sample && <span className="room-sample"> · sample</span>}</span>
   </div>
 }
 
@@ -63,6 +66,8 @@ export function MeetingRoom({ code, name, host, onLeave }: { code: string; name:
   const connection = useRef<RoomConnection | undefined>(undefined)
   const mix = useRef<{ gate: GainNode; sources: Map<string, MediaStreamAudioSourceNode> } | undefined>(undefined)
   const isHost = !!host
+  // The host's own Alter stays quiet in the meeting, so only the represented Alter hears them.
+  useEffect(() => isHost ? voiceHold.take('meeting-room') : undefined, [isHost])
 
   useEffect(() => {
     let stream: MediaStream | undefined
@@ -137,6 +142,8 @@ export function MeetingRoom({ code, name, host, onLeave }: { code: string; name:
   useEffect(() => { raw?.getVideoTracks().forEach((track) => { track.enabled = camera }) }, [raw, camera])
 
   const alterName = host?.alterName ?? room?.alter.name ?? 'Teammate'
+  // An empty room looks broken in a demo; teammates sit in as quiet samples until someone joins.
+  const samples = isHost && peers.length === 0 ? (host?.others ?? []).slice(0, 3) : []
   const voiceState = alter.state === 'closed' ? 'muted' : alter.state
   if (ended && !host) return <MeetingSummary code={code} />
   return <main className="room" aria-label={`${room?.title ?? 'Team sync'} meeting`}>
@@ -147,7 +154,7 @@ export function MeetingRoom({ code, name, host, onLeave }: { code: string; name:
     </header>
     {tip && <p className="room-tip"><span className="alter-glyph" aria-hidden="true">✦</span><span>Try asking out loud: <strong>“{alterName}, {QUESTIONS[tipIndex % QUESTIONS.length]}”</strong></span><button type="button" aria-label="Hide tip" onClick={() => setTip(false)}><Icon name="close" size={14} /></button></p>}
     {!tip && <div aria-hidden="true" />}
-    <section className={`room-grid count-${Math.min(peers.length + 2, 6)}`} aria-label="Participants">
+    <section className={`room-grid count-${Math.min(peers.length + samples.length + 2, 6)}`} aria-label="Participants">
       <Tile stream={raw} name={`${name} (you)`} owner={name} muted mirrored camera={camera} />
       {/* The absent teammate is represented by their Alter alone, at full size. */}
       <div className={`room-tile is-alter is-${alter.state}`} aria-label={`${alterName}’s Alter`}>
@@ -157,6 +164,7 @@ export function MeetingRoom({ code, name, host, onLeave }: { code: string; name:
         <span className="room-tile-name">{alterName}’s Alter<span className="room-for"> · speaking for {alterName}</span></span>
       </div>
       {peers.map((peer) => <Tile key={peer.id} stream={peer.stream} owner={peer.name} name={peer.connected ? peer.name : `${peer.name} · connecting…`} />)}
+      {samples.map((sample) => <Tile key={`sample-${sample}`} owner={sample} name={sample} sample />)}
     </section>
     <footer className="room-bar">
       <div className="room-controls">
