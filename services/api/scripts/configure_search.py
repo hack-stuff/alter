@@ -1,4 +1,4 @@
-"""Provision Vertex AI Search for the fictional shared seed corpus only.
+"""Provision Vertex AI Search for the shared seed corpus only.
 
 Run explicitly in the chosen billed GCP project. No private workspace sources,
 memories, transcripts or credentials are uploaded by this script.
@@ -23,7 +23,7 @@ def configure(args):
             parent=parent,
             data_store_id=args.data_store,
             data_store=discovery.DataStore(
-                display_name="Alter fictional shared knowledge",
+                display_name="Alter shared knowledge",
                 industry_vertical="GENERIC",
                 solution_types=["SOLUTION_TYPE_SEARCH"],
                 content_config="NO_CONTENT",
@@ -82,7 +82,7 @@ def configure(args):
     )
     if result.error_samples:
         raise RuntimeError(
-            "Some fictional documents could not be indexed. Inspect the Search import operation in GCP."
+            "Some seed documents could not be indexed. Inspect the Search import operation in GCP."
         )
     engines = discovery.EngineServiceClient()
     engine_name = parent + "/engines/" + args.engine
@@ -121,13 +121,13 @@ def configure(args):
         )
     print("SEARCH_SERVING_CONFIG: " + serving_config)
     print(
-        f"Verified Search returned {len(matches)} fictional seed matches. Add the config to the local API YAML and redeploy."
+        f"Verified Search returned {len(matches)} seed matches. Add the config to the local API YAML and redeploy."
     )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", required=True)
-    parser.add_argument("--data-store", default="alter-fictional-seed")
+    parser.add_argument("--data-store", default="alter-shared-seed")
     parser.add_argument("--engine", default="alter-knowledge")
     configure(parser.parse_args())

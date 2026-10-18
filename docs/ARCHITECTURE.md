@@ -1,12 +1,10 @@
 # Alter — Architecture
 
-**Team Cold Silicon** · Google AI Builder Cup 2026 · **Theme 5: Future of Work & Enterprise Productivity**
-
 > **Extend what you can get done—and how your team can work with you.**
 >
 > An Alter that works in the open, and answers your colleagues and their Alters with the knowledge and limits you've approved.
 
-This document is the source of truth for the hackathon build. It is written so a teammate or an LLM coding agent can implement it end to end. Decisions are explicit. Assumptions are marked.
+This document is the source of truth for the current build. It is written so a teammate or an LLM coding agent can implement it end to end. Decisions are explicit. Assumptions are marked.
 
 ---
 
@@ -27,7 +25,7 @@ Pitch line for Google judges: **"We built the per-employee layer on Google's age
 
 ### Scope
 
-| In the hackathon build | Later (vision only) |
+| In the current build | Later (vision only) |
 |---|---|
 | Decision ledger from meeting transcripts + docs | Broad role coverage |
 | Delegation contracts + A2A between 3 Alters | General computer use / cloud desktop |
@@ -75,7 +73,7 @@ Ingestion job (Cloud Run job): transcript/doc → Gemini (structured output) →
 | Reasoning | **Gemini on Gemini Enterprise Agent Platform** | Pin current model IDs from release notes (names change often). Pro-class model for the Alter, Flash for extraction |
 | Agents | **Agent Development Kit (ADK)** | One agent definition, instantiated per employee with that employee's ledger, contract and identity |
 | Agent-to-agent | **A2A protocol** (ADK supports exposing/consuming A2A agents) | Each Alter exposes an A2A endpoint with an agent card |
-| Agent identity / registry | **Agent Identity, Agent Registry** on Gemini Enterprise Agent Platform, *if available to hackathon accounts* | Fallback: a service account per Alter + a signed `asker` field in A2A metadata |
+| Agent identity / registry | **Agent Identity, Agent Registry** on Gemini Enterprise Agent Platform, *if available to the project* | Fallback: a service account per Alter + a signed `asker` field in A2A metadata |
 | Memory | **Memory Bank** | Preferences and conversational memory. The **decision ledger is our own Firestore collection** (needs provenance + validity fields) |
 | Knowledge retrieval | **Vertex AI Search** | Transcripts + docs, filtered by `owner` and `acl_groups` |
 | Real workflow | **Google Docs API** (Workspace test domain or a personal Google account) | OAuth via a service account with domain-wide delegation, or user OAuth for the demo doc |
@@ -176,7 +174,7 @@ audit_log/{id}            actor(Alter|human), uid, action, contract_outcome, tra
 
 | Risk | Fallback |
 |---|---|
-| Agent Identity / Registry not available to hackathon accounts | Service account per Alter + signed metadata |
+| Agent Identity / Registry not available to the project | Service account per Alter + signed metadata |
 | Docs API auth friction | Personal Google account + user OAuth for the single demo doc |
 | Live API latency or audio problems | Text review on the same screen. Recorded clip in the video |
 | Intent classifier lets a commitment through | Rule engine defaults to `escalate`. Add the adversarial tests above |
@@ -187,4 +185,3 @@ audit_log/{id}            actor(Alter|human), uid, action, contract_outcome, tra
 - Meeting ingestion is opt-in. Personal notes are never shared by default.
 - Escalation is the default for anything the contract doesn't cover.
 - Every A2A exchange, contract decision, approval and doc change is logged.
-- All demo data is fictional.

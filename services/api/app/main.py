@@ -596,7 +596,7 @@ def create_app(settings=None, engine=None):
                 raise error(
                     429,
                     "SOURCE_LIMIT",
-                    "This prototype supports twenty imported excerpts per person.",
+                    "Alter supports twenty imported excerpts per person.",
                 )
             source = {
                 "logicalId": sid,

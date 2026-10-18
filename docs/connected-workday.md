@@ -1,6 +1,6 @@
 # Connected workday setup and acceptance
 
-The Alter, diagram and meeting review now use the persisted API. This document describes this implementation, rather than the earlier scripted screen prototype.
+The Alter, diagram and meeting review now use the persisted API. This document describes that implementation.
 
 ## What is connected
 

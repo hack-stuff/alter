@@ -69,7 +69,7 @@ PYTHONPATH=services/api services/api/.venv/bin/python \
   services/api/scripts/configure_search.py --project alter-48b59
 ```
 
-This creates a Search store/engine for **fictional shared seed documents only**, imports them and attempts an actual search. It uses normal ADC and Search project billing. Let indexing complete if the first search is empty. Add the printed non-secret `SEARCH_SERVING_CONFIG` to the API YAML and redeploy.
+This creates a Search store/engine for **the shared seed documents only**, imports them and attempts an actual search. It uses normal ADC and Search project billing. Let indexing complete if the first search is empty. Add the printed non-secret `SEARCH_SERVING_CONFIG` to the API YAML and redeploy.
 
 Runtime Search can only reorder passages already authorized by the application. Unknown document IDs and replaced workspace-source versions cannot expand access. Citations indicate whether a passage actually came through Search or lexical fallback. Keep the architecture narration aligned with the retrieval actually observed in the rehearsal.
 

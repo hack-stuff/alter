@@ -44,7 +44,7 @@ Both run on the **same backend and app**. The video only adds the Meet rig and d
 
 ## 3. The seeded world (every new workspace)
 
-**Project:** "Login revamp", moving the app's sign-in to Google one-tap (Google Identity Services). All content is fictional.
+**Project:** "Login revamp", moving the app's sign-in to Google one-tap (Google Identity Services).
 
 **Seeded members** (each has an Alter, knowledge and rules; the humans are simulated):
 
