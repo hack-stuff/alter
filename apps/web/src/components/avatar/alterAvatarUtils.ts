@@ -39,18 +39,18 @@ export interface KeycapPalette {
  * so two Alters in the same room never share a palette.
  */
 export const KEYCAP_PALETTES: readonly KeycapPalette[] = [
-  // 0: Terracotta — Dev (Product Lead)
-  { id: 0, name: 'Terracotta', base: '#B55B33', well: '#CC6E43', glyph: '#FFF6EE' },
+  // 0: Brick red — Dev (Product Lead). Kept clearly apart from the amber Alter logo.
+  { id: 0, name: 'Brick red', base: '#7E2424', well: '#9A3030', glyph: '#FFF1EE' },
   // 1: Cobalt — Kani (Designer)
   { id: 1, name: 'Cobalt', base: '#2B45B0', well: '#3B5BDB', glyph: '#F2F6FF' },
   // 2: Forest — Sahil (Engineer)
   { id: 2, name: 'Forest', base: '#1F573F', well: '#2B6E52', glyph: '#F0FAF5' },
   // 3: Slate & Ochre — Siddhi (Login Owner, On Leave)
   { id: 3, name: 'Slate & Ochre', base: '#45525E', well: '#586775', glyph: '#E5C478' },
-  // 4: Mulberry — collision twin of Terracotta
+  // 4: Mulberry — collision twin of Brick red
   { id: 4, name: 'Mulberry', base: '#6E2D5E', well: '#853A73', glyph: '#FDF4FB' },
-  // 5: Amber — collision twin of Cobalt
-  { id: 5, name: 'Amber', base: '#A36209', well: '#C2780E', glyph: '#FFF9ED' },
+  // 5: Olive — collision twin of Cobalt. Amber is kept for the Alter logo itself.
+  { id: 5, name: 'Olive', base: '#4B5A16', well: '#5F701E', glyph: '#F7F9EC' },
   // 6: Teal — collision twin of Forest
   { id: 6, name: 'Teal', base: '#165668', well: '#1E6B80', glyph: '#F0FAFC' },
   // 7: Espresso — collision twin of Slate & Ochre
