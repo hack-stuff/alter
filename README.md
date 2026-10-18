@@ -13,7 +13,7 @@ All people, projects and data in this repository are fictional.
 
 What's new:
 
-- **A redesigned app.** The "Quiet Desk" design from [docs/design-brief.md](docs/design-brief.md):
+- **A redesigned app.** The "Quiet Desk" design:
   an icon rail on laptops and a bottom bar on phones, a docked voice bar, humans as circles and
   Alters as amber squircles, Google app icons on files and sources, light and dark themes.
 - **Your Alter does the work.** Doc, sheet and calendar changes it drafts are applied straight
@@ -241,8 +241,7 @@ services/api/scripts/  Helper scripts: demo tokens, voice and model smoke tests,
 services/live-token/   Older alternative voice transport: single-use Gemini Live tokens
 contracts/             Shared sample data used by both the app and the API
 infra/                 Deployment script, Cloud Build config, Firestore rules tests
-docs/                  Architecture, API contract, setup, deployment and design brief
-video/                 Demo video script, captions and recording kit
+docs/                  Architecture, API contract, setup and deployment
 firestore.rules        Who may read what in Firestore (all writes go through the API)
 ```
 
@@ -256,9 +255,6 @@ firestore.rules        Who may read what in Firestore (all writes go through the
 | [docs/real-model-testing.md](docs/real-model-testing.md)               | Checking real Gemini calls before deploying                                       |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Positioning and design decisions                                                  |
 | [docs/api-contract.md](docs/api-contract.md)                           | API endpoints, Firestore layout, seed data, limits                                |
-| [docs/design-brief.md](docs/design-brief.md)                           | Visual design brief for the web app                                               |
-| [docs/storyboard.md](docs/storyboard.md)                               | The 3-minute demo video script                                                    |
-| [video/README.md](video/README.md)                                     | Recording the demo with Google Meet and OBS                                       |
 
 ## Support
 
@@ -272,7 +268,7 @@ code; it matches the server log entry.
 - [X] Run the real-model and native-audio tests against Agent Platform
 - [X] Deploy the API to Cloud Run and the app to Firebase Hosting
 - [X] Deploy the latest workday, meeting and notification changes (Cloud Tasks queue, Firestore indexes)
-- [X] Redesign the web app to the Quiet Desk design brief
+- [X] Redesign the web app (Quiet Desk design)
 - [ ] Deploy the autonomous-Alter behavior and voice navigation (API and web)
 - [ ] Run the Firestore security rules tests with the Firebase emulator
 - [ ] Set Agent Platform quotas and a billing budget with alerts

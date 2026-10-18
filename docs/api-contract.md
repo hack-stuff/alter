@@ -22,7 +22,7 @@ The backend (`services/api`) implements this contract and the web app (`apps/web
 | | Live product (judges use it) | Demo video (we stage it) |
 |---|---|---|
 | Who | The judge, as themselves; anyone they invite | Team members playing Dev, Siddhi, Kani, Sahil |
-| Flow | Free use: ask, delegate, ask other Alters, approve | Storyboard script (`storyboard.md`) |
+| Flow | Free use: ask, delegate, ask other Alters, approve | Scripted demo storyline |
 | Setup | Type a name. Nothing else. | A "video" workspace in director mode (§7) |
 | Meet | Not on the link. Voice talks to Alters in-app | Real Google Meet + OBS virtual cam/mic |
 

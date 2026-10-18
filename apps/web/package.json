@@ -9,7 +9,6 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "video:record": "node ../../video/record-demo.mjs",
     "test:pwa": "VITE_MOCK=1 npm run build && playwright test --config playwright.pwa.config.ts",
     "test:backend": "playwright test --config playwright.backend.config.ts",
     "meet:bot": "node scripts/meet-bot.mjs"

@@ -10,9 +10,6 @@ dist/
 *.local
 secrets/
 
-# Video rehearsal captures
-video/generated/
-
 # Local backend state and emulator output
 *.sqlite*
 *-debug.log
@@ -32,7 +29,5 @@ apps/web/public/downloads/
 .DS_Store
 .vscode/
 
-# Local deck working copy
-deck/.deck-story.snapshot.md
-deck/.deck-plan.snapshot.md
+*:Zone.Identifier
 

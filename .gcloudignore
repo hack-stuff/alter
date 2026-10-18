@@ -1,4 +1,2 @@
 #!include:.gitignore
 .git/
-# The API image does not use presentation assets or local deck drafts.
-deck/
