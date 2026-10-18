@@ -20,11 +20,12 @@ const BUILD: Record<HelperPlatform, { name: string; file: string; command: strin
   macos: { name: 'Mac', file: 'alter-helper-macos-arm64', command: `curl -fLo ~/alter-helper ${SITE}/downloads/alter-helper-macos-$(uname -m) && chmod +x ~/alter-helper && ~/alter-helper`, note: 'Paste this into Terminal. Then allow Terminal under System Settings → Privacy & Security → Accessibility and Screen Recording, quit Terminal, and run ~/alter-helper again.' },
   linux: { name: 'Linux', file: 'alter-helper-linux-x86_64', command: `curl -fLo ~/alter-helper ${SITE}/downloads/alter-helper-linux-x86_64 && chmod +x ~/alter-helper && ~/alter-helper`, note: 'Paste this into a terminal. The helper works in X11 desktop sessions.' },
 }
-/** The site answers missing files with its own page, so a real build is anything but HTML. */
+/** The site answers missing files with its own small HTML page; a real build is neither. */
 async function hasBuild(file: string) {
   try {
     const response = await fetch(`/downloads/${file}`, { method: 'HEAD', cache: 'no-store' })
-    return response.ok && !(response.headers.get('Content-Type') ?? '').includes('text/html')
+    const size = response.headers.get('Content-Length') // Hosting may leave it out.
+    return response.ok && !(response.headers.get('Content-Type') ?? '').includes('text/html') && (size === null || Number(size) > 1_000_000)
   } catch { return false }
 }
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
