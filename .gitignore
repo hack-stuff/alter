@@ -32,3 +32,4 @@ apps/web/playwright-report/
 
 # Local deck working copy
 deck/.deck-story.snapshot.md
+deck/.deck-plan.snapshot.md
