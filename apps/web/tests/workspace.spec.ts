@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { WELCOME_OPENING } from './timing'
-import { openScreen, showMoreRequests } from './nav'
+import { openScreen, showMoreRequests, workLogEntry } from './nav'
 
 async function join(page: Page) {
   await page.goto('/')
@@ -34,8 +34,10 @@ test('chat opens a proposal; repeated revisions survive navigation and approval'
   card = page.getByRole('article', { name: 'Status doc · QA section' }).filter({ visible: true })
   await expect(card.getByText('Retest the iOS flow.', { exact: false })).toBeVisible()
   await card.getByRole('button', { name: 'Approve', exact: true }).click()
-  await expect(card.getByRole('status')).toHaveText('Applied in demo')
-  await expect(card.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0)
+  // Approvals lists only what still waits; the Work log and the chat card keep the result.
+  await expect(card).toHaveCount(0)
+  await navigate(page, 'Work log')
+  await expect(workLogEntry(page, 'Applied Status doc · QA section')).toContainText('doc edit')
   await navigate(page, 'Home')
   await expect(page.getByRole('article', { name: 'Status doc · QA section' }).getByRole('status')).toHaveText('Applied in demo')
   await expect(page.getByText('I drafted a QA update', { exact: false })).toBeVisible()
@@ -75,8 +77,11 @@ test('calendar proposal can be rejected; reset clears chat and restores proposal
   await navigate(page, 'Rules')
   await page.getByRole('button', { name: 'Reset Alter' }).click()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  // Cancelling keeps the rejection: the proposal stays out of Approvals and in the Work log.
   await navigate(page, 'Approvals')
-  await expect(card.getByRole('status')).toHaveText('Rejected')
+  await expect(page.getByRole('article', { name: 'QA sync with Kani' }).filter({ visible: true })).toHaveCount(0)
+  await navigate(page, 'Work log')
+  await expect(workLogEntry(page, 'Rejected QA sync with Kani')).toContainText('rejected')
   await navigate(page, 'Rules')
   await page.getByRole('button', { name: 'Reset Alter' }).click()
   await page.getByRole('button', { name: 'Confirm reset' }).click()

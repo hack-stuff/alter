@@ -22,6 +22,11 @@ export async function openMeetings(page: Page) {
   await page.getByRole('tab', { name: 'Meetings' }).click()
 }
 
+/** A Work log entry, where decided proposals are recorded once they leave Approvals. */
+export function workLogEntry(page: Page, text: string) {
+  return page.locator('[data-screen="work-log"]').getByRole('button').filter({ hasText: text })
+}
+
 /** Example requests beyond the three quick chips sit behind a disclosure on Home. */
 export async function showMoreRequests(page: Page) {
   const more = page.getByText('More things to ask', { exact: true })

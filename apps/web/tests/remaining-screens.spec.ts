@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { WELCOME_OPENING } from './timing'
-import { openScreen, showMoreRequests } from './nav'
+import { openScreen, showMoreRequests, workLogEntry } from './nav'
 
 async function join(page: Page, path = '/') {
   await page.goto(path)
@@ -72,7 +72,10 @@ test('sheet and email previews work; approved demo email reaches the inbox', asy
   const email = page.getByRole('article', { name: 'Team email · QA summary' }).filter({ visible: true })
   await expect(email).toContainText('Workspace team inboxes')
   await email.getByRole('button', { name: 'Approve', exact: true }).click()
-  await expect(email.getByRole('status')).toHaveText('Applied in demo')
+  // Approvals lists only what still waits; the Work log records the sent email.
+  await expect(email).toHaveCount(0)
+  await navigate(page, 'Work log')
+  await expect(workLogEntry(page, 'Applied Team email · QA summary')).toBeVisible()
   await navigate(page, 'Files')
   await expect(page.getByRole('heading', { name: 'Login revamp · QA summary' })).toBeVisible()
   await expect(page.getByText('A file link is not available yet.').first()).toBeVisible()

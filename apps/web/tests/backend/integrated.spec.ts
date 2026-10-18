@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openScreen, showMoreRequests } from '../nav'
+import { openScreen, showMoreRequests, workLogEntry } from '../nav'
 
 test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, invite and reset',async({page,browser,isMobile})=>{
   const errors:string[]=[]
@@ -55,8 +55,11 @@ test('persistent backend: cited A2A, reviewed Google simulation, welcome reply, 
   await expect(question.getByText('Your answer:',{exact:false})).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading',{name:"Alex's Alter"})).toBeVisible()
+  // The applied doc change never waits in Approvals; after a reload the Work log still records it.
   await nav('Approvals')
-  await expect(page.getByRole('article',{name:'Login revamp · QA update'}).getByRole('status')).toHaveText('Applied')
+  await expect(page.getByRole('article',{name:'Login revamp · QA update'}).filter({visible:true})).toHaveCount(0)
+  await nav('Work log')
+  await expect(workLogEntry(page,'Applied Login revamp · QA update')).toContainText('doc edit')
   await nav('Rules')
   await page.getByRole('button',{name:'Reset Alter'}).click()
   await page.getByRole('button',{name:'Confirm reset'}).click()
