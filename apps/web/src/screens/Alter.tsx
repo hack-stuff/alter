@@ -22,7 +22,7 @@ import { listen, speak, stopSpeaking, isVoiceMuted, setVoiceMuted } from '../age
 import type { Approval, Escalation, Member, Message, ProgressEvent } from '../api/types'
 
 const DIRECTIVES: { kind: 'do' | 'say'; text: string; open?: 'meet' | 'plan' }[] = [
-  { kind: 'do', text: 'Join the 2:00 team sync', open: 'meet' },
+  { kind: 'do', text: 'Join the team sync now', open: 'meet' },
   { kind: 'do', text: 'Open the shared plan', open: 'plan' },
   { kind: 'say', text: 'Why did we switch to one-tap sign-in?' },
   { kind: 'say', text: "Ask Siddhi's Alter to confirm the launch date" },
@@ -241,7 +241,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
 
   const OFFERS: Offer[] = [
     {
-      key: 'meet', num: '01', glyph: 'work', kicker: 'Today · 2:00', title: 'Join the team sync',
+      key: 'meet', num: '01', glyph: 'work', kicker: 'Now', title: 'Join the team sync',
       desc: `Join the call with ${siddhiName}’s Alter, then review the summary.`,
       go: 'Join the call', hot: /join|sync|meet|room|call/, sayLine: 'Joining the team sync.',
       run: onStartMeeting,

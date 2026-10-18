@@ -30,7 +30,7 @@ def test_each_person_has_one_or_two_events_a_day_at_local_hours():
     people = set(load("team.json")["members"]) | {"slot:qa_lead", "slot:security_engineer", "slot:data_analyst"}
     assert {who for who, day in per_day if day == first} == people
     sync = next(e for e in events if e["title"] == "Login revamp · team sync")
-    assert datetime.fromisoformat(sync["start"]).astimezone(local).strftime("%Y-%m-%d %H:%M") == "2026-10-17 14:00"
+    assert datetime.fromisoformat(sync["start"]).astimezone(local).strftime("%Y-%m-%d %H:%M") == "2026-10-17 12:00"  # Starts when the workspace is set up.
 
 
 @pytest.mark.parametrize(
@@ -108,8 +108,11 @@ def test_day_uses_the_callers_zone_and_falls_back_to_the_workspace(kolkata):
     client, engine, headers, _ = kolkata
     value = client.get("/v1/day", headers=headers).json()
     assert value["timeZone"] == "Asia/Kolkata"
-    first = datetime.fromisoformat(value["agenda"][0]["start"]).astimezone(ZoneInfo("Asia/Kolkata"))
-    assert (value["agenda"][0]["title"], first.strftime("%H:%M")) == ("QA triage · iOS sign-in crash", "11:30")
+    starts = {
+        item["title"]: datetime.fromisoformat(item["start"]).astimezone(ZoneInfo("Asia/Kolkata")).strftime("%H:%M")
+        for item in value["agenda"]
+    }
+    assert starts["QA triage · iOS sign-in crash"] == "11:30"
     assert client.get("/v1/day", headers={"X-Dev-Uid": "asha"}).json()["timeZone"] == "Asia/Kolkata"
     assert client.get("/v1/day", headers={"X-Dev-Uid": "asha", "X-Time-Zone": "Europe/London"}).json()["timeZone"] == "Europe/London"
 

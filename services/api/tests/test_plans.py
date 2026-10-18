@@ -330,4 +330,4 @@ def test_voice_context_tracks_setup_and_verified_workday(system):
     assert 1 <= len(upcoming) <= 2
     devs = {b["title"] for b in load("calendar/blocks.json") if "dev" in b["members"]}
     assert {item["title"] for item in upcoming} <= devs
-    assert all(re.search(r" at \d{1,2}:\d{2} [AP]M$", item["when"]) for item in upcoming)
+    assert all(item["when"] == "now" or re.search(r" at \d{1,2}:\d{2} [AP]M$", item["when"]) for item in upcoming)

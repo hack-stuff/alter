@@ -134,7 +134,11 @@ def schedule(engine, ctx, phrase="today", member_id=None, details=True):
             if not entries:
                 sentences.append(f"{heading}, {'your' if own else owner + "'s"} calendar is clear.")
                 continue
-            listed = [f"{title} at {span(opens, closes)}" for opens, closes, title in entries]
+            current = now().astimezone(local)
+            listed = [
+                f"{title}, happening now until {clock(closes)}" if opens <= current < closes else f"{title} at {span(opens, closes)}"
+                for opens, closes, title in entries
+            ]
             count_text = f"{len(entries)} event{'s' if len(entries) != 1 else ''}"
             sentences.append(
                 f"{heading}, {'you have' if own else owner + ' has'} {count_text}: " + ", then ".join(listed) + "."

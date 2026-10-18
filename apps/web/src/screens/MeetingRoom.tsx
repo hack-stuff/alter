@@ -7,6 +7,7 @@ import { VoiceControl } from '../components/VoiceControl'
 import { voiceAudio, voiceSpeaker } from '../live/voiceAudio'
 import { RoomConnection, type AlterUpdate, type RemotePeer } from '../room/connection'
 import { voiceHold } from '../live/dock'
+import { pretendsToBeSiddhi, SIDDHI_IN_ROOM } from '../api/presentation'
 
 // Demo prompts for the represented teammate's Alter, shown at the top of the room.
 const QUESTIONS = ['when are we launching the login revamp?', 'why did we switch to one-tap sign-in?', 'is LOGIN-7 approved for production?']
@@ -191,16 +192,18 @@ export function GuestRoom({ code }: { code: string }) {
   const [error, setError] = useState('')
   const [name, setName] = useState(() => { try { return localStorage.getItem('alter.room.name') ?? '' } catch { return '' } })
   const [joined, setJoined] = useState(false)
+  const [nameError, setNameError] = useState('')
   const [left, setLeft] = useState(false)
   useEffect(() => { roomApi.info(code).then(setInfo).catch((e) => setError(e instanceof Error ? e.message : 'This meeting link is not valid.')) }, [code])
   if (joined) return <MeetingRoom code={code} name={name.trim()} onLeave={() => { setJoined(false); setLeft(true) }} />
   return <main className="room-join">
-    <form className="sheet" onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; try { localStorage.setItem('alter.room.name', name.trim()) } catch { /* Remembering the name is optional. */ } setJoined(true) }}>
+    <form className="sheet" onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; if (pretendsToBeSiddhi(name)) { setNameError(SIDDHI_IN_ROOM); return } setNameError(''); try { localStorage.setItem('alter.room.name', name.trim()) } catch { /* Remembering the name is optional. */ } setJoined(true) }}>
       <p className="brand-line"><BrandMark />Alter</p>
       {error ? <p className="error" role="alert">{error}</p> : <>
         <h1>{left ? 'You left the meeting' : info?.title ?? 'Joining…'}</h1>
         {info && <p className="hint">{info.host} is hosting. {info.alter.name}’s Alter is in the meeting and can answer for {info.alter.name}.</p>}
-        <label>Your name<input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} required autoFocus autoComplete="name" /></label>
+        <label>Your name<input value={name} onChange={(e) => { setName(e.target.value); setNameError('') }} maxLength={40} required autoFocus autoComplete="name" /></label>
+        {nameError && <p className="error" role="alert">{nameError}</p>}
         <button className="primary" disabled={!info || info.ended || !name.trim()}>{info?.ended ? 'This meeting has ended' : left ? 'Rejoin' : 'Join meeting'}</button>
       </>}
     </form>

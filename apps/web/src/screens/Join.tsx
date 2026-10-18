@@ -3,6 +3,7 @@ import { BrandMark } from '../components/BrandMark'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { api, MOCK, httpCall } from '../api/client'
 import type { JoinResult } from '../api/types'
+import { pretendsToBeSiddhi, SIDDHI_TAKEN } from '../api/presentation'
 import { Icon } from '../components/Icon'
 import { AlterAvatar, PersonWithAlter } from '../components/People'
 import { AlterAvatarPreview } from '../components/avatar/AlterAvatarPreview'
@@ -23,6 +24,7 @@ export function Join({ inviteCode, onJoined }: { inviteCode?: string; onJoined: 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (busy || !name.trim()) return
+    if (pretendsToBeSiddhi(name)) { setError(SIDDHI_TAKEN); return }
     setBusy(true)
     setError('')
     try {

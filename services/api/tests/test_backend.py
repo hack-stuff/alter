@@ -566,3 +566,16 @@ def test_model_budget_is_per_member_with_a_workspace_cap(team):
     with pytest.raises(HTTPException) as workspace_limit:
         e.charge(wid, "carol")
     assert "workspace is busy" in str(workspace_limit.value.detail)
+
+
+def test_nobody_can_sign_in_as_siddhi(team):
+    c, e, h, r = team
+    from app.util import pretends_to_be_siddhi
+
+    for name in ["Siddhi", "  siddhi k ", "S1DDHI", "Sidhi", "real_siddhi"]:
+        response = c.post("/v1/workspaces", headers={"X-Dev-Uid": "judge"}, json={"name": name})
+        assert response.status_code == 422, name
+        assert response.json()["detail"]["error"]["code"] == "NAME_TAKEN"
+        assert "Nice try" in response.json()["detail"]["error"]["message"]
+    assert not pretends_to_be_siddhi("Siddharth") and not pretends_to_be_siddhi("Dev")
+    assert c.post("/v1/workspaces", headers={"X-Dev-Uid": "judge"}, json={"name": "Siddharth"}).status_code == 200

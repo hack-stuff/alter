@@ -5,7 +5,7 @@
   {"key": "kani-critique", "members": ["kani"], "title": "Design critique · login screens", "day": 0, "start": "11:00", "minutes": 60},
   {"key": "qa-triage", "members": ["slot:qa_lead"], "title": "QA triage · iOS sign-in crash", "day": 0, "start": "11:30", "minutes": 30},
   {"key": "dev-review", "members": ["dev"], "title": "Review Kani's login journey", "day": 0, "start": "13:00", "minutes": 60},
-  {"key": "team-sync", "members": ["dev", "kani", "sahil", "slot:qa_lead"], "title": "Login revamp · team sync", "day": 0, "start": "14:00", "minutes": 60},
+  {"key": "team-sync", "members": ["dev", "kani", "sahil", "slot:qa_lead"], "title": "Login revamp · team sync", "day": 0, "start": "now", "minutes": 60},
   {"key": "security-threat-model", "members": ["slot:security_engineer"], "title": "Threat model · one-tap sign-in", "day": 0, "start": "15:30", "minutes": 45},
   {"key": "analyst-funnel", "members": ["slot:data_analyst"], "title": "Sign-in funnel check-in", "day": 0, "start": "16:00", "minutes": 30},
 

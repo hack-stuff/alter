@@ -14,13 +14,18 @@ def calendar_events(time_zone="UTC", today=None):
     """The team's demo calendar for the next five days, at local hours in the workspace's zone.
 
     Attendees are member IDs, or "slot:<role>" for people who join with their own name.
+    A start of "now" begins when the workspace is set up: the demo joins the team sync at once.
     Times are stored in UTC.
     """
     local = zone(time_zone)
-    first = (today or now()).astimezone(local).date()
+    current = (today or now()).astimezone(local)
+    first = current.date()
     events = []
     for block in load("calendar/blocks.json"):
-        hour, minute = (int(part) for part in block["start"].split(":"))
+        if block["start"] == "now":
+            hour, minute = current.hour, current.minute - current.minute % 5
+        else:
+            hour, minute = (int(part) for part in block["start"].split(":"))
         for offset in range(block["day"], block["day"] + block.get("days", 1)):
             start = datetime.combine(first + timedelta(days=offset), time(hour, minute), local)
             events.append(

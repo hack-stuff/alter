@@ -18,3 +18,11 @@ export function localDayAndTime(ts: string): [string, string] {
   const pad = (n: number) => String(n).padStart(2, '0')
   return [`${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`, `${pad(at.getHours())}:${pad(at.getMinutes())}`]
 }
+
+// Siddhi is on leave and represented by Siddhi's Alter, so the name is taken (the API checks too).
+export const SIDDHI_TAKEN = 'Nice try! Siddhi is on leave, and Siddhi’s Alter already has that job covered. Pick a name of your own.'
+export const SIDDHI_IN_ROOM = 'Siddhi’s Alter is already in this meeting, and two Siddhis would confuse everyone. Try your own name.'
+export function pretendsToBeSiddhi(name: string) {
+  const letters = name.toLowerCase().replace(/[1!|]/g, 'i').replace(/0/g, 'o').replace(/[^a-z]/g, '')
+  return letters.includes('siddhi') || letters.includes('sidhi')
+}

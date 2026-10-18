@@ -21,7 +21,7 @@ from app.desktop import DesktopStart, DesktopStep
 from app.google import meet_join
 from app.rate_limits import take
 from app.rooms import RoomCreate, RoomJoin, RoomLeave, RoomPoll, RoomSignal
-from app.util import identifier, now, zone
+from app.util import SIDDHI_IN_ROOM, SIDDHI_TAKEN, identifier, now, pretends_to_be_siddhi, zone
 
 
 def create_app(settings=None, engine=None):
@@ -181,6 +181,8 @@ def create_app(settings=None, engine=None):
         user=Depends(caller),
         x_time_zone: str | None = Header(None),
     ):
+        if pretends_to_be_siddhi(req.name):
+            raise error(422, "NAME_TAKEN", SIDDHI_TAKEN)
         result = await run_in_threadpool(
             lambda: engine.workspaces.create(
                 user, req.name, ip(request), time_zone=time_zone(x_time_zone)
@@ -191,6 +193,8 @@ def create_app(settings=None, engine=None):
 
     @app.post("/v1/workspaces/join")
     async def join(req: JoinWorkspace, user=Depends(caller)):
+        if pretends_to_be_siddhi(req.name):
+            raise error(422, "NAME_TAKEN", SIDDHI_TAKEN)
         result = await run_in_threadpool(
             engine.workspaces.join, user, req.name, req.inviteCode
         )
@@ -327,6 +331,8 @@ def create_app(settings=None, engine=None):
 
     @app.post("/v1/rooms/{code}/join")
     def join_room(code: str, req: RoomJoin, user=Depends(caller)):
+        if pretends_to_be_siddhi(req.name):
+            raise error(422, "NAME_TAKEN", SIDDHI_IN_ROOM)
         return engine.rooms.join(user, code, req.name)
 
     @app.post("/v1/rooms/{code}/poll")

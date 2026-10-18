@@ -36,3 +36,14 @@ def new_id(prefix=""):
 
 def path(wid: str, *parts: str):
     return "/".join(["workspaces", identifier(wid), *[identifier(p) for p in parts]])
+
+
+# Judges like to sign in as Siddhi. Siddhi is on leave and represented by Siddhi's Alter, so the
+# name is taken, including spellings like "S1ddhi" or "Siddhi K".
+SIDDHI_TAKEN = "Nice try! Siddhi is on leave, and Siddhi's Alter already has that job covered. Pick a name of your own."
+SIDDHI_IN_ROOM = "Siddhi's Alter is already in this meeting, and two Siddhis would confuse everyone. Try your own name."
+
+
+def pretends_to_be_siddhi(name: str) -> bool:
+    letters = "".join(ch for ch in name.lower().translate(str.maketrans("1!|0", "iiio")) if ch.isalpha())
+    return "siddhi" in letters or "sidhi" in letters

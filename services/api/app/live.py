@@ -43,6 +43,15 @@ TOOLS = {
     ),
 }
 
+# The owner's own Alter and a represented teammate's Alter (huddle) must not sound alike.
+OWN_VOICE = "Puck"
+VOICES = {"huddle": "Aoede"}
+
+
+def speech(mode):
+    return {"voice_config": {"prebuilt_voice_config": {"voice_name": VOICES.get(mode, OWN_VOICE)}}}
+
+
 SCREENS = [
     "home",
     "canvas",
@@ -201,8 +210,10 @@ class LiveRelay:
                 local = local_zone(self.engine, ctx)
                 today = now().astimezone(local).date()
 
-                def when(value):
-                    moment = instant(value).astimezone(local)
+                def when(item):
+                    if instant(item["start"]) <= now() < instant(item["end"]):
+                        return "now"
+                    moment = instant(item["start"]).astimezone(local)
                     offset = (moment.date() - today).days
                     named = {0: "today", 1: "tomorrow"}.get(offset, moment.strftime("%A"))
                     return f"{named} at {clock(moment)}"
@@ -218,7 +229,7 @@ class LiveRelay:
                 for item in agenda:
                     if instant(item["end"]) >= now():
                         workday["agenda"].append(
-                            {"title": item["title"][:120], "when": when(item["start"])}
+                            {"title": item["title"][:120], "when": when(item)}
                         )
                     if len(workday["agenda"]) == 2:
                         break
@@ -363,7 +374,7 @@ class LiveRelay:
                 "For an introductory greeting, open with a warm hello that uses the owner's first name and a brief welcome, then catch them up like a colleague in an ongoing workday. "
                 "Use the verified workday context to mention one or two concrete current threads, favoring calendar items and pending decisions. "
                 "When two agenda items are present, connect them in their listed order instead of treating recurring events as one. "
-                "Agenda 'when' values are already in the owner's local time; say a time only as given. "
+                "Agenda 'when' values are already in the owner's local time; say a time only as given. A 'when' of 'now' is happening now: say it is starting now and never give it a clock time. "
                 "The context holds only the next two agenda items. For any question about a schedule, meetings, free or busy time, "
                 "on any day and for the owner or a teammate, call the supplied tool and speak its answer; the tool can read teammates' busy times. "
                 "Pass days to the tool as the owner said them (today, tomorrow, Wednesday); never convert them to dates. "
@@ -403,6 +414,7 @@ class LiveRelay:
             client = await asyncio.wait_for(asyncio.to_thread(live_client), 30)
             config = {
                 "response_modalities": ["AUDIO"],
+                "speech_config": speech(req["mode"]),
                 "input_audio_transcription": {},
                 "output_audio_transcription": {},
                 "system_instruction": instruction,
