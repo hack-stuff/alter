@@ -12,6 +12,21 @@ const RUN: Record<HelperPlatform, { command: string; note: string }> = {
   macos: { command: 'python3 ~/Downloads/alter_helper.py', note: 'Run this in Terminal, then allow Terminal under System Settings → Privacy & Security → Accessibility and Screen Recording.' },
   linux: { command: 'python3 ~/Downloads/alter_helper.py', note: 'Run this in a terminal. The helper works in X11 desktop sessions.' },
 }
+// Bundled builds, served by the site once fetched from CI (apps/desktop-helper/fetch-builds.sh).
+// A command-line download skips the browser's "downloaded from the internet" warnings.
+const SITE = window.location.origin
+const BUILD: Record<HelperPlatform, { name: string; file: string; command: string; note: string }> = {
+  windows: { name: 'Windows', file: 'alter-helper-windows.exe', command: `curl.exe -fLo %USERPROFILE%\\alter-helper.exe ${SITE}/downloads/alter-helper-windows.exe && %USERPROFILE%\\alter-helper.exe`, note: 'Open the downloaded file. If Windows says it protected your PC, choose More info, then Run anyway. Or paste this into Command Prompt instead:' },
+  macos: { name: 'Mac', file: 'alter-helper-macos-arm64', command: `curl -fLo ~/alter-helper ${SITE}/downloads/alter-helper-macos-$(uname -m) && chmod +x ~/alter-helper && ~/alter-helper`, note: 'Paste this into Terminal. Then allow Terminal under System Settings → Privacy & Security → Accessibility and Screen Recording, quit Terminal, and run ~/alter-helper again.' },
+  linux: { name: 'Linux', file: 'alter-helper-linux-x86_64', command: `curl -fLo ~/alter-helper ${SITE}/downloads/alter-helper-linux-x86_64 && chmod +x ~/alter-helper && ~/alter-helper`, note: 'Paste this into a terminal. The helper works in X11 desktop sessions.' },
+}
+/** The site answers missing files with its own page, so a real build is anything but HTML. */
+async function hasBuild(file: string) {
+  try {
+    const response = await fetch(`/downloads/${file}`, { method: 'HEAD', cache: 'no-store' })
+    return response.ok && !(response.headers.get('Content-Type') ?? '').includes('text/html')
+  } catch { return false }
+}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export function Computer({ active }: { active: boolean }) {
@@ -26,6 +41,9 @@ export function Computer({ active }: { active: boolean }) {
   const [approval, setApproval] = useState<{ step: DesktopPlanStep; answer: (ok: boolean) => void }>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
+  const [system, setSystem] = useState<HelperPlatform>(guess)
+  const [builds, setBuilds] = useState<Partial<Record<HelperPlatform, boolean>>>({})
+  const [copied, setCopied] = useState(false)
   const run = useRef<{ stopped: boolean; sessionId?: string }>(undefined)
   const pendingGoal = useRef<string | undefined>(undefined)
   const status = typeof state === 'object' ? state : undefined
@@ -54,16 +72,32 @@ export function Computer({ active }: { active: boolean }) {
     if (ready && !running && pendingGoal.current) { const value = pendingGoal.current; pendingGoal.current = undefined; void start(value) }
   })
 
+  const build = BUILD[system]
+  const bundled = builds[system]
+  useEffect(() => {
+    if (state !== 'missing' || bundled !== undefined) return
+    void hasBuild(build.file).then((found) => setBuilds((known) => ({ ...known, [system]: found })))
+  }, [state, system, bundled, build.file])
+
+  async function copy(text: string) {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* the command stays visible to copy by hand */ }
+  }
+
   const add = (entry: Omit<Entry, 'id'>) => { const id = crypto.randomUUID(); setEntries((list) => [...list, { ...entry, id }]); return id }
   const update = (id: string, patch: Partial<Entry>) => setEntries((list) => list.map((entry) => entry.id === id ? { ...entry, ...patch } : entry))
 
+  function save(href: string, name: string) {
+    const link = document.createElement('a')
+    link.href = href
+    link.download = name
+    link.click()
+  }
+
   async function download() {
     const { default: source } = await import('../../../desktop-helper/alter_helper.py?raw')
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(new Blob([source], { type: 'text/x-python' }))
-    link.download = 'alter_helper.py'
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+    const href = URL.createObjectURL(new Blob([source], { type: 'text/x-python' }))
+    save(href, 'alter_helper.py')
+    setTimeout(() => URL.revokeObjectURL(href), 1000)
   }
 
   async function pair() {
@@ -157,7 +191,7 @@ export function Computer({ active }: { active: boolean }) {
     }
   }
 
-  const setup = RUN[status?.platform ?? guess]
+  const setup = RUN[system]
   return <section className="screen computer">
     <header className="page-head with-action">
       <div><h1>Computer</h1><p className="hint">Let your Alter use this computer’s mouse and keyboard through the desktop helper.</p></div>
@@ -165,12 +199,24 @@ export function Computer({ active }: { active: boolean }) {
     </header>
 
     {state === 'missing' && <section className="sheet computer-setup" aria-label="Set up the desktop helper">
-      <h2>Set up the desktop helper</h2>
-      <ol>
-        <li><span>Download the helper to the computer your Alter should use.</span><button type="button" onClick={() => void download()}><Icon name="files" size={16} />Download alter_helper.py</button></li>
-        <li><span>Start it. You need Python 3.9 or newer.</span><code>{setup.command}</code><span className="hint">{setup.note}</span></li>
+      <div className="setup-head">
+        <h2>Set up the desktop helper</h2>
+        <label className="setup-system">For<select value={system} onChange={(e) => setSystem(e.target.value as HelperPlatform)}>{(Object.keys(BUILD) as HelperPlatform[]).map((key) => <option key={key} value={key}>{BUILD[key].name}</option>)}</select></label>
+      </div>
+      {bundled ? <ol>
+        <li>
+          <span>Get the helper on the computer your Alter should use. Nothing else to install.</span>
+          {system === 'windows' && <button type="button" onClick={() => save(`/downloads/${build.file}`, build.file)}><Icon name="files" size={16} />Download for Windows</button>}
+          <span className="hint">{build.note}</span>
+          <div className="setup-command"><code>{build.command}</code><button type="button" className="ghost small" onClick={() => void copy(build.command)}>{copied ? 'Copied' : 'Copy'}</button></div>
+        </li>
         <li><span>Enter the six-digit code it shows. If your browser asks to reach apps on this device, choose Allow.</span></li>
-      </ol>
+      </ol> : <ol>
+        <li><span>Download the helper to the computer your Alter should use.</span><button type="button" onClick={() => void download()}><Icon name="files" size={16} />Download alter_helper.py</button></li>
+        <li><span>Start it. You need Python 3.9 or newer from python.org.</span><code>{setup.command}</code><span className="hint">{setup.note}</span></li>
+        <li><span>Enter the six-digit code it shows. If your browser asks to reach apps on this device, choose Allow.</span></li>
+      </ol>}
+      {bundled && <details className="setup-script"><summary>Use the Python script instead</summary><button type="button" onClick={() => void download()}><Icon name="files" size={16} />Download alter_helper.py</button><code>{setup.command}</code></details>}
       <p className="hint">The helper listens only on this computer and acts only for this paired page. Move the mouse into any screen corner to stop it at once.</p>
     </section>}
 

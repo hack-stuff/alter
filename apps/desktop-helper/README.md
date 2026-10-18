@@ -18,7 +18,20 @@ app, not just the Alter web app. It is one Python file with no setup beyond Pyth
 
 ## Run it
 
-Download `alter_helper.py` from the Computer page (or use this folder), then:
+The Computer page offers a ready-made program for Windows, Mac (Apple silicon and Intel) and
+Linux, with Python and every package inside. It shows a one-line command that downloads and
+starts it; a command-line download also avoids the "downloaded from the internet" warnings.
+
+The builds come from the [Desktop helper workflow](../../.github/workflows/desktop-helper.yml),
+which runs on every change to this folder. To publish the newest ones with the site:
+
+```bash
+apps/desktop-helper/fetch-builds.sh   # needs the GitHub CLI, signed in
+npm --prefix apps/web run build && npx firebase-tools deploy --only hosting
+```
+
+Until builds are published, the page falls back to the Python script. To run the script yourself,
+download `alter_helper.py` from the Computer page (or use this folder), then:
 
 | System | Command | Notes |
 | --- | --- | --- |
@@ -36,6 +49,7 @@ Options:
 - `--allow-origin URL` lets another web origin pair, such as a local preview build.
 - `--port N` listens on another port. The web app expects 47613.
 - `--no-install` never installs packages; it fails if they are missing.
+- `--check` confirms the helper can see the screen, then exits.
 
 ## Staying in control
 

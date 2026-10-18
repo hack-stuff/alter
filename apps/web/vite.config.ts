@@ -20,7 +20,7 @@ export default defineConfig({
     workbox: {
       importScripts: ['/push-sw.js'],
       globPatterns: ['**/*.{js,css,html,svg,png}'],
-      navigateFallbackDenylist: [/^\/v1\//],
+      navigateFallbackDenylist: [/^\/v1\//, /^\/downloads\//],
       runtimeCaching: [], cleanupOutdatedCaches: true,
     },
   })],

@@ -34,6 +34,8 @@ VERSION = "1.0.0"
 PORT = 47613
 REQUIREMENTS = ["pyautogui>=0.9.54", "pillow>=10.0"]
 HOME = Path.home() / ".alter-helper"
+# The downloadable builds bundle Python and every package; the script installs its own.
+FROZEN = getattr(sys, "frozen", False)
 ORIGINS = (
     "https://myalter.web.app",
     "https://myalter.firebaseapp.com",
@@ -116,7 +118,8 @@ def ensure_dependencies(argv):
         load_pyautogui()
         return
     except ImportError:
-        pass
+        if FROZEN:
+            raise
     except Exception as exc:  # pyautogui connects to the display as it loads.
         sys.exit(f"Could not reach this computer's screen: {exc}")
     if os.environ.get("ALTER_HELPER_BOOTSTRAPPED") or "--no-install" in argv:
@@ -445,11 +448,15 @@ class Helper:
         self.recent = deque()
         self.new_code()
 
-    def new_code(self):
+    def new_code(self, another=False):
         self.code = f"{secrets.randbelow(10**6):06d}"
         self.code_expires = self.clock() + 600
         self.attempts = 0
-        self.announce(f"\n  Pairing code: {self.code[:3]} {self.code[3:]}   (enter it on your Alter's Computer page; valid 10 minutes)\n")
+        spaced = f"{self.code[:3]} {self.code[3:]}"
+        if another:
+            self.announce(f"To pair another page, use code {spaced}.")
+        else:
+            self.announce(f"\n  Pairing code: {spaced}   (enter it on your Alter's Computer page; valid 10 minutes)\n")
 
     def pair(self, origin, code):
         if self.clock() > self.code_expires or self.attempts >= 5:
@@ -460,7 +467,7 @@ class Helper:
             raise HelperError(403, "WRONG_CODE", "That code doesn't match the one shown by the helper.")
         token = self.pairings.add(origin)
         self.announce(f"Paired with {origin or 'a local program'}.")
-        self.new_code()
+        self.new_code(another=True)
         return {"token": token}
 
     def status(self, authorized):
@@ -691,14 +698,25 @@ def serve(helper, port):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    # The pairing code must show at once, even when the output goes to a log file.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
     parser = argparse.ArgumentParser(description="Let your Alter use this computer's mouse and keyboard.")
     parser.add_argument("--port", type=int, default=PORT)
     parser.add_argument("--allow-origin", action="append", default=[], help="Another web origin allowed to pair, such as http://localhost:4173.")
     parser.add_argument("--ask-every-step", action="store_true", help="Show the confirmation window before every step.")
     parser.add_argument("--forget", action="store_true", help="Forget every paired page, then start.")
     parser.add_argument("--no-install", action="store_true", help="Do not install missing packages.")
+    parser.add_argument("--check", action="store_true", help="Check that the helper can reach the screen, then exit.")
     args = parser.parse_args(argv)
     ensure_dependencies(argv)
+    if args.check:
+        desktop = Desktop()
+        desktop.screenshot().convert("RGB").save(io.BytesIO(), "JPEG")
+        width, height = desktop.size()
+        window = "yes" if Confirmer().available else "no"
+        print(f"Alter desktop helper {VERSION} · {platform_name()} · screen {width}×{height} · confirm window: {window}")
+        return
     pairings = Pairings(HOME / "paired.json")
     if args.forget:
         pairings.clear()
@@ -727,4 +745,12 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit as exc:
+        # A double-clicked build on Windows closes its window on exit; keep the reason readable.
+        if FROZEN and os.name == "nt" and exc.code not in (None, 0):
+            print(exc.code if isinstance(exc.code, str) else "The helper stopped.", file=sys.stderr)
+            input("Press Enter to close this window.")
+            sys.exit(1)
+        raise

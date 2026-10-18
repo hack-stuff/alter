@@ -22,6 +22,8 @@ services/api/build/
 apps/web/test-results/
 apps/web/backend-test-results/
 apps/web/playwright-report/
+# Desktop helper builds, fetched from CI by apps/desktop-helper/fetch-builds.sh
+apps/web/public/downloads/
 
 # Firebase CLI hosting cache
 .firebase/

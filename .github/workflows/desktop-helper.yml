@@ -1,0 +1,54 @@
+# Builds the desktop helper as one program per system, so nobody needs Python to run it.
+# apps/desktop-helper/fetch-builds.sh copies the results into the web app's downloads.
+name: Desktop helper
+
+on:
+  push:
+    branches: [main]
+    paths: [apps/desktop-helper/**, .github/workflows/desktop-helper.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: alter-helper-windows.exe }
+          - { os: macos-latest, name: alter-helper-macos-arm64 }
+          - { os: macos-15-intel, name: alter-helper-macos-x86_64 }
+          # The oldest supported Ubuntu keeps the Linux build working on older systems.
+          - { os: ubuntu-22.04, name: alter-helper-linux-x86_64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: apps/desktop-helper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install pyinstaller==6.16.0 "pyautogui>=0.9.54" "pillow>=10.0" pytest
+      - name: Test
+        run: python -m pytest -q tests
+      - name: Build
+        run: python -m PyInstaller --onefile --console --clean --name "${{ matrix.name }}" alter_helper.py
+      - name: Check the build reaches the screen
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+            xvfb-run -a "dist/${{ matrix.name }}" --check
+          else
+            "dist/${{ matrix.name }}" --check
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: apps/desktop-helper/dist/${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 90

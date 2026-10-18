@@ -28,12 +28,19 @@ test('the Computer page pairs with the helper and does a chat task step by step'
     return reply(404, { error: { code: 'NOT_FOUND', message: 'Unknown helper path.' } })
   })
 
+  // Only the Linux build is published here; the others fall back to the Python script.
+  await page.route('**/downloads/alter-helper-linux-x86_64', (route) => route.fulfill({ status: 200, contentType: 'application/octet-stream', body: '' }))
   await page.goto('/')
   await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
   await expect(page.getByRole('button', { name: /^Account:/ })).toBeVisible()
   await openScreen(page, 'Computer')
   const setup = page.getByRole('region', { name: 'Set up the desktop helper' })
+  await setup.getByRole('combobox').selectOption('linux')
+  await expect(setup.locator('code').first()).toContainText('/downloads/alter-helper-linux-x86_64 && chmod +x ~/alter-helper && ~/alter-helper')
+  await expect(setup.getByRole('button', { name: 'Copy' })).toBeVisible()
+  await setup.getByRole('combobox').selectOption('windows')
   await expect(setup.getByRole('button', { name: 'Download alter_helper.py' })).toBeVisible()
+  await expect(setup.getByRole('button', { name: 'Download for Windows' })).toHaveCount(0)
 
   // The page notices the helper once it starts.
   fake.running = true

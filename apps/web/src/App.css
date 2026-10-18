@@ -681,6 +681,14 @@ html { scroll-padding-bottom: 96px; }
 .computer-setup, .computer-pair, .computer-task, .computer-approval { display: grid; gap: 12px; }
 .computer-setup ol { display: grid; gap: 14px; margin: 0; padding-left: 22px; }
 .computer-setup li { display: grid; gap: 8px; justify-items: start; }
+.computer-setup .setup-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.computer-setup .setup-system { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+/* Long commands scroll inside their box instead of widening the card. */
+.computer-setup, .computer-setup ol, .computer-setup li { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.computer-setup .setup-command { display: flex; align-items: center; gap: 8px; width: 100%; }
+.computer-setup .setup-command code { flex: 1; min-width: 0; }
+.computer-setup .setup-script { display: grid; gap: 8px; justify-items: start; }
+.computer-setup .setup-script summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .computer-setup code { display: block; max-width: 100%; overflow-x: auto; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--sheet-2); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
 .computer-pair input { width: 9em; letter-spacing: .12em; }
 .computer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
