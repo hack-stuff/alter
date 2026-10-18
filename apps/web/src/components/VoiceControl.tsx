@@ -6,6 +6,7 @@ import type { NavigationAction, NavigationSource, ScreenId } from '../agent/navi
 import { alterNav } from '../agent/navigator'
 import type { DecisionIntent } from '../agent/decisions'
 import { unlockVoiceAudio } from '../live/voiceAudio'
+import { voiceDock } from '../live/dock'
 
 interface Props {
   mode: LiveMode
@@ -105,6 +106,17 @@ export function VoiceControl(props: Props) {
   }
   const startRef = useRef(start)
   useEffect(() => { startRef.current = start })
+  // The dock's session can be driven from elsewhere, such as the Computer page's floating panel.
+  useEffect(() => { if (props.dock) voiceDock.publish({ state, muted }) }, [props.dock, state, muted])
+  useEffect(() => {
+    if (!props.dock) return
+    return voiceDock.attach({
+      start: () => { unlockVoiceAudio(); setEnded(false); startRef.current() },
+      end: () => { setError(''); session.current?.stop() },
+      mute: (value) => { setMuted(value); session.current?.mute(value) },
+      announce: (text) => session.current?.announce(text),
+    })
+  }, [props.dock])
   useEffect(() => {
     if (props.active === false) { session.current?.stop(); started.current = false; return }
     if (!props.autoStart || started.current) return

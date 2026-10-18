@@ -6,7 +6,7 @@ import { parseDecision, pickApproval, type DecisionIntent } from '../agent/decis
 import { api, MOCK, httpCall } from '../api/client'
 import { dayApi, type Day } from '../api/day'
 import { canvasEdit, desktopTask, requestedCard, parseNavigation, startMeetingIntent, navigateTo, LEGACY_SURFACES, type NavigationAction, type NavigationSource, type WorkSurface } from '../agent/navigation'
-import { requestDesktopTask } from '../api/desktop'
+import { requestDesktopTask, sendDesktopVoice } from '../api/desktop'
 import { dispatchLiveTool } from '../live/tools'
 import { timestamp } from '../api/presentation'
 import { LiveTrace } from '../components/LiveTrace'
@@ -427,6 +427,6 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     </section>
 
     {/* The Voice Bar lives on the page, not on Home, so the Alter keeps talking while it moves between screens. */}
-    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
+    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { sendDesktopVoice(text); if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
   </section>
 }

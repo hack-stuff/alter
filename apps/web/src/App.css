@@ -678,6 +678,23 @@ html { scroll-padding-bottom: 96px; }
 .helper-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); font-size: 13px; font-weight: 550; color: var(--muted); }
 .helper-pill > span { width: 8px; height: 8px; border-radius: 50%; background: var(--reject); }
 .helper-pill.is-ready > span { background: var(--approve); }
+.computer .page-head .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* The floating controls live in a Picture-in-Picture window above every app. */
+.float-body { margin: 0; background: var(--sheet); color: var(--ink); }
+.float-panel { display: grid; gap: 10px; padding: 12px 14px; font-size: 14px; }
+.float-panel header { display: flex; align-items: center; gap: 8px; }
+.float-panel header .alter-glyph { color: var(--alter); }
+.float-voice { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.float-voice::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.float-voice.is-listening::before { background: var(--approve); }
+.float-voice.is-speaking::before { background: var(--alter); }
+.float-voice.is-muted::before, .float-voice.is-connecting::before { background: var(--muted); }
+.float-status { margin: 0; line-height: 1.35; }
+.float-next { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.float-approval { display: grid; gap: 8px; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--alter); background: color-mix(in srgb, var(--alter) 10%, var(--sheet)); }
+.float-approval p { display: grid; gap: 2px; margin: 0; }
+.float-approval .actions, .float-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.float-panel button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 13px; }
 .computer-setup, .computer-pair, .computer-task, .computer-approval { display: grid; gap: 12px; }
 .computer-setup ol { display: grid; gap: 14px; margin: 0; padding-left: 22px; }
 .computer-setup li { display: grid; gap: 8px; justify-items: start; }

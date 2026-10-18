@@ -70,7 +70,7 @@ class FakeConfirmer:
     def __init__(self, answer=True):
         self.answer, self.asked = answer, []
 
-    def ask(self, title, lines):
+    def ask(self, title, lines, heading=None):
         self.asked.append((title, lines))
         return self.answer
 
@@ -263,3 +263,26 @@ def test_setup_finds_python_in_either_venv_layout(tmp_path, monkeypatch):
     monkeypatch.setattr(h.sys, "executable", r"C:\msys64\mingw64\bin\python.exe")
     message = h.setup_failed(FileNotFoundError("missing"), tmp_path)
     assert "MSYS2" in message and "python.org" in message and str(tmp_path) in message
+
+
+def test_a_page_can_pair_when_the_person_at_the_computer_allows_it(helper):
+    token = helper.request_pairing("https://myalter.web.app")["token"]
+    assert helper.pairings.valid("https://myalter.web.app", token)
+    assert helper.confirmer.asked[-1][0] == "Let myalter.web.app use this computer?"
+    helper.confirmer.answer = False
+    with pytest.raises(h.HelperError) as declined:
+        helper.request_pairing("https://myalter.web.app")
+    assert declined.value.code == "DECLINED"
+    with pytest.raises(h.HelperError) as no_origin:
+        helper.request_pairing("")
+    assert no_origin.value.code == "BAD_ORIGIN"
+    for _ in range(3):
+        with pytest.raises(h.HelperError):
+            helper.request_pairing("https://myalter.web.app")
+    with pytest.raises(h.HelperError) as limited:
+        helper.request_pairing("https://myalter.web.app")
+    assert limited.value.code == "TOO_MANY_REQUESTS"
+    helper.confirmer.available = False
+    with pytest.raises(h.HelperError) as no_window:
+        h.Helper(FakeDesktop(), helper.pairings, helper.confirmer, announce=lambda *_: None).request_pairing("https://myalter.web.app")
+    assert no_window.value.code == "CONFIRM_UNAVAILABLE"

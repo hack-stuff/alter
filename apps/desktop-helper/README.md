@@ -7,13 +7,18 @@ app, not just the Alter web app. It is one Python file with no setup beyond Pyth
 
 1. You start the helper on the computer your Alter should use. It listens on `127.0.0.1:47613`
    only, so nothing outside this computer can reach it.
-2. On the **Computer** page of your Alter you enter the six-digit code the helper prints. That
-   page is now paired; no other website can use the helper.
+2. On the **Computer** page of your Alter you press **Connect**, and choose **Allow** in the window
+   the helper opens on this computer. (Without a window, or with an older helper, you enter the
+   six-digit code it prints instead.) That page is now paired; no other website can use it.
 3. You give a task, such as "In Notepad, write a note saying the demo moved to 3 pm". You can
-   also ask from chat or voice with "on my computer, …".
+   also ask from chat or voice with "on my computer, …"; requests made while a task runs wait
+   their turn. A floating window (Chrome and Edge) shows what your Alter is doing above every
+   app, with Allow, Skip, Stop, Mute and End voice; you can also just say "allow", "skip" or "stop".
 4. The page sends a screenshot to the Alter API, which asks Gemini's computer use model for the
    next step. The page shows the step, then the helper glides the mouse there and does it.
-5. Steps the model flags as risky, like sending, buying or deleting, wait for your approval. The task ends when the goal is done,
+5. Steps run without asking, except those the model flags as changing something outside, like
+   sending, posting, buying or deleting, which wait for your approval. "Ask before every step" on
+   the Computer page makes every step wait. The task ends when the goal is done,
    after 30 steps, or when the screen stops changing.
 
 ## Run it
@@ -64,12 +69,13 @@ Options:
 ## Protocol
 
 All requests are JSON over `http://127.0.0.1:47613/v1`. Requests must use that host (this stops
-DNS rebinding) and come from an allowed origin. Everything except `status` and `pair` needs
+DNS rebinding) and come from an allowed origin. Everything except `status`, `pair` and `pair/request` needs
 `Authorization: Bearer <token>`.
 
 | Request | Body | Reply |
 | --- | --- | --- |
 | `GET /status` | | `app`, `version`, `platform`, `paired`, `paused`, `askEveryStep`, `confirmations`, `screen` |
+| `POST /pair/request` | `{}` | `{"token": "…"}` once Allow is chosen in the helper's window (`403 DECLINED` otherwise) |
 | `POST /pair` | `{"code": "123456"}` | `{"token": "…"}` |
 | `POST /screenshot` | `{}` | `image` (base64), `mimeType`, `width`, `height` |
 | `POST /act` | `{"actions": […], "confirm": false, "summary": "…"}` | `{"ok": true}` |

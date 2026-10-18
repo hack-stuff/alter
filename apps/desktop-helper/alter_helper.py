@@ -5,8 +5,9 @@ Run it on the computer your Alter should use:
 
     python alter_helper.py
 
-It listens on 127.0.0.1 only and prints a six-digit pairing code. Enter the code on the
-Computer page of your Alter; from then on it acts only for that page. A small window can
+It listens on 127.0.0.1 only. Press Connect on the Computer page of your Alter and choose Allow
+in the window the helper opens (or enter the six-digit code it prints); from then on it acts
+only for that page. A small window can
 ask you before each step, and moving the mouse into any screen corner stops it at once.
 """
 
@@ -30,7 +31,7 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 PORT = 47613
 REQUIREMENTS = ["pyautogui>=0.9.54", "pillow>=10.0"]
 HOME = Path.home() / ".alter-helper"
@@ -237,11 +238,11 @@ class Confirmer:
             self.available = False
         self.requests = queue.Queue()
 
-    def ask(self, title, lines, timeout=120):
+    def ask(self, title, lines, timeout=120, heading="Your Alter wants to"):
         if not self.available:
             raise HelperError(501, "CONFIRM_UNAVAILABLE", "This helper cannot show a confirmation window.")
         answer = queue.Queue(maxsize=1)
-        self.requests.put((title, lines, answer))
+        self.requests.put((title, lines, heading, answer))
         try:
             return answer.get(timeout=timeout + 5)
         except queue.Empty:
@@ -250,16 +251,16 @@ class Confirmer:
     def serve(self, stopped):
         while not stopped.is_set():
             try:
-                title, lines, answer = self.requests.get(timeout=0.25)
+                title, lines, heading, answer = self.requests.get(timeout=0.25)
             except queue.Empty:
                 continue
             try:
-                answer.put(self.window(title, lines))
+                answer.put(self.window(title, lines, heading))
             except Exception as exc:  # A broken display must never count as approval.
                 print("Could not show the confirmation window:", exc)
                 answer.put(False)
 
-    def window(self, title, lines, timeout=120):
+    def window(self, title, lines, heading, timeout=120):
         import tkinter as tk
 
         chosen = {"allow": False}
@@ -269,7 +270,7 @@ class Confirmer:
         root.resizable(False, False)
         frame = tk.Frame(root, padx=18, pady=14)
         frame.pack()
-        tk.Label(frame, text="Your Alter wants to", anchor="w").pack(fill="x")
+        tk.Label(frame, text=heading, anchor="w").pack(fill="x")
         tk.Label(frame, text=title, font=("TkDefaultFont", 12, "bold"), wraplength=380, justify="left", anchor="w").pack(fill="x", pady=(2, 6))
         for line in lines:
             tk.Label(frame, text="· " + line, wraplength=380, justify="left", anchor="w").pack(fill="x")
@@ -446,6 +447,7 @@ class Helper:
         self.lock = threading.Lock()
         self.paused = False
         self.recent = deque()
+        self.connects, self.asking = deque(), threading.Lock()
         self.new_code()
 
     def new_code(self, another=False):
@@ -468,6 +470,36 @@ class Helper:
         token = self.pairings.add(origin)
         self.announce(f"Paired with {origin or 'a local program'}.")
         self.new_code(another=True)
+        return {"token": token}
+
+    def request_pairing(self, origin):
+        """The page asks; the person at this computer answers in a window. No code to type."""
+        if not origin:
+            raise HelperError(403, "BAD_ORIGIN", "Connect from your Alter's Computer page.")
+        if not self.confirmer.available:
+            raise HelperError(501, "CONFIRM_UNAVAILABLE", "Enter the six-digit code shown by the helper instead.")
+        now = self.clock()
+        while self.connects and now - self.connects[0] > 600:
+            self.connects.popleft()
+        if len(self.connects) >= 5:
+            raise HelperError(429, "TOO_MANY_REQUESTS", "Too many connection requests. Enter the six-digit code instead.")
+        if not self.asking.acquire(blocking=False):
+            raise HelperError(409, "ALREADY_ASKING", "The helper is already asking. Answer its window first.")
+        self.connects.append(now)
+        try:
+            site = origin.split("://", 1)[-1]
+            allowed = self.confirmer.ask(
+                f"Let {site} use this computer?",
+                ["Your Alter will see the screen, move the mouse and type.", "Move the mouse into any screen corner to stop it at once."],
+                heading="Connect your Alter",
+            )
+        finally:
+            self.asking.release()
+        if not allowed:
+            self.announce(f"Declined a connection from {origin}.")
+            raise HelperError(403, "DECLINED", "The connection was declined on the computer.")
+        token = self.pairings.add(origin)
+        self.announce(f"Paired with {origin}.")
         return {"token": token}
 
     def status(self, authorized):
@@ -663,6 +695,8 @@ def make_handler(helper, port):
                     raise HelperError(400, "BAD_JSON", "Send a JSON object.")
                 if self.path == "/v1/pair":
                     return self.send(200, helper.pair(origin, body.get("code")), origin)
+                if self.path == "/v1/pair/request":
+                    return self.send(200, helper.request_pairing(origin), origin)
                 allowed, token = self.authorized(origin)
                 if not allowed:
                     raise HelperError(401, "NOT_PAIRED", "Pair this page with the helper first.")

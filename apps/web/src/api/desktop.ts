@@ -58,6 +58,11 @@ export const helper = {
     const result = await call<{ token: string }>('POST', '/pair', { code: code.replace(/\D/g, '') })
     localStorage.setItem(TOKEN, result.token)
   },
+  /** Asks the person at the computer to allow this page in a helper window; no code to type. */
+  async connect() {
+    const result = await call<{ token: string }>('POST', '/pair/request', {}, 130_000)
+    localStorage.setItem(TOKEN, result.token)
+  },
   screenshot: () => call<Screenshot>('POST', '/screenshot', {}, 20_000),
   // A confirmed step waits for the person to answer the helper's window.
   act: (actions: HelperAction[], confirm: boolean, summary: string) => call<{ ok: true }>('POST', '/act', { actions, confirm, summary }, confirm ? 150_000 : 60_000),
@@ -89,4 +94,24 @@ export function takeDesktopRequest(): string | undefined {
     sessionStorage.removeItem(REQUEST)
     return goal
   } catch { return undefined }
+}
+
+// While a task runs, the page also listens to what the owner says ("allow", "skip", "stop").
+const VOICE = 'alter:desktop-voice'
+export function sendDesktopVoice(text: string) { window.dispatchEvent(new CustomEvent(VOICE, { detail: text })) }
+export function onDesktopVoice(listener: (text: string) => void) {
+  const handler = (event: Event) => listener((event as CustomEvent<string>).detail)
+  window.addEventListener(VOICE, handler)
+  return () => window.removeEventListener(VOICE, handler)
+}
+export type VoiceCommand = 'allow' | 'skip' | 'stop'
+/** Short spoken answers only; a longer sentence is a new request, not a command. */
+export function voiceCommand(text: string): VoiceCommand | undefined {
+  const value = text.trim().toLowerCase().replace(/[.!?,]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!value || value.split(' ').length > 5) return undefined
+  if (/\b(?:don'?t|do not|never)\b/.test(value)) return /\b(?:allow|do it|go ahead)\b/.test(value) ? 'stop' : undefined
+  if (/\b(?:stop|cancel|abort|halt|enough|end (?:the )?task)\b/.test(value)) return 'stop'
+  if (/\bskip\b/.test(value)) return 'skip'
+  if (/^(?:yes|yeah|yep|ok|okay|sure|allow|allowed|approve|approved|confirm|go ahead|do it|continue|proceed)\b/.test(value)) return 'allow'
+  return undefined
 }

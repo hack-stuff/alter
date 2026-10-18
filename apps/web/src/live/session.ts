@@ -219,6 +219,11 @@ export class LiveSession {
     this.connection.sendClientContent({ turns: [{ role: 'user', parts: [{ text: value }] }], turnComplete: true })
     return true
   }
+  /** A status update from the app (the Computer page) for the Alter to say in a sentence. */
+  announce(text: string) {
+    if (this.stopped || !text.trim()) return
+    this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `[App update, not a request from me — do not call tools] ${text.trim()} Tell me this in one short sentence.` }] }], turnComplete: true })
+  }
   correct(text: string) { if (!this.stopped && text.trim()) this.connection?.sendClientContent({ turns: [{ role: 'user', parts: [{ text: `Correction to my last transcript: ${text.trim()}` }] }], turnComplete: true }) }
   stop() {
     if (currentSession === this) currentSession = undefined

@@ -26,8 +26,9 @@ What's new:
   login-flow design by voice, join a team meeting with Siddhi's Alter and send the follow-up.
   [docs/connected-workday.md](docs/connected-workday.md) describes how this works and how to set it up.
 - **Your Alter can use your computer.** Run the small [desktop helper](apps/desktop-helper/README.md),
-  pair it on the Computer page, then say or type "on my computer, …". Your Alter sees the screen,
-  moves the mouse, clicks and types in any app, and asks before risky steps.
+  connect it from the Computer page, then say or type "on my computer, …". Your Alter sees the screen,
+  moves the mouse, clicks and types in any app, and asks only before steps that change something
+  outside. A floating window shows its progress above every app, with Allow, Skip, Stop and voice controls.
 
 ## Description
 
