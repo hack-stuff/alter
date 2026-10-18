@@ -10,7 +10,7 @@ import { voiceHold } from '../live/dock'
 import { pretendsToBeSiddhi, SIDDHI_IN_ROOM } from '../api/presentation'
 
 // Demo prompts for the represented teammate's Alter, shown at the top of the room.
-const QUESTIONS = ['when are we launching the login revamp?', 'why did we switch to one-tap sign-in?', 'is the one-tap sign-in backend approved for production?']
+const QUESTIONS = ['When are we launching the login revamp?', 'Why did we switch to one-tap sign-in?', 'Is the one-tap sign-in backend approved for production?']
 
 export interface RoomHost {
   meetingId: string
@@ -153,7 +153,7 @@ export function MeetingRoom({ code, name, host, onLeave }: { code: string; name:
       <span className="mono">{code}</span>
       {(status || notice) && <span className="room-status" role="status">{status || notice}</span>}
     </header>
-    {tip && <p className="room-tip"><span className="alter-glyph" aria-hidden="true">✦</span><span>Try asking out loud: <strong>“{alterName}, {QUESTIONS[tipIndex % QUESTIONS.length]}”</strong></span><button type="button" aria-label="Hide tip" onClick={() => setTip(false)}><Icon name="close" size={14} /></button></p>}
+    {tip && <p className="room-tip"><span className="alter-glyph" aria-hidden="true">✦</span><span>Try asking out loud: <strong>“{QUESTIONS[tipIndex % QUESTIONS.length]}”</strong></span><button type="button" aria-label="Hide tip" onClick={() => setTip(false)}><Icon name="close" size={14} /></button></p>}
     {!tip && <div aria-hidden="true" />}
     <section className={`room-grid count-${Math.min(peers.length + samples.length + 2, 6)}`} aria-label="Participants">
       <Tile stream={raw} name={`${name} (you)`} owner={name} muted mirrored camera={camera} />

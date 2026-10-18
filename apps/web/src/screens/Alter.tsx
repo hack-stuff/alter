@@ -223,12 +223,13 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     const timer = window.setTimeout(() => setOpeningSlow(true), 8000)
     return () => window.clearTimeout(timer)
   }, [opening])
-  // The welcome is a short beat once the day is loaded; voice starts after the home screen is up.
+  // Voice connects behind the welcome, which stays until the Alter starts speaking, so nobody
+  // stares at a silent home screen. A voice error opens the day at once; it never waits past 15s.
   useEffect(() => {
     if (!opening || !ready || setupState === 'provisioning_failed') return
-    const timer = window.setTimeout(() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }, 1500)
+    const timer = window.setTimeout(() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }, voiceError ? 0 : 15_000)
     return () => window.clearTimeout(timer)
-  }, [opening, ready, setupState, workspaceId])
+  }, [opening, ready, setupState, workspaceId, voiceError])
   useEffect(() => {
     if (!opening || !openingSlow || voiceState !== 'closed' || setupState === 'provisioning_failed') return
     sessionStorage.setItem('alter.live.opened.' + workspaceId, '1')
@@ -337,7 +338,7 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
         <span className="opening-mark is-connecting" aria-hidden="true"><PersonWithAlter name={name} size="large" /></span>
         <p className="eyebrow">{name}&apos;s Alter · Workday</p>
         <h1>Your day is already in motion.</h1>
-        <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : `Welcome, ${name}.`}</p>
+        <p className="alter-opening-status" role="status">{setupState === 'provisioning_failed' ? 'Your team’s Google setup needs attention.' : !ready ? 'Gathering the team’s work…' : voiceState === 'listening' || voiceState === 'speaking' ? `Welcome, ${name}.` : 'Connecting your Alter’s voice…'}</p>
         {setupState === 'provisioning_failed' && onRetrySetup && <button type="button" className="primary" disabled={retryingSetup} onClick={() => void onRetrySetup()}>{retryingSetup ? 'Retrying setup…' : 'Retry Google setup'}</button>}
         {setupState === 'provisioning_failed' && setupRetryError && <p role="alert" className="error">{setupRetryError}</p>}
         {setupState !== 'provisioning_failed' && (openingSlow || voiceError) && <button type="button" className="alter-opening-skip" onClick={() => { sessionStorage.setItem('alter.live.opened.' + workspaceId, '1'); setOpened(true) }}>Enter without voice <span aria-hidden="true">↗</span></button>}
@@ -429,6 +430,6 @@ export function Alter({ name, workspaceId, members, meId, approvals, escalations
     </section>
 
     {/* The Voice Bar lives on the page, not on Home, so the Alter keeps talking while it moves between screens. */}
-    {liveVoice && !opening && createPortal(<VoiceControl dock mode="chat" startDelay={2500} active={ready && !held} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { sendDesktopVoice(text); if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
+    {liveVoice && (!opening || ready) && createPortal(<VoiceControl dock mode="chat" startDelay={opening ? 0 : 2500} active={ready && !held} greet={!greetedBefore.current} briefing={briefing} onTextFallback={send} onNavigate={(action, source) => onNavigate(action, source ?? 'voice-tool')} onDecide={(intent) => decideRef.current(intent)} onUserUtterance={(text) => { sendDesktopVoice(text); if (startMeetingIntent(text)) onStartMeeting() }} onUnroutedUtterance={(text) => void recoverSpokenAction(text)} onState={(state) => { setVoiceState(state); if (state === 'connecting') setVoiceError(''); if (state === 'listening' && greetedBefore.current) setOpened(true) }} onError={setVoiceError} onFirstSpeech={() => { sessionStorage.setItem('alter.live.greeted.' + workspaceId, '1'); greetedBefore.current = true; setOpened(true) }} onSpeaking={setSpeaking} autoStart={autoVoice} conversationId={conversationId} onTranscript={setDraft} onResult={(result, _tool, text) => receive(result as { conversationId: string; reply: Message }, text)} />, document.body)}
   </section>
 }

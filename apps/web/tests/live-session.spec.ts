@@ -40,7 +40,10 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: connectTimeout })
+  // The welcome stays up while voice connects, and gives way as soon as the Alter speaks.
+  await expect(page.getByLabel('Opening your workday')).toBeVisible()
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
+  await expect(page.getByLabel('Opening your workday')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as any).liveHarness.audio)).toBeGreaterThan(0)
   await pauseClock(page)

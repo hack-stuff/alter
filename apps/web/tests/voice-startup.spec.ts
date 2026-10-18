@@ -27,7 +27,7 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  // The welcome screen is a short beat; the home screen opens without waiting for voice.
+  // Voice connects behind the welcome; when sound is blocked, the home screen opens at once.
   await expect(page.getByLabel('Opening your workday')).toBeVisible()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect(page.getByLabel('Opening your workday')).toHaveCount(0)

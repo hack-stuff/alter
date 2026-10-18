@@ -579,3 +579,14 @@ def test_nobody_can_sign_in_as_siddhi(team):
         assert "Nice try" in response.json()["detail"]["error"]["message"]
     assert not pretends_to_be_siddhi("Siddharth") and not pretends_to_be_siddhi("Dev")
     assert c.post("/v1/workspaces", headers={"X-Dev-Uid": "judge"}, json={"name": "Siddharth"}).status_code == 200
+
+
+def test_every_alter_has_its_own_voice():
+    from app.live import SPARE_VOICES, VOICES, voice_for
+
+    team = [voice_for(name) for name in ("Dev", "Siddhi", "Kani", "Sahil", "Ansh")]
+    assert len(set(team)) == len(team)
+    assert voice_for("Siddhi") == "Kore" and voice_for("dev ") == "Aoede"
+    # Anyone else keeps the same spare voice every time, never a team member's.
+    assert voice_for("Priya Shah") == voice_for("priya") in SPARE_VOICES
+    assert not set(SPARE_VOICES) & set(VOICES.values())
