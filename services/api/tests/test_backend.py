@@ -568,6 +568,21 @@ def test_model_budget_is_per_member_with_a_workspace_cap(team):
     assert "workspace is busy" in str(workspace_limit.value.detail)
 
 
+def test_rejected_chat_does_not_save_a_message_or_use_a_chat_slot(team):
+    from dataclasses import replace
+    from hashlib import sha256
+
+    c, e, h, r = team
+    e.settings = replace(e.settings, model_calls_per_member=0)
+    cid = c.post('/v1/conversations', headers=h).json()['conversationId']
+    response = c.post('/v1/chat', headers=h, json={'message': 'Try once', 'conversationId': cid})
+    assert response.status_code == 429
+    root = f"workspaces/{r['workspaceId']}/conversations/{cid}"
+    assert not e.store.list(root + '/messages')
+    limit = sha256(f"chat:{r['workspaceId']}:{r['memberId']}".encode()).hexdigest()
+    assert e.store.get(f'rateLimits/{limit}') is None
+
+
 def test_nobody_can_sign_in_as_siddhi(team):
     c, e, h, r = team
     from app.util import pretends_to_be_siddhi

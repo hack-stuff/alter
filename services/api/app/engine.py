@@ -138,17 +138,16 @@ class Engine:
 
     def charge(self, wid, mid):
         """Count one model call against the member and the workspace hourly limits."""
+        self.store.atomic(lambda tx: self.charge_in(tx, wid, mid))
 
-        def count(tx):
-            take(
-                tx,
-                f"models:{wid}:{mid}",
-                self.settings.model_calls_per_member,
-                message="You've reached your hourly limit for your Alter. Please try again later.",
-            )
-            take(tx, f"models:{wid}", self.settings.model_calls_per_workspace)
-
-        self.store.atomic(count)
+    def charge_in(self, tx, wid, mid):
+        take(
+            tx,
+            f"models:{wid}:{mid}",
+            self.settings.model_calls_per_member,
+            message="You've reached your hourly limit for your Alter. Please try again later.",
+        )
+        take(tx, f"models:{wid}", self.settings.model_calls_per_workspace)
 
     def me(self, ctx):
         value = self.store.get(f"workspaces/{ctx.workspace_id}/members/{ctx.member_id}")
@@ -536,6 +535,9 @@ class Engine:
                     403, "FORBIDDEN", "This conversation belongs to another member."
                 )
             take(tx, f"chat:{ctx.workspace_id}:{ctx.member_id}", 60)
+            # Reserve model capacity with the message. A rejected request must
+            # leave neither a transcript entry nor a consumed chat slot.
+            self.charge_in(tx, ctx.workspace_id, ctx.member_id)
             tx.set(
                 root,
                 {
@@ -557,7 +559,6 @@ class Engine:
             )
 
         self.store.atomic(begin)
-        self.charge(ctx.workspace_id, ctx.member_id)
         self.event(ctx, cid, "Checking your knowledge and workspace…")
         try:
             from dataclasses import replace

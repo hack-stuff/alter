@@ -4,6 +4,7 @@ import { dispatchLiveTool } from './tools'
 import type { ToolContext } from './tools'
 import { pcm16Resampler, pcmBase64, decodeAudio } from './audio'
 import { connectRelay } from './relay'
+import { ApiError } from '../api/client'
 import { startVoiceAudio, pauseVoiceAudio, voiceSpeaker } from './voiceAudio'
 import { parseNavigation } from '../agent/navigation'
 
@@ -43,6 +44,7 @@ export class LiveSession {
   private pending = new Set<string>()
   private handled = new Set<string>()
   private cancelled = new Set<string>()
+  private recentTools = new Map<string, { at: number; calls: number; result: Promise<unknown> }>()
   private release?: () => void
   private firstSpeech = false
   private toolCalled = false
@@ -161,13 +163,33 @@ export class LiveSession {
       const id = call.id
       this.pending.add(id)
       try {
-        const result = await dispatchLiveTool(call.name, call.args ?? {}, { ...this.options, onResult: (value, tool, input) => { if (!this.stopped && !this.cancelled.has(id)) this.options.onResult(value, tool, input) } })
+        const key = `${call.name}:${JSON.stringify(call.args ?? {})}`
+        const at = Date.now()
+        for (const [oldKey, old] of this.recentTools) if (at - old.at > 15_000) this.recentTools.delete(oldKey)
+        let recent = this.recentTools.get(key)
+        if (recent) {
+          recent.calls++
+          if (recent.calls > 2) {
+            this.options.onError('Voice repeated the same request. Restart voice or use text.')
+            this.stop()
+            return
+          }
+        } else {
+          recent = {
+            at,
+            calls: 1,
+            result: dispatchLiveTool(call.name, call.args ?? {}, { ...this.options, onResult: (value, tool, input) => { if (!this.stopped && !this.cancelled.has(id)) this.options.onResult(value, tool, input) } }),
+          }
+          this.recentTools.set(key, recent)
+        }
+        const result = await recent.result
         if (call.name === 'alter_chat' && result && typeof result === 'object' && 'conversationId' in result && typeof result.conversationId === 'string') this.options.conversationId = result.conversationId
         if (!this.stopped && !this.cancelled.has(id)) this.connection?.sendToolResponse({ functionResponses: [{ id, name: call.name, response: { result } }] })
       } catch (error) {
         if (!this.stopped && !this.cancelled.has(id)) {
           const message = error instanceof Error ? error.message : 'The request failed. Please try again.'
           this.options.onError(message)
+          if (error instanceof ApiError && error.status === 429) { this.stop(); return }
           this.connection?.sendToolResponse({ functionResponses: [{ id, name: call.name, response: { error: message } }] })
         }
       } finally { this.pending.delete(id); this.handled.add(id) }

@@ -67,3 +67,64 @@ test('a temporary provider drop reconnects once and then shows the reference', a
   await expect(page.getByRole('alert')).toContainText('Reference: retry1011')
   expect(mintCount).toBe(2)
 })
+
+test('repeated model tool calls cannot flood chat', async ({ page }, info) => {
+  await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.9' : '127.0.0.8' })
+  let chatCalls = 0
+  let responses = 0
+  let send: ((data: string) => void) | undefined
+  await page.route('**/v1/live/sessions', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ticket: 'repeat-ticket', socketPath: '/v1/live/connect' }) }))
+  await page.route('**/v1/chat', (route) => {
+    chatCalls++
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ conversationId: 'conv_repeat', reply: { from: 'alter', text: 'Done.', citations: [], approvalIds: [], traceIds: [], ts: new Date().toISOString() } }) })
+  })
+  await page.routeWebSocket('**/v1/live/connect', (socket) => {
+    send = (data) => socket.send(data)
+    socket.onMessage((raw) => {
+      const packet = JSON.parse(String(raw))
+      if (packet.ticket) socket.send(JSON.stringify({ ready: true }))
+      if (packet.functionResponses) responses++
+    })
+  })
+  await page.goto('/')
+  await page.getByLabel('Your name').fill('Relay guard')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  for (const id of ['first', 'second']) {
+    send!(JSON.stringify({ toolCall: { functionCalls: [{ id, name: 'alter_chat', args: { message: 'Add that Kani\'s mock-ups are due Friday.' } }] } }))
+    await expect.poll(() => responses).toBe(id === 'first' ? 1 : 2)
+  }
+  expect(chatCalls).toBe(1)
+  send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'third', name: 'alter_chat', args: { message: 'Add that Kani\'s mock-ups are due Friday.' } }] } }))
+  await expect(page.getByRole('alert')).toContainText('Voice repeated the same request')
+  expect(chatCalls).toBe(1)
+})
+
+test('a chat rate limit ends voice instead of asking the model to retry', async ({ page }, info) => {
+  await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.11' : '127.0.0.10' })
+  let chatCalls = 0
+  let toolResponses = 0
+  let send: ((data: string) => void) | undefined
+  await page.route('**/v1/live/sessions', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ticket: 'limited-ticket', socketPath: '/v1/live/connect' }) }))
+  await page.route('**/v1/chat', (route) => {
+    chatCalls++
+    return route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ detail: { error: { code: 'RATE_LIMITED', message: 'This workspace is busy. Please try again later.' } } }) })
+  })
+  await page.routeWebSocket('**/v1/live/connect', (socket) => {
+    send = (data) => socket.send(data)
+    socket.onMessage((raw) => {
+      const packet = JSON.parse(String(raw))
+      if (packet.ticket) socket.send(JSON.stringify({ ready: true }))
+      if (packet.functionResponses) toolResponses++
+    })
+  })
+  await page.goto('/')
+  await page.getByLabel('Your name').fill('Relay limit')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'limited', name: 'alter_chat', args: { message: 'What is next?' } }] } }))
+  await expect(page.getByRole('alert')).toContainText('This workspace is busy')
+  await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeVisible()
+  expect(chatCalls).toBe(1)
+  expect(toolResponses).toBe(0)
+})
