@@ -75,28 +75,26 @@ test('the home team sync card opens the team sync', async ({ page }) => {
 })
 
 test('a spoken "open" moves the screen from the streaming transcript, before any tool call', async ({ page }) => {
+  await page.clock.install()
   await withLiveHarness(page)
   await join(page)
-  const timing = await page.evaluate(async () => {
+  // Freeze page time so the Voice Bar's 3.5s "Opened …" notice and the 8s
+  // duplicate-navigation window can't lapse while a loaded machine catches up.
+  // Pausing a little ahead only runs timers a slow machine would reach anyway.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 5_000)
+  const fast = await page.evaluate(async () => {
     const path = '/src/agent/navigator.ts'
     const { alterNav } = await import(path)
     const events: string[] = []
     alterNav.subscribe((event: { screen: string; source: string }) => events.push(`${event.screen}:${event.source}`))
-    const screen = document.querySelector('[data-screen="approvals"]')!
-    const start = performance.now()
-    let shown = 0
-    const visible = new Promise<void>((resolve) => {
-      const observer = new MutationObserver(() => { if (!screen.hasAttribute('hidden')) { shown = performance.now(); observer.disconnect(); resolve() } })
-      observer.observe(screen, { attributes: true, attributeFilter: ['hidden'] })
-    })
+    const screen = document.querySelector<HTMLElement>('[data-screen="approvals"]')!
+    const hiddenBefore = screen.hidden
     // Only a partial transcript: no turnComplete and no tool call yet.
     ;(window as any).liveHarness.callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Open approvals' } } })
-    await visible
-    return { ms: shown - start, events }
+    // Checked in the same task: no timer, render or model reply can have run yet.
+    return { hiddenBefore, shownSynchronously: !screen.hidden, events }
   })
-  expect(timing.events).toEqual(['approvals:voice-fast'])
-  // The event order proves the fast path; the bound only guards against waiting on the model.
-  expect(timing.ms).toBeLessThan(400)
+  expect(fast).toEqual({ hiddenBefore: true, shownSynchronously: true, events: ['approvals:voice-fast'] })
   await expect(page.getByRole('heading', { name: 'Waiting on you', level: 1 })).toBeVisible()
   await expect(page.getByText('Opened Approvals')).toBeVisible()
   // The model's tool call for the same request arrives later and is not repeated.
