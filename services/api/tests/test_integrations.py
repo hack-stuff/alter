@@ -335,6 +335,30 @@ def test_vertex_output_rejects_invented_claims(team, monkeypatch):
     )
 
 
+def test_vertex_agent_hitting_its_call_limit_is_not_an_error(team, monkeypatch):
+    from app.alters.brain import VertexBrain
+    from google.adk import runners
+    from google.adk.agents.invocation_context import LlmCallsLimitExceededError
+
+    c, e, h, r = team
+    context = e.auth.member(Caller("alice"))
+    member = e.store.get(f"workspaces/{context.workspace_id}/members/siddhi") | {
+        "id": "siddhi"
+    }
+
+    class LoopingRunner:
+        def __init__(self, agent, **kwargs):
+            pass
+
+        async def run_async(self, **kwargs):
+            raise LlmCallsLimitExceededError("Max number of llm calls limit of 8 exceeded")
+            yield
+
+    monkeypatch.setattr(runners, "Runner", LoopingRunner)
+    result = asyncio.run(VertexBrain(e).answer(context, member, "What if one-tap fails?"))
+    assert not result["citations"] and result["answer"]
+
+
 def test_live_configuration_has_no_silent_simulation(system):
     from app.main import create_app
     from app.config import Settings

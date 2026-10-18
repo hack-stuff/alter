@@ -303,6 +303,7 @@ class VertexBrain:
         from google.adk.runners import Runner
         from google.adk.sessions import InMemorySessionService
         from google.adk.agents.run_config import RunConfig
+        from google.adk.agents.invocation_context import LlmCallsLimitExceededError
         from google.genai import types
         from app.alters.factory import build_alter, AgentResult
 
@@ -313,14 +314,19 @@ class VertexBrain:
         session = await sessions.create_session(app_name="alter", user_id=ctx.uid)
         runner = Runner(agent=agent, app_name="alter", session_service=sessions)
         final = ""
-        async for event in runner.run_async(
-            user_id=ctx.uid,
-            session_id=session.id,
-            new_message=types.Content(role="user", parts=[types.Part(text=message)]),
-            run_config=RunConfig(max_llm_calls=8),
-        ):
-            if event.is_final_response() and event.content:
-                final = "".join(part.text or "" for part in event.content.parts or [])
+        try:
+            async for event in runner.run_async(
+                user_id=ctx.uid,
+                session_id=session.id,
+                new_message=types.Content(role="user", parts=[types.Part(text=message)]),
+                run_config=RunConfig(max_llm_calls=8),
+            ):
+                if event.is_final_response() and event.content:
+                    final = "".join(part.text or "" for part in event.content.parts or [])
+        except LlmCallsLimitExceededError:
+            # An agent that keeps searching without settling has found no grounded answer.
+            # Treat it like one: no claims, so the question goes to the owner.
+            final = ""
         valid = []
         refs = []
         try:

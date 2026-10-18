@@ -28,7 +28,7 @@ Alters within the limits you set, and works in Google Docs, Drive, Sheets and Ca
 Anything that leaves the team, like sending an email, waits until you say so.
 
 > [!NOTE]
-> Alter is live at [myalter.web.app](https://myalter.web.app/). It runs on Gemini 3.8 Flash and
+> Alter is live at [myalter.web.app](https://myalter.web.app/). It runs on Gemini 3.7 Flash and
 > Gemini 3.5 Flash-Lite, with Gemini Live 2.5 Flash native audio for voice.
 
 ## Table of Contents
