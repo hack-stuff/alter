@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
+import { WELCOME_OPENING } from './timing'
 import { openScreen, showMoreRequests } from './nav'
 
 async function join(page: Page) {
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: WELCOME_OPENING })
 }
 
 const navigate = openScreen
@@ -122,7 +123,7 @@ test('join and chat failures preserve input and allow retry', async ({ page }) =
   await expect(page.getByRole('alert')).toContainText('Could not join Alex')
   await expect(page.getByLabel('Your name')).toHaveValue('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: WELCOME_OPENING })
   await page.evaluate(async () => {
     const modulePath = '/src/api/client.ts'
     const { api } = await import(modulePath)

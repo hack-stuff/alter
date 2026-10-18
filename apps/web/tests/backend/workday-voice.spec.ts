@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { VOICE_CONNECT } from '../timing'
 
 test.use({
   launchOptions: {
@@ -56,14 +57,14 @@ test('one microphone follows Alter to saved diagram and consenting meeting', asy
   })
   await page.goto('/')
   await page.getByRole('button', { name: 'Step into Dev’s day' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   expect(starts.at(-1)?.mode).toBe('chat')
   // Live sometimes speaks a reply without calling its tool. The streaming
   // transcript alone opens the requested card, and the same voice session
   // follows the user onto the canvas instead of reconnecting.
   send!({ serverContent: { inputTranscription: { text: 'Open card two' }, turnComplete: true } })
   await expect(page.getByRole('heading', { name: 'Login journey', exact: true })).toBeVisible()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   expect(starts.map((start) => start.mode)).toEqual(['chat'])
   expect(active.size).toBe(1)
   await expect(page.getByRole('button', { name: 'Stop voice' })).toHaveCount(1)

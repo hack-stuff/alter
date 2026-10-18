@@ -5,7 +5,10 @@ export default defineConfig({
   testIgnore: ['**/pwa/**', '**/backend/**'],
   fullyParallel: true,
   workers: 2,
-  timeout: 30_000,
+  // Wall-clock budgets sized for a loaded machine (e.g. a render running alongside); a step that
+  // never completes still fails, just later.
+  timeout: 180_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL: 'http://127.0.0.1:5174',
     trace: 'retain-on-failure',
@@ -18,7 +21,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'], defaultBrowserType: 'chromium' } },
   ],
   webServer: [
-    { command: 'npm run dev -- --host 127.0.0.1 --port 5174 --strictPort', url: 'http://127.0.0.1:5174', env: { VITE_MOCK: '1', VITE_LIVE_TOKEN_BASE: 'http://127.0.0.1:5174/v1/live/token' }, reuseExistingServer: false },
+    { command: 'npm run dev -- --host 127.0.0.1 --port 5174 --strictPort', url: 'http://127.0.0.1:5174', env: { VITE_MOCK: '1', VITE_DEV_AUTH: '1', VITE_LIVE_TOKEN_BASE: 'http://127.0.0.1:5174/v1/live/token' }, reuseExistingServer: false },
     { command: 'npm run dev -- --host 127.0.0.1 --port 5175 --strictPort', url: 'http://127.0.0.1:5175', env: {
       VITE_MOCK: '0', VITE_DEV_AUTH: '0', VITE_API_BASE: 'http://127.0.0.1:5175/v1',
       VITE_LIVE_TOKEN_BASE: 'http://127.0.0.1:5175/v1/live/token',

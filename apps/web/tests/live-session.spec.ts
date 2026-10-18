@@ -1,20 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
+import { VOICE_CONNECT, pauseClock, tickUntil } from './timing'
 
 test.use({ launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } })
-
-// Joining and connecting voice is wall-clock work (loading the app and the voice SDK from Vite) that
-// a loaded machine can stretch past 15s, so these tests are slow() and allow it 30s.
-const connectTimeout = 30_000
 
 // The mock api.chat answers a "why"/"launch" question after two page timers (600ms, then 1500ms).
 const chatReply = 600 + 1_500
 
-// Freeze page time once voice is running, so the mock chat only answers when a test advances the
+// These tests freeze page time (pauseClock) once voice is running, so the mock chat only answers when a test advances the
 // clock by chatReply instead of racing expect's 5s budget on a loaded machine. Pausing a little
 // ahead only runs timers a slow machine would reach anyway.
-async function pauseClock(page: Page) {
-  await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 1_000)
-}
 
 test('Live session handles transcripts, tools, duplicate calls, interruption and cleanup', async ({ page }) => {
   test.slow()
@@ -38,8 +32,12 @@ test('Live session handles transcripts, tools, duplicate calls, interruption and
   })
   await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
+  // The welcome closes itself after 15s of page time. Step page time in 100ms ticks while voice
+  // connects, so a slow machine's wall-clock connect can't outlast it before it is checked below.
+  await pauseClock(page)
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: connectTimeout })
+  await tickUntil(page, () => page.getByText('Listening…', { exact: true }).isVisible())
+  await page.clock.resume()
   // The welcome stays up while voice connects, and gives way as soon as the Alter speaks.
   await expect(page.getByLabel('Opening your workday')).toBeVisible()
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
@@ -99,7 +97,7 @@ test('a rejected token request releases the microphone and returns to text contr
   await page.goto('/?voice=auto')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('alert')).toContainText('Your voice budget is used for now', { timeout: connectTimeout })
+  await expect(page.getByRole('alert')).toContainText('Your voice budget is used for now', { timeout: VOICE_CONNECT })
   await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeEnabled()
   expect(await page.evaluate(() => (window as any).testStream.getTracks()[0].readyState)).toBe('ended')
 })
@@ -121,7 +119,7 @@ test('voice follows the typed conversation, reports a server close and releases 
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: connectTimeout })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await page.evaluate(async () => {

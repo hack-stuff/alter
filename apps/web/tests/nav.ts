@@ -25,5 +25,7 @@ export async function openMeetings(page: Page) {
 /** Example requests beyond the three quick chips sit behind a disclosure on Home. */
 export async function showMoreRequests(page: Page) {
   const more = page.getByText('More things to ask', { exact: true })
-  if (await more.count() && !(await page.locator('details.more-requests').getAttribute('open') !== null)) await more.click()
+  // Wait for Home to render the disclosure; an instant count races a slow render.
+  await expect(more).toBeVisible()
+  if (await page.locator('details.more-requests').getAttribute('open') === null) await more.click()
 }

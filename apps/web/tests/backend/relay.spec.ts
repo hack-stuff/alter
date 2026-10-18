@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { VOICE_CONNECT } from '../timing'
 import { existsSync } from 'node:fs'
 
 // Keep the pinned Linux browser when present (managed build images), otherwise
@@ -28,14 +29,14 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   await page.getByRole('button', { name: 'Continue' }).click()
   // This connected build starts voice automatically. Clicking the temporary
   // start control races its transition to the active session.
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   await expect.poll(() => audio, { timeout: 20_000 }).toBeGreaterThan(0)
   send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'relay-call', name: 'alter_chat', args: { message: 'Why did we switch to one-tap?' } }] } }))
   await expect(page.getByRole('log').getByText('one-tap', { exact: false }).first()).toBeVisible()
   await expect.poll(() => tools, { timeout: 20_000 }).toBe(1)
   await page.getByRole('button', { name: 'Stop voice' }).click()
   await page.getByRole('button', { name: 'Resume voice' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   expect(mintCount).toBe(2)
   await page.getByRole('button', { name: 'Stop voice' }).click()
 })
@@ -57,11 +58,11 @@ test('a temporary provider drop reconnects once and then shows the reference', a
   await page.goto('/')
   await page.getByLabel('Your name').fill('Relay retry')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   const failure = JSON.stringify({ error: 'Vertex Live is temporarily unavailable. Retry or use text. Reference: retry1011', reference: 'retry1011', retryable: true })
   sockets[0](failure)
-  await expect.poll(() => mintCount, { timeout: 15_000 }).toBe(2)
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect.poll(() => mintCount, { timeout: VOICE_CONNECT }).toBe(2)
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   expect(await page.getByText('Reference: retry1011').count()).toBe(0)
   sockets[1](failure)
   await expect(page.getByRole('alert')).toContainText('Reference: retry1011')
@@ -89,7 +90,7 @@ test('repeated model tool calls cannot flood chat', async ({ page }, info) => {
   await page.goto('/')
   await page.getByLabel('Your name').fill('Relay guard')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   for (const id of ['first', 'second']) {
     send!(JSON.stringify({ toolCall: { functionCalls: [{ id, name: 'alter_chat', args: { message: 'Add that Kani\'s mock-ups are due Friday.' } }] } }))
     await expect.poll(() => responses).toBe(id === 'first' ? 1 : 2)
@@ -121,7 +122,7 @@ test('a chat rate limit ends voice instead of asking the model to retry', async 
   await page.goto('/')
   await page.getByLabel('Your name').fill('Relay limit')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   send!(JSON.stringify({ toolCall: { functionCalls: [{ id: 'limited', name: 'alter_chat', args: { message: 'What is next?' } }] } }))
   await expect(page.getByRole('alert')).toContainText('This workspace is busy')
   await expect(page.getByRole('button', { name: 'Talk to your Alter' })).toBeVisible()

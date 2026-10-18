@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { WELCOME_OPENING } from './timing'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { openScreen, showMoreRequests } from './nav'
@@ -73,7 +74,7 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: WELCOME_OPENING })
   await showMoreRequests(page)
   await page.getByRole('button', { name: 'Add a QA update to the status doc' }).click()
   await page.getByRole('button', { name: 'Review proposal' }).click()
@@ -91,6 +92,6 @@ test('live mode signs in anonymously, sends fresh bearer tokens and reads scoped
   expect(new Set(headers.map((h) => h.authorization)).size).toBe(headers.length)
   expect(await page.evaluate(() => (window as any).authHarness.signIns)).toBe(1)
   await page.reload()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: WELCOME_OPENING })
   await expect(page.getByLabel('Your name')).toHaveCount(0)
 })

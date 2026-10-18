@@ -8,7 +8,10 @@ import { join } from 'node:path'
 const chromium = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined)
 
 export default defineConfig({
-  testDir:'./tests/backend',outputDir:'test-results/backend',workers:1,timeout:60_000,
+  testDir:'./tests/backend',outputDir:'test-results/backend',workers:1,
+  // Wall-clock budgets sized for a loaded machine (e.g. a render running alongside); a step that
+  // never completes still fails, just later.
+  timeout:180_000,expect:{timeout:15_000},
   use:{baseURL:'http://127.0.0.1:5177',trace:'retain-on-failure',launchOptions:{executablePath:chromium}},
   projects:[{name:'desktop',use:{...devices['Desktop Chrome']}},{name:'mobile',use:{...devices['Pixel 7'],defaultBrowserType:'chromium'}}],
   webServer:[

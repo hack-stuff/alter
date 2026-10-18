@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { VOICE_CONNECT, WELCOME_OPENING, pauseClock, tickUntil } from './timing'
 
 test.use({ launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } })
 
@@ -24,24 +25,30 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
       if ((event.target as Element).closest('button')?.textContent?.includes('Enable voice')) state.blockAudio = false
     }, { capture: true })
   })
+  await page.clock.install()
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
+  // The welcome gives way 1.5s of page time after the sound check starts, which a loaded machine
+  // can let pass before it first looks, so tick page time while checking for it.
+  await pauseClock(page)
   await page.getByRole('button', { name: 'Continue' }).click()
   // Voice connects behind the welcome; when sound is blocked, the home screen opens at once.
-  await expect(page.getByLabel('Opening your workday')).toBeVisible()
+  await tickUntil(page, () => page.getByLabel('Opening your workday').isVisible())
+  const enable = page.getByRole('button', { name: 'Enable voice', exact: true })
+  await tickUntil(page, () => enable.isVisible())
+  await page.clock.resume()
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
   await expect(page.getByLabel('Opening your workday')).toHaveCount(0)
-  const enable = page.getByRole('button', { name: 'Enable voice', exact: true })
-  await expect(enable).toBeInViewport({ timeout: 15_000 })
+  await expect(enable).toBeInViewport()
   await expect(page.getByRole('alert')).toContainText('allow sound')
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith('alter.live.greeted.')))).toEqual([])
   await enable.click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible()
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   await expect.poll(() => page.evaluate(() => (window as any).greetingRequests.length)).toBe(1)
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith('alter.live.greeted.')))).toEqual([])
   await page.evaluate(() => (window as any).startupHarness.callbacks.onclose())
   await page.getByRole('button', { name: 'Talk to your Alter' }).click()
-  await expect.poll(() => page.evaluate(() => (window as any).greetingRequests.length)).toBe(2)
+  await expect.poll(() => page.evaluate(() => (window as any).greetingRequests.length), { timeout: VOICE_CONNECT }).toBe(2)
   await page.evaluate(() => (window as any).startupHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith('alter.live.greeted.')).length)).toBe(1)
   await expect(page.getByLabel('Opening your workday')).toHaveCount(0)
@@ -52,9 +59,9 @@ test('blocked autoplay offers visible activation and retries the unheard greetin
   await page.reload()
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
-  await page.getByRole('button', { name: 'Enable voice', exact: true }).click({ timeout: 15_000 })
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible({ timeout: WELCOME_OPENING })
+  await page.getByRole('button', { name: 'Enable voice', exact: true }).click({ timeout: VOICE_CONNECT })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   expect(await page.evaluate(() => (window as any).greetingRequests?.length ?? 0)).toBe(0)
 })
 
@@ -80,12 +87,14 @@ test('slow workspace setup reveals the workday even when voice cannot start', as
   await page.clock.install()
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
+  // The welcome gives way after 8s of page time; tick it so a loaded machine can't pass that first.
+  await pauseClock(page)
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.evaluate(async () => {
     const { mockSnapshot, patchMock } = await import('/src/api/mock/workspace.ts')
     patchMock({ workspace: { ...mockSnapshot().workspace!, state: 'provisioning' } })
   })
-  await expect(page.getByLabel('Opening your workday')).toBeVisible()
+  await tickUntil(page, () => page.getByLabel('Opening your workday').isVisible())
   await page.clock.fastForward(8_100)
   await expect(page.getByLabel('Opening your workday')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()

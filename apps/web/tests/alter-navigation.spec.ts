@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { VOICE_CONNECT, pauseClock } from './timing'
 import { showMoreRequests } from './nav'
 
 test.use({ launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } })
@@ -20,7 +21,7 @@ async function join(page: Page) {
   await page.goto('/')
   await page.getByLabel('Your name').fill('Alex')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: VOICE_CONNECT })
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: btoa('\0'.repeat(4800)), mimeType: 'audio/pcm;rate=24000' } }] } } }))
   await expect(page.getByRole('heading', { name: "Alex's Alter" })).toBeVisible()
 }
@@ -81,7 +82,7 @@ test('a spoken "open" moves the screen from the streaming transcript, before any
   // Freeze page time so the Voice Bar's 3.5s "Opened …" notice and the 8s
   // duplicate-navigation window can't lapse while a loaded machine catches up.
   // Pausing a little ahead only runs timers a slow machine would reach anyway.
-  await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 5_000)
+  await pauseClock(page, 5_000)
   const fast = await page.evaluate(async () => {
     const path = '/src/agent/navigator.ts'
     const { alterNav } = await import(path)
@@ -105,16 +106,21 @@ test('a spoken "open" moves the screen from the streaming transcript, before any
 })
 
 test('navigate_to highlights a proposal, and a spoken decision reaches the owner\'s Alter', async ({ page }) => {
+  await page.clock.install()
   await withLiveHarness(page)
   await join(page)
   await showMoreRequests(page)
   await page.getByRole('button', { name: 'Add a QA update to the status doc' }).click()
   await expect(page.getByRole('button', { name: 'Review proposal' })).toBeVisible()
+  // The highlight clears after 2.8s and the "Opened …" notice after 3.5s; hold page time
+  // while they are checked so a loaded machine can't let them lapse first.
+  await pauseClock(page)
   await page.evaluate(() => (window as any).liveHarness.callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'nav-2', name: 'navigate_to', args: { screen: 'approvals', target: 'kind:doc_edit' } }] } }))
   const card = page.locator('[data-screen="approvals"]').getByRole('article', { name: 'Status doc · QA section' })
   await expect(card).toHaveClass(/nav-highlight/)
   await expect(card).toBeFocused()
   await expect(page.getByText('Opened Approvals · doc edit')).toBeVisible()
+  await page.clock.resume()
   const result = await page.evaluate(async () => {
     const path = '/src/live/tools.ts'
     const { dispatchLiveTool } = await import(path)
