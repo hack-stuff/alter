@@ -2,7 +2,7 @@ import type { Session, LiveServerMessage } from '@google/genai'
 import { httpCall } from '../api/client'
 import type { LiveOptions } from './session'
 
-export async function connectRelay(options: LiveOptions, onMessage: (message: LiveServerMessage) => void, onClose: () => void, onError: (message: string) => void, signal?: AbortSignal): Promise<Session> {
+export async function connectRelay(options: LiveOptions, onMessage: (message: LiveServerMessage) => void, onClose: () => void, onError: (message: string, retryable?: boolean) => void, signal?: AbortSignal): Promise<Session> {
   const result = await httpCall<{ ticket: string; socketPath: string }>('POST', '/live/sessions', {
     mode: options.mode, targetId: options.targetId, conversationId: options.conversationId, meetingId: options.meetingId,
   })
@@ -18,7 +18,7 @@ export async function connectRelay(options: LiveOptions, onMessage: (message: Li
     socket.onopen = () => send({ ticket: result.ticket })
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      if (data.error) { onError(data.error); clearTimeout(timeout); reject(new Error(data.error)); socket.close(); return }
+      if (data.error) { onError(data.error, data.retryable === true); clearTimeout(timeout); reject(new Error(data.error)); socket.close(); return }
       if (data.ready) { clearTimeout(timeout); resolve(); return }
       onMessage(data as LiveServerMessage)
     }

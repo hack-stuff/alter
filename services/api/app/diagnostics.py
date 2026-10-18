@@ -130,7 +130,7 @@ def report_live_failure(exc, settings, stage):
     elif isinstance(exc, TimeoutError) or code in (408, 504):
         category = "provider_deadline_exceeded"
         detail = "The voice connection timed out. Retry or use text."
-    elif code in (500, 502, 503) or close_code == 1011:
+    elif code in (500, 502, 503, 1011) or close_code == 1011:
         category = "provider_unavailable"
         detail = "Vertex Live is temporarily unavailable. Retry or use text."
     elif code == 400 or close_code == 1007:
@@ -174,7 +174,11 @@ def report_live_failure(exc, settings, stage):
     if isinstance(close_code, int):
         payload["providerCloseCode"] = close_code
     print(json.dumps(payload), file=sys.stderr, flush=True)
-    return {"error": f"{detail} Reference: {reference}", "reference": reference}
+    return {
+        "error": f"{detail} Reference: {reference}",
+        "reference": reference,
+        "retryable": category == "provider_unavailable",
+    }
 
 
 def report_provision_failure(exc):

@@ -17,7 +17,7 @@ export interface LiveOptions extends ToolContext {
   inputStream?: MediaStream
   onState: (state: 'connecting' | 'listening' | 'speaking' | 'closed') => void
   onTranscript: (text: string, speaker: 'user' | 'alter', final: boolean) => void
-  onError: (message: string) => void
+  onError: (message: string, retryable?: boolean) => void
   onLevel?: (level: number) => void
   onFirstSpeech?: () => void
   onUnroutedUtterance?: (text: string) => void
@@ -70,7 +70,7 @@ export class LiveSession {
       let connection: Session
       this.deadline = setTimeout(() => this.stop(), 10 * 60_000)
       if (!import.meta.env.VITE_LIVE_TOKEN_BASE?.trim()) {
-        connection = await connectRelay(this.options, (message) => { void this.message(message) }, () => this.stop(), (message) => this.options.onError(message), this.abort.signal)
+        connection = await connectRelay(this.options, (message) => { void this.message(message) }, () => this.stop(), (message, retryable) => this.options.onError(message, retryable), this.abort.signal)
       } else {
       if (this.options.mode === 'diagram') throw new Error('Design voice editing requires the Vertex relay. Leave VITE_LIVE_TOKEN_BASE empty.')
       const { firebaseIdToken } = await import('../firebase-auth')

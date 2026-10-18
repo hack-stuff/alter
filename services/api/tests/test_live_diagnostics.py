@@ -15,6 +15,10 @@ class ProviderFailure(Exception):
     code = 403
 
 
+class ProviderUnavailable(Exception):
+    code = 1011
+
+
 def test_unhandled_request_log_has_reference_without_request_text(capsys):
     try:
         raise RuntimeError("private-token; prompt=private-question")
@@ -34,6 +38,7 @@ def test_unhandled_request_log_has_reference_without_request_text(capsys):
         (DefaultCredentialsError("private-token"), "credentials_unavailable"),
         (RefreshError("invalid_grant: private-token"), "credentials_unavailable"),
         (ProviderFailure("private-token"), "permission_denied"),
+        (ProviderUnavailable("private-token"), "provider_unavailable"),
         (TimeoutError("private-token"), "provider_deadline_exceeded"),
         (
             ValueError("The workspace voice budget is used for now."),
@@ -63,6 +68,7 @@ def test_live_failure_metadata_is_safe(exc, category, capsys):
     assert log["model"] == "native-audio-model"
     assert log["reference"] == response["reference"]
     assert log["reference"] in response["error"]
+    assert response["retryable"] is (category == "provider_unavailable")
     assert "private-token" not in json.dumps(log) + json.dumps(response)
     assert "private-question" not in json.dumps(log) + json.dumps(response)
 

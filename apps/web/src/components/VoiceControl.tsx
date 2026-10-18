@@ -68,6 +68,9 @@ export function VoiceControl(props: Props) {
   const [ended, setEnded] = useState(false)
   const [fallback, setFallback] = useState('')
   const queued = useRef('')
+  const recoveries = useRef(0)
+  const recoveryPending = useRef(false)
+  const recoveryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [lastSpeaker, setLastSpeaker] = useState<'user' | 'alter'>('user')
   const stateRef = useRef(state)
   // The Voice Bar narrates navigation so the user sees where the Alter took them.
@@ -85,21 +88,25 @@ export function VoiceControl(props: Props) {
     return () => clearTimeout(timer)
   }, [moved])
   const started = useRef(false)
-  useEffect(() => () => { session.current?.stop() }, [])
+  useEffect(() => () => { clearTimeout(recoveryTimer.current); recoveryPending.current = false; session.current?.stop() }, [])
   useEffect(() => { session.current?.setConversationId(props.conversationId) }, [props.conversationId])
-  function start() {
+  function start(recovering = false) {
     if (stateRef.current !== 'closed' || props.active === false) return
+    clearTimeout(recoveryTimer.current)
+    recoveryTimer.current = undefined
+    if (!recovering) recoveries.current = 0
     stateRef.current = 'connecting'
     started.current = true
-    setError(''); setInput(''); setOutput(''); setMuted(props.mode === 'reply')
+    setEnded(false); setError(''); setInput(''); setOutput(''); setMuted(props.mode === 'reply')
     const instance = new LiveSession({
       ...props,
+      greet: recovering ? false : props.greet,
       onResult: (result, tool, text) => { if (tool === 'respond_escalation' && props.draftOnly) callbacks.current.onTranscript?.(text); callbacks.current.onResult(result, tool, text) },
-      onState: (value) => { stateRef.current = value; setState(value); if (value === 'listening' && queued.current) { const text = queued.current; queued.current = ''; session.current?.type(text) } if (value === 'closed') queued.current = ''; if (value === 'closed') setEnded(true); callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
+      onState: (value) => { stateRef.current = value; setState(value); if (value === 'listening' && queued.current) { const text = queued.current; queued.current = ''; session.current?.type(text) } if (value === 'closed') { queued.current = ''; if (recoveryPending.current && callbacks.current.active !== false) { recoveryPending.current = false; recoveryTimer.current = setTimeout(() => { recoveryTimer.current = undefined; startRef.current(true) }, 1200) } else setEnded(true) } callbacks.current.onState?.(value); callbacks.current.onSpeaking?.(value === 'speaking'); callbacks.current.onActive?.(value !== 'closed') },
       onFirstSpeech: () => callbacks.current.onFirstSpeech?.(),
       onUnroutedUtterance: (text) => callbacks.current.onUnroutedUtterance?.(text),
       onTranscript: (text, speaker, final) => { setLastSpeaker(speaker === 'user' ? 'user' : 'alter'); if (speaker === 'user') { setInput(text); if (final) { callbacks.current.onUserUtterance?.(text); if (props.draftOnly) callbacks.current.onTranscript?.(text) } } else setOutput(text); if (final && text.trim()) callbacks.current.onCapture?.(text, speaker === 'user' ? 'human' : 'alter') },
-      onError: (message) => { setError(message); callbacks.current.onError?.(message) },
+      onError: (message, retryable) => { if (recoveryPending.current || recoveryTimer.current) return; if (retryable && recoveries.current < 1 && callbacks.current.active !== false) { recoveries.current++; recoveryPending.current = true; return } setError(message); callbacks.current.onError?.(message) },
       onLevel: (value) => { setLevel(value); callbacks.current.onLevel?.(value) },
     })
     session.current = instance; if (props.mode === 'reply') instance.mute(true); void instance.start()
@@ -112,13 +119,13 @@ export function VoiceControl(props: Props) {
     if (!props.dock) return
     return voiceDock.attach({
       start: () => { unlockVoiceAudio(); setEnded(false); startRef.current() },
-      end: () => { setError(''); session.current?.stop() },
+      end: () => { recoveryPending.current = false; clearTimeout(recoveryTimer.current); recoveryTimer.current = undefined; setError(''); session.current?.stop() },
       mute: (value) => { setMuted(value); session.current?.mute(value) },
       announce: (text) => session.current?.announce(text),
     })
   }, [props.dock])
   useEffect(() => {
-    if (props.active === false) { session.current?.stop(); started.current = false; return }
+    if (props.active === false) { recoveryPending.current = false; clearTimeout(recoveryTimer.current); recoveryTimer.current = undefined; session.current?.stop(); started.current = false; return }
     if (!props.autoStart || started.current) return
     const timer = setTimeout(() => { started.current = true; startRef.current() }, props.startDelay ?? 700)
     return () => clearTimeout(timer)
@@ -153,7 +160,7 @@ export function VoiceControl(props: Props) {
   const controls = state === 'closed' ? startButton : <>
     {props.mode === 'chat' && !props.dock && state !== 'connecting' && <button type="button" className="ghost" onClick={() => { unlockVoiceAudio(); session.current?.greet() }}>Hear my briefing</button>}
     {props.mode === 'reply' ? holdToTalk : <button type="button" className="ghost" aria-pressed={muted} onClick={() => { const value = !muted; setMuted(value); session.current?.mute(value) }}><Icon name={muted ? 'mic' : 'micOff'} size={16} /><span className="voice-btn-label">{muted ? 'Unmute' : 'Mute mic'}</span></button>}
-    <button type="button" className="ghost voice-end" aria-label="End voice" onClick={() => { setError(''); session.current?.stop() }}><Icon name="stop" size={14} /><span className="voice-btn-label">End voice</span></button>
+    <button type="button" className="ghost voice-end" aria-label="End voice" onClick={() => { recoveryPending.current = false; clearTimeout(recoveryTimer.current); recoveryTimer.current = undefined; setError(''); session.current?.stop() }}><Icon name="stop" size={14} /><span className="voice-btn-label">End voice</span></button>
   </>
   /** Typed text goes to the running voice session exactly like speech; with voice off it uses the text path or starts voice. */
   function sendTyped(text: string) {

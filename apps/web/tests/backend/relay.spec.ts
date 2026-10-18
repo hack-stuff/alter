@@ -39,3 +39,31 @@ test('Vertex relay client routes tools to the real local API and reconnects afte
   expect(mintCount).toBe(2)
   await page.getByRole('button', { name: 'End voice' }).click()
 })
+
+test('a temporary provider drop reconnects once and then shows the reference', async ({ page }, info) => {
+  await page.setExtraHTTPHeaders({ 'X-Real-IP': info.project.name === 'mobile' ? '127.0.0.7' : '127.0.0.6' })
+  let mintCount = 0
+  const sockets: ((data: string) => void)[] = []
+  await page.route('**/v1/live/sessions', (route) => {
+    mintCount++
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ticket: `retry-ticket-${mintCount}`, socketPath: '/v1/live/connect' }) })
+  })
+  await page.routeWebSocket('**/v1/live/connect', (socket) => {
+    sockets.push((data) => socket.send(data))
+    socket.onMessage((raw) => {
+      if (JSON.parse(String(raw)).ticket) socket.send(JSON.stringify({ ready: true }))
+    })
+  })
+  await page.goto('/')
+  await page.getByLabel('Your name').fill('Relay retry')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 20_000 })
+  const failure = JSON.stringify({ error: 'Vertex Live is temporarily unavailable. Retry or use text. Reference: retry1011', reference: 'retry1011', retryable: true })
+  sockets[0](failure)
+  await expect.poll(() => mintCount, { timeout: 15_000 }).toBe(2)
+  await expect(page.getByText('Listening…', { exact: true })).toBeVisible({ timeout: 15_000 })
+  expect(await page.getByText('Reference: retry1011').count()).toBe(0)
+  sockets[1](failure)
+  await expect(page.getByRole('alert')).toContainText('Reference: retry1011')
+  expect(mintCount).toBe(2)
+})
