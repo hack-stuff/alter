@@ -110,7 +110,8 @@ def test_actions_are_validated_and_keys_normalized():
             h.parse_actions(bad, KEYS)
 
 
-def test_grid_maps_onto_the_whole_screen_and_actions_run_in_order(helper):
+def test_grid_maps_onto_the_whole_screen_and_actions_run_in_order(helper, monkeypatch):
+    monkeypatch.setattr(h, "platform_name", lambda: "windows")  # Macs clear with Command+A.
     assert helper.pixel(0, 0) == (0, 0)
     assert helper.pixel(999, 999) == (1919, 1079)
     helper.act(
