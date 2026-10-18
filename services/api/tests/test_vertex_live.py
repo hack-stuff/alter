@@ -198,16 +198,16 @@ def test_real_drafting_and_revision(vertex_engine):
     assert engine.apps.reconcile(ctx.workspace_id, revised) is None
 
 
-def test_real_owner_can_propose_without_applying(vertex_engine):
+def test_real_owner_applies_proposed_document_locally(vertex_engine):
     engine, ctx = vertex_engine
     response = asyncio.run(
         engine.brain.chat(
             ctx,
-            "Search the test plan, then use propose_doc to draft a new QA checklist titled Local model acceptance. Do not edit an existing file or apply any write.",
+            "Search the test plan, then use propose_doc to draft a new QA checklist titled Local model acceptance.",
         )
     )
     assert response["approvalIds"], response
     for aid in response["approvalIds"]:
         card = engine.proposals.owned(ctx, aid)
-        assert card["kind"] == "doc_create" and card["state"] == "proposed"
-        assert engine.apps.reconcile(ctx.workspace_id, card) is None
+        assert card["kind"] == "doc_create" and card["state"] == "applied"
+        assert engine.apps.reconcile(ctx.workspace_id, card) is not None

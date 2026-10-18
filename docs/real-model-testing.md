@@ -1,6 +1,6 @@
 # Real-model local acceptance
 
-These tests run the installed Gemini SDK and ADK Runner against real Gemini Enterprise Agent Platform (formerly Vertex AI) endpoints. They use SQLite and local Google app adapters; no production Firestore workspace or Google file is changed. All prompts and source data are synthetic. The suite tests both model IDs, structured output, owner retrieval/citations, the signed A2A receiver agent, document drafting/revision, and an owner agent creating a proposal without applying it.
+These tests run the installed Gemini SDK and ADK Runner against real Gemini Enterprise Agent Platform (formerly Vertex AI) endpoints. They use SQLite and local Google app adapters; no production Firestore workspace or Google file is changed. All prompts and source data are synthetic. The suite tests both model IDs, structured output, owner retrieval/citations, the signed A2A receiver agent, document drafting/revision, and an owner agent applying a document through the local Google adapter.
 
 Run this before rebuilding Cloud Run after an agent/model change. A simple Studio `OK` response alone does not validate tool calling, structured output, the configured region, or the deployed service account.
 
