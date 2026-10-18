@@ -11,11 +11,11 @@
 
   {"key": "dev-sahil-1on1", "members": ["dev", "sahil"], "title": "1:1 · Dev and Sahil", "day": 1, "start": "10:00", "minutes": 30},
   {"key": "qa-test-plan", "members": ["slot:qa_lead"], "title": "Test plan review", "day": 1, "start": "11:00", "minutes": 45},
-  {"key": "sahil-rollout", "members": ["sahil"], "title": "LOGIN-7 rollout prep", "day": 1, "start": "13:00", "minutes": 60},
+  {"key": "sahil-rollout", "members": ["sahil"], "title": "One-tap sign-in rollout prep", "day": 1, "start": "13:00", "minutes": 60},
   {"key": "analyst-conversion", "members": ["slot:data_analyst"], "title": "Conversion dashboard review", "day": 1, "start": "14:00", "minutes": 30},
   {"key": "launch-readiness", "members": ["dev", "kani", "slot:qa_lead", "slot:security_engineer"], "title": "Launch readiness review", "day": 1, "start": "15:00", "minutes": 60},
 
-  {"key": "security-auth-review", "members": ["slot:security_engineer"], "title": "LOGIN-7 security review", "day": 2, "start": "10:00", "minutes": 60},
+  {"key": "security-auth-review", "members": ["slot:security_engineer"], "title": "One-tap sign-in security review", "day": 2, "start": "10:00", "minutes": 60},
   {"key": "design-signoff", "members": ["dev", "kani"], "title": "Design sign-off · login flow", "day": 2, "start": "11:00", "minutes": 45},
   {"key": "kani-usability", "members": ["kani"], "title": "Usability test · one-tap", "day": 2, "start": "13:30", "minutes": 60},
   {"key": "qa-regression", "members": ["slot:qa_lead"], "title": "Regression run · Android 12+", "day": 2, "start": "14:00", "minutes": 60},

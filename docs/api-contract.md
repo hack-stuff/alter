@@ -53,7 +53,7 @@ Both run on the **same backend and app**. The video only adds the Meet rig and d
 | Dev | Product lead | available | Roadmap, priorities, status doc owner |
 | Siddhi | Engineer, owns login revamp | **on leave** | Oct 8 decision to move to one-tap, design doc, prod approval Oct 10 |
 | Kani | Designer | available | Mock-ups, due Friday |
-| Sahil | Engineer | in meetings | Backend endpoints, ticket LOGIN-7 |
+| Sahil | Engineer | in meetings | Backend endpoints, one-tap sign-in backend ticket |
 
 **Role slots for real people** (the judge takes the first free one; invitees take the next):
 

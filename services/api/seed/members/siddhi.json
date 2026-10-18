@@ -11,10 +11,10 @@
       "scope": "work"
     },
     {
-      "id": "ticket-LOGIN-7",
-      "title": "LOGIN-7",
+      "id": "ticket-one-tap-backend",
+      "title": "One-tap sign-in backend",
       "locator": "status",
-      "text": "The sign-in infrastructure was approved for production on October 10 under LOGIN-7. This approval covers infrastructure readiness; it does not set a user-facing rollout date.",
+      "text": "The one-tap sign-in backend was approved for production on October 10. This approval covers infrastructure readiness; it does not set a user-facing rollout date.",
       "scope": "work"
     }
   ]

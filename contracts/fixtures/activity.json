@@ -27,8 +27,8 @@
         "locator": "§4"
       },
       {
-        "sourceId": "ticket-LOGIN-7",
-        "title": "LOGIN-7",
+        "sourceId": "ticket-one-tap-backend",
+        "title": "One-tap sign-in backend",
         "locator": "status"
       }
     ],
@@ -38,7 +38,7 @@
       "Your Alter → Siddhi's Alter",
       "request: \"Is the sign-in setup approved for production?\"",
       "Siddhi's sharing rules: project status → team ✓",
-      "sources: Login design doc §4 · ticket LOGIN-7",
+      "sources: Login design doc §4 · one-tap sign-in backend ticket",
       "answer: \"Approved Oct 10. Live in production.\"",
       "Answer returned with sources",
       "No human needed"

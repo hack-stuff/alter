@@ -10,7 +10,7 @@ import { voiceHold } from '../live/dock'
 import { pretendsToBeSiddhi, SIDDHI_IN_ROOM } from '../api/presentation'
 
 // Demo prompts for the represented teammate's Alter, shown at the top of the room.
-const QUESTIONS = ['when are we launching the login revamp?', 'why did we switch to one-tap sign-in?', 'is LOGIN-7 approved for production?']
+const QUESTIONS = ['when are we launching the login revamp?', 'why did we switch to one-tap sign-in?', 'is the one-tap sign-in backend approved for production?']
 
 export interface RoomHost {
   meetingId: string
